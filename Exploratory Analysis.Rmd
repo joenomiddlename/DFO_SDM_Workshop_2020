@@ -1,32 +1,338 @@
 ---
-title: "Exploratory Analysis"
+title: "Exploratory Analysis 1"
+subtitle: "Introduction to spatial R packages and plotting functions"
 author: "Joe Watson"
 date: "07/01/2021"
-output: html_document
+output: 
+  html_document:
+    css: "CSSdefs.css"
+    after_body: footer.html
 ---
+
+<script src="js/hideOutput.js"></script>
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Exploratory Analysis
+## Exploratory Analysis 1: Introduction to spatial R packages and plotting functions
+
+### Introduction
 
 Crucial to all good statistical analyses is a thorough exploratory analysis. In this document, we will introduce a few tecniques for developing an understanding of our dataset, including an understanding of its limitations.
 
-Note that all the workshop scripts and files can be found at <http://rmarkdown.rstudio.com> and <...> respectively.
+Note that all the workshop scripts and files can be found [here](https://github.com/joenomiddlename/DFO_SDM_Workshop_2020) and [here](https://ubcca-my.sharepoint.com/:u:/g/personal/joewatto_student_ubc_ca/Ea8lRO_ESL5CgfFSWqOT0LUBzskEWVVA_v6N2B2RZhr67w?email=m.auger-methe%40oceans.ubc.ca&e=TvsrM1) respectively.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+First lets load all the required R packages
 
-```{r cars}
-summary(cars)
+```{r warning=FALSE, message=FALSE, error=FALSE}
+library(rgeos)
+library(rgdal)
+library(sp)
+library(maptools)
+library(spatstat)
+library(spdep)
+library(INLA)
+library(inlabru)
+library(readxl)
+library(lubridate)
+library(ggmap)
+library(raster)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+Next, lets check our current working directory! 
+```{r}
+getwd()
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+We should be inside the folder titled: 'DFO_SDM_Workshop_2020'. If not, change this by navigating to the correct folder in the bottom right panel (folder view), opening it, and then clicking "Set as Working Directory" under the tab 'More'.
+
+Now we can load in the precompiled data
+```{r message=F}
+list2env(readRDS('./Data/Compiled_Data.rds'),globalenv())
+```
+
+We will be dealing with spatial data. The first thing we must always do is check for consistency between the coordinate reference systems (CRS) of each spatial object in use! To print the CRS of an *sp* object, simply add `@proj4string` to the name of the spatial object and run. For example, to check the CRS of the WW sightings we run:
+```{r}
+Sightings_DRWW_sp@proj4string 
+```
+We check the CRS of the other objects, but omit the code for brevity.
+<div class="fold e">
+```{r, echo=FALSE, message=F}
+Sightings_survey@proj4string 
+Effort_survey@proj4string 
+Domain@proj4string 
+Bathym@proj4string
+Slope@proj4string
+WW_ports@proj4string
+Dist_Brier@proj4string
+Dist_Quoddy@proj4string
+```
+</div>
+
+All of the spatial objects are in lat/lon - good! For future analysis we will be projecting the data into a different coordinate reference system to better preserve euclidean distance. 
+
+Finally, let's turn off all warnings associated with coordinate reference systems. 
+```{r}
+rgdal::set_rgdal_show_exportToProj4_warnings(FALSE)
+rgdal::set_thin_PROJ6_warnings(TRUE)
+options("rgdal_show_exportToProj4_warnings"="none")
+```
+
+
+### Plotting the data
+
+Within the inlabru package, the `gg()` function will prove extremely useful at plotting spatial data! The types of spatial objects we will be dealing with are from the *sp* package. The class of objects from the *sp* package begin with 'Spatial'. For example **Spatial**PointsDataFrame  Furthermore, if the data are in lat/lon format then the gmap() function can add a layer from Google Maps or OpenStreetMap to the plots.
+
+We have written a bespoke function `gg.spatiallines_mod()` to easily add SpatialLinesDatFrame objects to the plots too. This will prove useful for plotting transect lines. We load the bespoke functions to the working environment now.
+
+```{r}
+source('utility_functions.R')
+```
+
+So let's plot our data! Let's plot the survey sightings in blue, the survey tracklines in black, the whale watch sightings in purple, the whale watch ports in red. We'll add a terrain map to the background too.
+
+```{r, message=F}
+gmap(Sightings_survey) +
+  gg(Domain) +
+  gg.spatiallines_mod(Effort_survey) +
+  gg(Sightings_survey, colour='blue') +
+  gg(Sightings_DRWW_sp, colour='purple') +
+  gg(WW_ports, colour='red')
+```
+To remove the map layer, simply replace the `gmap(Sightings_survey)` with `ggplot()`! Notice the empty `ggplot()` function call.
+
+```{r, message=F}
+ggplot() +
+  gg(Domain) +
+  gg.spatiallines_mod(Effort_survey) +
+  gg(Sightings_survey, colour='blue') +
+  gg(Sightings_DRWW_sp, colour='purple') +
+  gg(WW_ports, colour='red')
+```
+Finally, for publication, there can be issues regarding copyright of Google Maps. Using OpenStreetMap can help. To guarantee this simply add the following argument: `source='osm',force=T` to `gmap()`. Double check the console that the maps are indeed being downloaded from stamen or osm. For brevity we have suppressed the messages.
+
+```{r, message=F}
+gmap(Sightings_survey,source='osm',force=T) +
+  gg(Domain) +
+  gg.spatiallines_mod(Effort_survey) +
+  gg(Sightings_survey, colour='blue') +
+  gg(Sightings_DRWW_sp, colour='purple') +
+  gg(WW_ports, colour='red')
+```
+This plot hides some crucial information regarding the data collection. For example, the survey sightings and tracklines do not come from a single survey, or even a single organisation! Furthermore, the surveys were conducted across 3 separate years! Let's plot this! The easiest way to do this is to subset the data accordingly! 
+
+
+```{r message=F}
+table(Effort_survey$DATASET)
+# there are 3 surveys
+ggplot() +
+  gg(Domain) +
+  gg.spatiallines_mod(Effort_survey[Effort_survey$DATASET=='DFO',], colour='purple') +
+  gg.spatiallines_mod(Effort_survey[Effort_survey$DATASET=='NOAA_1',], colour='red') +
+  gg.spatiallines_mod(Effort_survey[Effort_survey$DATASET=='NOAA_2',], colour='yellow')
+
+```
+
+This is problematic! The DFO tracklines (in purple) do not overlap with the two NOAA surveys! Thus, any future model will be unable to identify any differences in protocol efficiency. This is because any model intercepts will be confounded with the latent spatial field, but more on that later!
+
+### Exercise 1 {#Ex1}
+Next, let's plot the survey tracklines by year. Note that the names of the variables in the `Effort_Survey` are: `r names(Effort_survey)[1]` and `r names(Effort_survey)[2]`. Try this on your own! If you get stuck, click 'Show Answer Code'. Hint: The YEAR variable is of type character and contains 4 unique values (see below).
+
+```{r}
+table(Effort_survey$YEAR)
+class(Effort_survey$YEAR)
+```
+
+<div class="fold s o">
+```{r}
+ggplot() +
+  gg(Domain) +
+  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2007',], colour='purple')+   gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2008',], colour='red') +    gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2009',], colour='blue') +   gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2011',], colour='yellow')
+```
+</div>
+
+Note that the surveys from years 2007, 2008 and 2009 covered largely different regions! Again, this is problematic if we want to model any changes in the whale distribution over time! The effect of year will be confounded by the spatial field. That being said, the data from 2011 appear to be a good candidate for model comparison as the spatial range overlaps with the other 3 years' effort. We will holdout this data as our test data and use 2007, 2008, and 2009 as our training data.
+
+```{r}
+xtabs(~ YEAR + DATASET,data=Effort_survey@data)
+```
+2011's data comes exclusively from NOAA.
+
+### Transforming the data into a new CRS
+
+For modelling, we will work in the NAD83 Canadian Spatial Reference System (UTM Zone 20N). This will help to preserve euclidean distance between points. The EPSG code is 2961.
+
+To transform the data from lat/lon into the new CRS, we will use the `spTransform()` function. For example, to transform the Whale Watch sightings spatial object `Sightings_DRWW_sp`, we first define the CRS object as follows:
+
+```{r}
+Can_proj <- CRS("+init=EPSG:2961")
+Can_proj <- fm_crs_set_lengthunit(Can_proj, unit='km')
+```
+The second line of code specifies that we want to work in units of km instead of the default meters. This can prove vital in applications to avoid numerical overflow.
+
+Next, we transform `Sightings_DRWW_sp`:
+
+```{r}
+Sightings_DRWW_sp <- spTransform(Sightings_DRWW_sp, Can_proj)
+Sightings_DRWW_sp@proj4string
+```
+Notice the changed output from calling `@proj4string`. We repeat this for all the spatial objects that are points or lines.
+<div class="fold e"> 
+```{r}
+Sightings_Opp_sp <- spTransform(Sightings_Opp_sp, Can_proj)
+Sightings_survey <- spTransform(Sightings_survey, Can_proj)
+Effort_survey <- spTransform(Effort_survey, Can_proj)
+WW_ports <- spTransform(WW_ports, Can_proj)
+```
+</div>
+
+Transforming the 'raster'-like SpatialPixelsDataFrame objects (`Slope`, `Bathym`, `Dist_Brier`, and `Dist_Quoddy`) using `spTransform` would be innapropriate here. The projection leads to a curvature of the pixels. A more appropriate approach here is to use bilinear interpolation. The `projectRaster()` function from the *raster* package works great for this. This requires converting the `SpatialPixelsDataFrame` object into an object of type `raster`. This is made easy with the function `raster()`. Finally, to convert the `raster` object back into a `SpatialPixelsDataFrame`, we can use the `as()` function from the *maptools* package. This function is extremely useful for converting spatial objects between the popular packages: *sp*, *spatstat*, and *sf*. We use this function substantially throughout these workshops.
+
+```{r}
+Slope <- raster(Slope)
+Slope <- projectRaster(Slope, crs=Can_proj)
+Slope <- as(Slope, 'SpatialPixelsDataFrame') # Note the specification of class
+# repeat for Bathym, combining into one single function call
+Bathym <- as(projectRaster(raster(Bathym), crs=Can_proj), 'SpatialPixelsDataFrame')
+Domain <- spTransform(Domain, Can_proj)
+Dist_Brier <- as(projectRaster(raster(Dist_Brier), crs=Can_proj), 'SpatialPixelsDataFrame')
+Dist_Quoddy <- as(projectRaster(raster(Dist_Quoddy), crs=Can_proj), 'SpatialPixelsDataFrame')
+```
+
+Plot the (transformed) Bathymetry, Slope, and Distance from Port spatial objects. We are going to combine these into a single plot using the `multiplot()` function from the *inlabru* package. This function takes as input ggplot objects and an argument `layout`, specifying how the plots should be arranged.
+
+```{r, message=F}
+multiplot(ggplot() +
+  gg(Domain) +
+  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
+ggplot() +
+  gg(Domain) +
+  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope'),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)'),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)'),
+layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
+```
+The `multiplot()` function is a very flexible function that enables publication-quality figures to be made with relative ease. 
+
+### Exercise 2 {#Ex2}
+Have a go at changing the argument `byrow=T` to `byrow=F`. What do you think will happen?
+
+<div class="fold s o"> 
+```{r, message=F}
+multiplot(ggplot() +
+  gg(Domain) +
+  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
+ggplot() +
+  gg(Domain) +
+  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope'),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)'),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)'),
+layout=matrix(1:4, nrow=2, ncol=2, byrow = F))
+```
+</div>
+
+Next, have a go at specifying a 3x2 matrix with entries (1,1,2,3,4,4). Notice what happens? Does this make sense to you?
+
+<div class="fold s o"> 
+```{r, message=F}
+multiplot(ggplot() +
+  gg(Domain) +
+  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
+ggplot() +
+  gg(Domain) +
+  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope'),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)'),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)'),
+layout=matrix(c(1,1,2,3,4,4), nrow=3, ncol=2, byrow = T))
+```
+</div>
+
+Don't like the colour scheme? We can define our own manually!
+
+```{r}
+colsc <- function(...) {
+  scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(11,"RdYlBu")),
+                       limits = range(...))
+}
+```
+Look at `?RColorBrewer::brewer.pal` to see what other colour palettes are available.
+
+```{r, message=F}
+multiplot(ggplot() +
+  gg(Domain) +
+  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') +
+  colsc(Bathym@data[,1]),
+ggplot() +
+  gg(Domain) +
+  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope') +
+  colsc(Slope@data[,1]),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)') +
+  colsc(Dist_Brier@data[,1]),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)') +
+  colsc(Dist_Quoddy@data[,1]),
+layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
+```  
+
+### Exercise 3 {#Ex3}
+Have a go at creating your own colour palette function. Investigate the effects of changing both arguments to `brewer.pal`.
+
+<div class="fold s o"> 
+```{r, message=F}
+colsc2 <- function(...){
+  scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(7,"Spectral")),
+                       limits = range(...))
+}
+multiplot(ggplot() +
+  gg(Domain) +
+  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') +
+  colsc2(Bathym@data[,1]),
+ggplot() +
+  gg(Domain) +
+  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope') +
+  colsc2(Slope@data[,1]),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)') +
+  colsc2(Dist_Brier@data[,1]),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)') +
+  colsc2(Dist_Quoddy@data[,1]),
+layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
+```
+</div>
+
+### Exercises
+
+If you got stuck on any of the exercises, then please feel free to try them again. Here are links to the 3 problems:
+
+1. [Plotting data by year](#Ex1)
+2. [Changing the layout of multiple plots](#Ex2)
+3. [Defining a custom colour palette in ggplot for spatial plots](#Ex3)
+
+### Bonus Exercises
+
+1. Transform one of the spatial objects back into longitude latitude.
+2. Transform one of the spatial objects into units of meters.
+3. (More challenging) Investigate the relationship of distance from port with the two sources of whale watch data? What do you notice? What functional form could explain this type of behaviour? **(Hint: use the `over()` function to extract the values of a spatial covariate (of type SpatialPixelsDataFrame) at point locations (stored as a SpatialPointsDataFrame object). Remember to subset the data accordingly!)**
+
+## Acknowledgements
+The code for hiding the code chunks came from Martin Schmelzer, found [here](https://stackoverflow.com/questions/37755037/how-to-add-code-folding-to-output-chunks-in-rmarkdown-html-documents/37839683#37839683)
