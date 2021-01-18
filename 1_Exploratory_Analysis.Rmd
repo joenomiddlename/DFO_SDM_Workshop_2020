@@ -24,7 +24,7 @@ Crucial to all good statistical analyses is a thorough exploratory analysis. In 
 
 ### Load packages
 
-First lets load all the required R packages. See our tutorial *0_Installing_packages.html* for installation information (some of these packages are not on CRAN).
+Let's load all the required R packages. See our tutorial *0_Installing_packages.html* for installation information.
 
 ```{r warning=FALSE, message=FALSE, error=FALSE}
 library(rgeos)
@@ -55,6 +55,14 @@ list2env(readRDS('./Data/Compiled_Data.rds'), globalenv())
 ```
 
 Second, to help play with model results quickly, we need to download the pre-compiled modelling result files, which can be found here: [here](https://ubcca-my.sharepoint.com/:u:/g/personal/joewatto_student_ubc_ca/Ea8lRO_ESL5CgfFSWqOT0LUBzskEWVVA_v6N2B2RZhr67w?email=m.auger-methe%40oceans.ubc.ca&e=TvsrM1).
+
+### Fin whale data
+
+The data we use throughout this workshop is data on fin whales. We use two main data sources:
+* sightings from a systematic DFO?? boat survey
+* sightings from two? whale-watching operators
+
+The sightings are from 201?. The sightings from the systematic survey, but not those of the whale-watching operators, are accompanied with the boat trackline.
 
 ### Coordinate reference system
 
@@ -98,7 +106,7 @@ source('utility_functions.R')
 
 So let's plot our data! Let's plot the survey sightings in blue, the survey tracklines in black, the whale watch sightings in purple, the whale watch ports in red. We'll add a terrain map to the background too.
 
-```{r, message=F}
+```{r, message=FALSE}
 gmap(Sightings_survey) +
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey) +
