@@ -30,6 +30,17 @@ install.packages("INLA", repos=c(getOption("repos"), INLA="https://inla.r-inla-d
 
 For more detail, see [www.r-inla.org/download-install](https://www.r-inla.org/download-install).
 
+
+### Packages that with special version
+
+inlabru is available on CRAN, but the version we need for this workshop is the new version only available on Github.
+
+ADD INFO ON REMOTES PACKAGE (THEY NEED TO INSTALL IT). CHECK IF THEY NEED Xcode and R tools. If so you need to give info.
+
+```{r eval=FALSE}
+remotes::install_github("inlabru-org/inlabru", ref="stable")
+```
+
 ### Packages that require additional software
 
 For those that may have some of the old versions of these packages installed (e.g., rgdal), you may need to update the packages. Note new version of some packages (e.g., sp) have made significant changes.
