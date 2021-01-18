@@ -41,13 +41,11 @@ library(ggmap)
 library(raster)
 ```
 
-### Set up
+### File set up
 
 If you have not done so already, you need to download the two set of files associated with the workshop. 
 
-The data files can be found here: [here](https://ubcca-my.sharepoint.com/:u:/g/personal/joewatto_student_ubc_ca/Ea8lRO_ESL5CgfFSWqOT0LUBzskEWVVA_v6N2B2RZhr67w?email=m.auger-methe%40oceans.ubc.ca&e=TvsrM1).
-
-All the workshop script and tutorial files can be found on Github at [github.com/joenomiddlename/DFO_SDM_Workshop_2020](https://github.com/joenomiddlename/DFO_SDM_Workshop_2020). To download these files on your computer, press on *Code* and then *Download ZIP*. Once downloaded, unzip the *DFO_SDM_Workshop_2020-main.zip* file. To be able to access some of the precompiled data, we need to make the unzipped folder the working directory. To do so in R Studio, navigate to the correct folder using the bottom right panel (folder view, you can use *...* button) and open it. Then, click "Set as Working Directory" under the tab *'More'*.  
+First, all the workshop script and tutorial files can be found on Github at [github.com/joenomiddlename/DFO_SDM_Workshop_2020](https://github.com/joenomiddlename/DFO_SDM_Workshop_2020). To download these files on your computer, press on *Code* and then *Download ZIP*. Once downloaded, unzip the *DFO_SDM_Workshop_2020-main.zip* file. To be able to access some of the precompiled data, we need to make the unzipped folder the working directory. To do so in R Studio, navigate to the correct folder using the bottom right panel (folder view, you can use *...* button) and open it. Then, click "Set as Working Directory" under the tab *'More'*.  
 
 We should be inside the folder titled: 'DFO_SDM_Workshop_2020', you can verify this by using `getwd()`.
 
@@ -56,13 +54,17 @@ Now we can load in the precompiled data
 list2env(readRDS('./Data/Compiled_Data.rds'), globalenv())
 ```
 
-We will be dealing with spatial data. The first thing we must always do is check for consistency between the coordinate reference systems (CRS) of each spatial object in use! To print the CRS of an *sp* object, simply add `@proj4string` to the name of the spatial object and run. For example, to check the CRS of the WW sightings we run:
+Second, to help play with model results quickly, we need to download the pre-compiled modelling result files, which can be found here: [here](https://ubcca-my.sharepoint.com/:u:/g/personal/joewatto_student_ubc_ca/Ea8lRO_ESL5CgfFSWqOT0LUBzskEWVVA_v6N2B2RZhr67w?email=m.auger-methe%40oceans.ubc.ca&e=TvsrM1).
+
+### Coordinate reference system
+
+We will be handling with spatial data. The first thing we must always do is check for consistency between the coordinate reference systems (CRS) of each spatial object in use! To print the CRS of an *sp* object, simply add `@proj4string` to the name of the spatial object and run. For example, to check the CRS of the WW sightings we run:
 ```{r}
 Sightings_DRWW_sp@proj4string 
 ```
 We check the CRS of the other objects, but omit the code for brevity.
 <div class="fold e">
-```{r, echo=FALSE, message=F}
+```{r, echo=FALSE, message=FALSE}
 Sightings_survey@proj4string 
 Effort_survey@proj4string 
 Domain@proj4string 
