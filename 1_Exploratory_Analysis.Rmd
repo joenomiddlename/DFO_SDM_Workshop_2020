@@ -127,7 +127,7 @@ ggplot() +
 
 Finally, for publication, there can be issues regarding copyright of Google Maps. Using OpenStreetMap can help. To guarantee this simply add the following argument: `source='osm', force=TRUE` to `gmap()`. Double check the console that the maps are indeed being downloaded from stamen or osm. For brevity we have suppressed the messages.
 
-```{r, message=FALSE}
+```{r, message=FALSE, tidy=FALSE}
 gmap(Sightings_survey,source='osm',force=TRUE) +
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey) +
@@ -161,10 +161,13 @@ class(Effort_survey$YEAR)
 ```
 
 <div class="fold s o">
-```{r}
+```{r, tidy=FALSE}
 ggplot() +
   gg(Domain) +
-  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2007',], colour='purple')+   gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2008',], colour='red') +    gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2009',], colour='blue') +   gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2011',], colour='yellow')
+  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2007',], colour='purple') +
+  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2008',], colour='red') +
+  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2009',], colour='blue') +
+  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2011',], colour='yellow')
 ```
 </div>
 
