@@ -32,7 +32,7 @@ For more detail, see [www.r-inla.org/download-install](https://www.r-inla.org/do
 
 ### Packages that require additional software
 
-
+For those that may have some of the old versions of these packages installed (e.g., rgdal), you may need to update the packages. Note new version of some packages (e.g., sp) have made significant changes.
 
 ### Available on CRAN
 
