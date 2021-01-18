@@ -1,0 +1,77 @@
+---
+title: "Installing packages"
+subtitle: "Tips to install some of the packages"
+author: "Joe Watson & Marie Auger-Méthé"
+date: "07/01/2021"
+output: 
+  html_document:
+    css: "CSSdefs.css"
+    after_body: footer.html
+---
+
+<script src="js/hideOutput.js"></script>
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Installing packages: tips to install some of the packages
+
+Some of the packages we will used in the workshop are not as easy to install than other packages on CRAN. Some are not available on CRAN and some require the installation of other software.
+
+### Packages not available on CRAN
+
+Our methodology highly depends on the INLA package. This package must be installed directly from the [www.r-inla.org](https://www.r-inla.org) website. To do so, you can do the following:
+
+```{r eval=FALSE}
+install.packages("INLA", repos=c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE)
+```
+
+For more detail, see [www.r-inla.org/download-install](https://www.r-inla.org/download-install).
+
+
+### Packages that with special version
+
+inlabru is available on CRAN, but the version we need for this workshop is the new version only available on Github.
+
+ADD INFO ON REMOTES PACKAGE (THEY NEED TO INSTALL IT). CHECK IF THEY NEED Xcode and R tools. If so you need to give info.
+
+```{r eval=FALSE}
+remotes::install_github("inlabru-org/inlabru", ref="stable")
+```
+
+### Packages that require additional software
+
+For those that may have some of the old versions of these packages installed (e.g., rgdal), you may need to update the packages. Note new version of some packages (e.g., sp) have made significant changes.
+
+### Available on CRAN
+
+The remaining packages:
+* lubridate
+* maptools
+* **COMPLETE THE LIST**
+can be easily installed via CRAN. 
+
+### Check that all packages are installed
+
+Once all the packages are installed, you can check that they are properly installed by loading them.
+
+```{r warning=FALSE, message=FALSE, error=FALSE, eval=FALSE}
+library(rgeos)
+library(rgdal)
+library(sp)
+library(maptools)
+library(spatstat)
+library(spdep)
+library(INLA)
+library(inlabru)
+library(readxl)
+library(lubridate)
+library(ggmap)
+library(raster)
+```
+
+
+## Acknowledgements
+The code for hiding the code chunks came from Martin Schmelzer, found [here](https://stackoverflow.com/questions/37755037/how-to-add-code-folding-to-output-chunks-in-rmarkdown-html-documents/37839683#37839683)
