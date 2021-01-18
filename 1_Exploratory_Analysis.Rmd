@@ -59,14 +59,14 @@ Second, to help play with model results quickly, we need to download the pre-com
 ### Fin whale data
 
 The data we use throughout this workshop is data on fin whales. We use two main data sources:
-* sightings from a systematic DFO?? boat survey
+* sightings from systematic DFO?? boat surveys
 * sightings from two? whale-watching operators
 
 The sightings are from 201?. The sightings from the systematic survey, but not those of the whale-watching operators, are accompanied with the boat trackline.
 
 ### Coordinate reference system
 
-We will be handling with spatial data. The first thing we must always do is check for consistency between the coordinate reference systems (CRS) of each spatial object in use! To print the CRS of an *sp* object, simply add `@proj4string` to the name of the spatial object and run. For example, to check the CRS of the WW sightings we run:
+These data are spatial data. The first thing we must always do is check for consistency between the coordinate reference systems (CRS) of each spatial object in use! To print the CRS of an *sp* object, simply add `@proj4string` to the name of the spatial object and run. For example, to check the CRS of the WW sightings we run:
 ```{r}
 Sightings_DRWW_sp@proj4string 
 ```
@@ -96,7 +96,7 @@ options("rgdal_show_exportToProj4_warnings"="none")
 
 ### Plotting the data
 
-Within the inlabru package, the `gg()` function will prove extremely useful at plotting spatial data! The types of spatial objects we will be dealing with are from the *sp* package. The class of objects from the *sp* package begin with 'Spatial'. For example **Spatial**PointsDataFrame  Furthermore, if the data are in lat/lon format then the gmap() function can add a layer from Google Maps or OpenStreetMap to the plots.
+Our first goal is generally to plot the data on a map, and the inlabru package `gg()` function will prove extremely useful at plotting spatial data! The types of spatial objects we will be dealing with are from the *sp* package. The class of objects from the *sp* package begin with 'Spatial'. For example **Spatial**PointsDataFrame  Furthermore, if the data are in lat/lon format then the gmap() function can add a layer from Google Maps or OpenStreetMap to the plots.
 
 We have written a bespoke function `gg.spatiallines_mod()` to easily add SpatialLinesDatFrame objects to the plots too. This will prove useful for plotting transect lines. We load the bespoke functions to the working environment now.
 
@@ -124,20 +124,22 @@ ggplot() +
   gg(Sightings_DRWW_sp, colour='purple') +
   gg(WW_ports, colour='red')
 ```
-Finally, for publication, there can be issues regarding copyright of Google Maps. Using OpenStreetMap can help. To guarantee this simply add the following argument: `source='osm',force=T` to `gmap()`. Double check the console that the maps are indeed being downloaded from stamen or osm. For brevity we have suppressed the messages.
 
-```{r, message=F}
-gmap(Sightings_survey,source='osm',force=T) +
+Finally, for publication, there can be issues regarding copyright of Google Maps. Using OpenStreetMap can help. To guarantee this simply add the following argument: `source='osm', force=TRUE` to `gmap()`. Double check the console that the maps are indeed being downloaded from stamen or osm. For brevity we have suppressed the messages.
+
+```{r, message=FALSE}
+gmap(Sightings_survey,source='osm',force=TRUE) +
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey) +
   gg(Sightings_survey, colour='blue') +
   gg(Sightings_DRWW_sp, colour='purple') +
   gg(WW_ports, colour='red')
 ```
-This plot hides some crucial information regarding the data collection. For example, the survey sightings and tracklines do not come from a single survey, or even a single organisation! Furthermore, the surveys were conducted across 3 separate years! Let's plot this! The easiest way to do this is to subset the data accordingly! 
+
+This plot hides some crucial information regarding the data collection. For example, the survey sightings and tracklines do not come from a single survey, or even a single organisation! Let's plot this! The easiest way to do this is to subset the data accordingly! 
 
 
-```{r message=F}
+```{r message=FALSE}
 table(Effort_survey$DATASET)
 # there are 3 surveys
 ggplot() +
@@ -151,7 +153,7 @@ ggplot() +
 This is problematic! The DFO tracklines (in purple) do not overlap with the two NOAA surveys! Thus, any future model will be unable to identify any differences in protocol efficiency. This is because any model intercepts will be confounded with the latent spatial field, but more on that later!
 
 ### Exercise 1 {#Ex1}
-Next, let's plot the survey tracklines by year. Note that the names of the variables in the `Effort_Survey` are: `r names(Effort_survey)[1]` and `r names(Effort_survey)[2]`. Try this on your own! If you get stuck, click 'Show Answer Code'. Hint: The YEAR variable is of type character and contains 4 unique values (see below).
+The surveys were conducted across 3 separate years! Next, let's plot the survey tracklines by year. Note that the names of the variables in the `Effort_Survey` are: `r names(Effort_survey)[1]` and `r names(Effort_survey)[2]`. Try this on your own! If you get stuck, click 'Show Answer Code'. Hint: The YEAR variable is of type character and contains 4 unique values (see below).
 
 ```{r}
 table(Effort_survey$YEAR)
