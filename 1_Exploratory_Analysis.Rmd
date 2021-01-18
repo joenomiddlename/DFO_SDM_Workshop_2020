@@ -1,7 +1,7 @@
 ---
 title: "Exploratory Analysis 1"
 subtitle: "Introduction to spatial R packages and plotting functions"
-author: "Joe Watson"
+author: "Joe Watson and Marie Auger-Méthé"
 date: "07/01/2021"
 output: 
   html_document:
