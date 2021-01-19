@@ -120,6 +120,8 @@ gmap(Sightings_survey) +
   gg(WW_ports, colour='red')
 ```
 
+By default `gmap` uses Google maps, see [Additional tips](#Ad1) for ways to use open-source maps for publication.
+
 To remove the map layer, simply replace the `gmap(Sightings_survey)` with `ggplot()`! Notice the empty `ggplot()` function call.
 
 ```{r 'map-noMapLayer', message=FALSE, cache=TRUE}
@@ -330,11 +332,10 @@ If you got stuck on any of the exercises, then please feel free to try them agai
 2. Transform one of the spatial objects into units of meters.
 3. (More challenging) Investigate the relationship of distance from port with the two sources of whale watch data? What do you notice? What functional form could explain this type of behaviour? **(Hint: use the `over()` function to extract the values of a spatial covariate (of type SpatialPixelsDataFrame) at point locations (stored as a SpatialPointsDataFrame object). Remember to subset the data accordingly!)**
 
-### Additional tips and code
-
+### Additional tips and code {#Ad1}
 For publication, there can be issues regarding copyright of Google Maps. Using OpenStreetMap can help. To guarantee this simply add the following argument: `source='osm', force=TRUE` to `gmap()`. Double check the console that the maps are indeed being downloaded from stamen or osm. For brevity we have suppressed the messages.
 
-```{r 'map-openStreet', message=FALSE, warning=FALSE, tidy=FALSE, cache=TRUE}
+```{r 'map-openStreet', message=FALSE, warning=FALSE, tidy=FALSE, cache=TRUE, eval=FALSE}
 gmap(Sightings_survey, source='osm', force=TRUE) +
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey) +
@@ -343,7 +344,7 @@ gmap(Sightings_survey, source='osm', force=TRUE) +
   gg(WW_ports, colour='red')
 ```
 
-
+Note for this to work it needs to be in the original project (lat/lon), not UTM.
 
 ## Acknowledgements
 The code for hiding the code chunks came from Martin Schmelzer, found [here](https://stackoverflow.com/questions/37755037/how-to-add-code-folding-to-output-chunks-in-rmarkdown-html-documents/37839683#37839683)
