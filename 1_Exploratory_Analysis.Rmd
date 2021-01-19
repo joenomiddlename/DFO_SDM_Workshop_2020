@@ -404,7 +404,7 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[],
 
 This second plot shows no evidence that the average spatial separation between whale watch sightings differs year-to-year. This supports our assumption that the spatial density can be assumed to be constant across the years, albeit within the (very) small spatial region visited by the whale watch boats departing from Brier Island.
 
-**JOE: What's the goal of this plot?**
+**JOE: What's the goal of this next plot? Should it go with the first plot?**
 
 ```{r 'fig-difference', message=FALSE, cache=TRUE}
 ggplot(data=data.frame(difftime = 
@@ -415,8 +415,6 @@ difftime_Brier_fac[as.numeric(difftime_Brier)<85],
   xlab('difference in time (days)') +
   ylab('difference in space (km)')
 ```
-
-
 
 
 We now repeat the plots, but for the whale watch boats that depart from Quoddy.
@@ -446,7 +444,11 @@ difftime_Quoddy_fac[as.numeric(difftime_Quoddy)<85 & as.numeric(diffspace_Quoddy
 
 In the first plot we see a large separation in the y-axis. This is caused by a cluster of sightings made way East of port. This is seen in the second plot as the right-most cluster of blue points. To stop this from impacting our estimate of trend, we restrict the spatial differences and times to be those within each of the two clusters of sightings. The third plot displays the results from doing this. Once again, we see some potential evidence of autocorrelation upto ~14 days. This could be due to persistence of animal movement. 
 
-We have seen some evidence that residual autocorrelations remain in the sightings data. This is despite subsetting the data to the initial daily sightings. The result of this may be overdispersion. We may be able to partially correct for this by using of a log-Gaussian Cox process. By including latent effects (e.g. spatial fields) in the model, we can hopefully capture some of this additional clustering. in fact, log-Gaussian Cox processes are always overdispersed relative to Poisson processes.
+We have seen some evidence that residual autocorrelations remain in the sightings data. This is despite subsetting the data to the initial daily sightings. The result of this may be overdispersion. We may be able to partially correct for this by using of a log-Gaussian Cox process. By including latent effects (e.g. spatial fields) in the model, we can hopefully capture some of this additional clustering. In fact, log-Gaussian Cox processes are always overdispersed relative to Poisson processes.
+
+**JOE: this is likely the same whales staying in the area for a few days. I think you'll have to address this at some point, either here or later when talking about the modeling. It would be good to acknowledged here that this may be the case.**
+
+### Creating a training data set
 
 So, we continue on with our exploratory analysis. We now subset the data into a training and test set. We choose the training set to contain all the sightings from 2007-2009. For the test data, we choose **all** the sightings from 2011. 
 
