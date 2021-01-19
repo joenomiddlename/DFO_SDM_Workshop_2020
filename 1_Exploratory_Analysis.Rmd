@@ -348,11 +348,14 @@ Sightings_Quoddy_nodup <- Sightings_Quoddy_nodup[!duplicated(Sightings_Quoddy_no
 
 dim(Sightings_DRWW_sp)[1]; dim(Sightings_Brier_nodup)[1]; dim(Sightings_Quoddy_nodup)[1];
 ```
+
 Notice that we have a total of `r 144+85` whale watch sightings after the subsetting procedure, down from an original count of 567 sightings.
 
 Strictly speaking, for a log-Gaussian Cox process model to be reasonable, it is required that the initial daily encounter locations from the whale watch vessels are independent realizations from $\lambda_{true}$. We will assume that the typical journeys/routes of the whale watch vessels remains constant across months and years under study. Thus, we assume that $\lambda_{eff}$ is constant through time. 
 
-Finally, as we discussed earlier, we are unable to model temporal changes in the species density due to the spatially non-overlapping survey efforts across the months and years. Thus any changes in the species density from June - August, or across the years 2007-2009 will be missed. Thus, we are forced to assume that the summer species density remains constant between 2007-2009. It is the summer species density that is our target for inference.
+### Is summer species density changing through time?
+
+As we discussed earlier, we are unable to model temporal changes in the species density due to the spatially non-overlapping survey efforts across the months and years. Thus any changes in the species density from June - August, or across the years 2007-2009 will be missed. Thus, we are forced to assume that the summer species density remains constant between 2007-2009. It is the summer species density that is our target for inference.
 
 <!-- Note that it may be tempting to use the superposition property of point processes to justify the modelling of an 'combined s' -->
 
@@ -362,8 +365,9 @@ How reasonable is our assumption that the species density remains constant acros
 
 If each sighting is indeed an independent realisation from a temporally static point process, then there should be no association between the spatial distances between the whale watch sightings and how far apart in time they were made. 
 
-So, we compute the distances in time and the euclidean distances in space between each sighting and plot time and space on the x and y axes respectively. 
-```{r 'fig-difference', message=FALSE, cache=TRUE}
+To distances against time intervals, we first compute the distances in time and the euclidean distances in space between each sighting. 
+
+```{r, message=FALSE}
 difftime_Brier<- dist(as.numeric(ymd(Sightings_Brier_nodup$WS_DATE)))
 diffspace_Brier <- dist(Sightings_Brier_nodup@coords)
 difftime_Brier_fac <- as.factor(difftime_Brier)
@@ -371,7 +375,11 @@ difftime_Brier_fac <- as.factor(difftime_Brier)
 difftime_Quoddy <- dist(as.numeric(ymd(Sightings_Quoddy_nodup$WS_DATE)))
 diffspace_Quoddy <- dist(Sightings_Quoddy_nodup@coords)
 difftime_Quoddy_fac <- as.factor(difftime_Quoddy)
+```
 
+We will create multiple plots with days on the x-axis and km on the y-axis. The first plot restricted to only consider temporal differences of less than 85 days. 
+
+```{r 'fig-differencel85', message=FALSE, cache=TRUE}
 ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[as.numeric(difftime_Brier)<85],
                        diffspace = as.numeric(diffspace_Brier)[as.numeric(difftime_Brier)<85]),
        aes(x=difftime, y=diffspace)) +
@@ -379,13 +387,26 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[as.numeric(difftime
   xlab('difference in time (days)') +
   ylab('difference in space (km)')
 
+```
+
+This first plot indicates some moderate autocorrelation between the sightings, with encounters made ~1 month apart typically being around 50% further away than those made 24 hours apart. Notice that the trend plateaus after ~14 days. Perhaps this trend is due to the autocorrelation being caused exclusively by persistence in animal movement? Furthermore, the flat-line trend between day ~30 and day ~75 could be evidence in favour of an approximately constant density across the summer months. If the space use did indeed change dramatically across the months (e.g. due to migration), then we would expect to see a monotonically increasing trend over time.
+
+The second plot investigate the space-time relationship across years.
+
+```{r 'fig-differenceYears', message=FALSE, cache=TRUE}
 ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[],
                        diffspace = as.numeric(diffspace_Brier)[]),
        aes(x=difftime, y=diffspace)) +
   geom_point() + geom_smooth(method='loess')+
   xlab('difference in time (days)') +
   ylab('difference in space (km)')
+```
 
+This second plot shows no evidence that the average spatial separation between whale watch sightings differs year-to-year. This supports our assumption that the spatial density can be assumed to be constant across the years, albeit within the (very) small spatial region visited by the whale watch boats departing from Brier Island.
+
+**JOE: What's the goal of this plot?**
+
+```{r 'fig-difference', message=FALSE, cache=TRUE}
 ggplot(data=data.frame(difftime = 
 difftime_Brier_fac[as.numeric(difftime_Brier)<85],
                        diffspace = as.numeric(diffspace_Brier)[as.numeric(difftime_Brier)<85]),
@@ -395,11 +416,8 @@ difftime_Brier_fac[as.numeric(difftime_Brier)<85],
   ylab('difference in space (km)')
 ```
 
-These plots both have days on the x-axis and km on the y-axis, with the first plot restricted to only consider temporal differences of less than 85 days. 
 
-The first plot indicates some moderate autocorrelation between the sightings, with encounters made ~1 month apart typically being around 50% further away than those made 24 hours apart. Notice that the trend plateaus after ~14 days. Perhaps this trend is due to the autocorrelation being caused exclusively by persistence in animal movement? Furthermore, the flat-line trend between day ~30 and day ~75 could be evidence in favour of an approximately constant density across the summer months. If the space use did indeed change dramatically across the months (e.g. due to migration), then we would expect to see a monotonically increasing trend over time.
 
-The second plot shows no evidence that the average spatial separation between whale watch sightings differs year-to-year. This supports our assumption that the spatial density can be assumed to be constant across the years, albeit within the (very) small spatial region visited by the whale watch boats departing from Brier Island.
 
 We now repeat the plots, but for the whale watch boats that depart from Quoddy.
 
