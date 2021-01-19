@@ -154,7 +154,7 @@ ggplot() +
 This is problematic! The DFO tracklines (in purple) do not overlap with the two NOAA surveys! Thus, any future model will be unable to identify any differences in protocol efficiency. This is because any model intercepts will be confounded with the latent spatial field, but more on that later!
 
 ### Exercise 1 {#Ex1}
-The surveys were conducted across 3 separate years! Next, let's plot the survey tracklines by year. Note that the names of the variables in the `Effort_Survey` are: `r names(Effort_survey)[1]` and `r names(Effort_survey)[2]`. Try this on your own! If you get stuck, click 'Show Answer Code'. Hint: The YEAR variable is of type character and contains 4 unique values (see below).
+The surveys were conducted across 4 separate years! Next, let's plot the survey tracklines by year. Note that the names of the variables in the `Effort_Survey` are: `r names(Effort_survey)[1]` and `r names(Effort_survey)[2]`. Try this on your own! If you get stuck, click 'Show Answer Code'. Hint: The YEAR variable is of type character and contains 4 unique values (see below).
 
 ```{r}
 table(Effort_survey$YEAR)
