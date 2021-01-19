@@ -32,6 +32,11 @@ library(ggmap)
 library(raster)
 ```
 
+**JOE: I've remove it from Exp. An. and put it here. We may need to change it or just change the starting values.**
+
+To get access to the model results quickly, we need to download the pre-compiled modelling result files, which can be found [here](https://ubcca-my.sharepoint.com/:u:/g/personal/joewatto_student_ubc_ca/Ea8lRO_ESL5CgfFSWqOT0LUBzskEWVVA_v6N2B2RZhr67w?email=m.auger-methe%40oceans.ubc.ca&e=TvsrM1).
+
+
 Next, lets check our current working directory! 
 ```{r}
 getwd()

@@ -43,7 +43,7 @@ library(raster)
 
 If you have not done so already, you need to download the two set of files associated with the workshop. 
 
-First, all the workshop script and tutorial files can be found on Github at [github.com/joenomiddlename/DFO_SDM_Workshop_2020](https://github.com/joenomiddlename/DFO_SDM_Workshop_2020). To download these files on your computer, press on *Code* and then *Download ZIP*. Once downloaded, unzip the *DFO_SDM_Workshop_2020-main.zip* file. To be able to access some of the precompiled data, we need to make the unzipped folder the working directory. To do so in R Studio, navigate to the correct folder using the bottom right panel (folder view, you can use *...* button) and open it. Then, click "Set as Working Directory" under the tab *'More'*.  
+All the workshop script and tutorial files can be found on Github at [github.com/joenomiddlename/DFO_SDM_Workshop_2020](https://github.com/joenomiddlename/DFO_SDM_Workshop_2020). To download these files on your computer, press on *Code* and then *Download ZIP*. Once downloaded, unzip the *DFO_SDM_Workshop_2020-main.zip* file. To be able to access some of the precompiled data, we need to make the unzipped folder the working directory. To do so in R Studio, navigate to the correct folder using the bottom right panel (folder view, you can use *...* button) and open it. Then, click "Set as Working Directory" under the tab *'More'*.  
 
 We should be inside the folder titled: 'DFO_SDM_Workshop_2020', you can verify this by using `getwd()`.
 
@@ -51,8 +51,6 @@ Now we can load in the precompiled data
 ```{r message=FALSE}
 list2env(readRDS('./Data/Compiled_Data.rds'), globalenv())
 ```
-
-Second, to help play with model results quickly, we need to download the pre-compiled modelling result files, which can be found [here](https://ubcca-my.sharepoint.com/:u:/g/personal/joewatto_student_ubc_ca/Ea8lRO_ESL5CgfFSWqOT0LUBzskEWVVA_v6N2B2RZhr67w?email=m.auger-methe%40oceans.ubc.ca&e=TvsrM1).
 
 ### Fin whale data
 
