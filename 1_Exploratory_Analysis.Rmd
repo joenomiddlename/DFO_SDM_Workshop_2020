@@ -365,7 +365,7 @@ difftime_Brier<- dist(as.numeric(ymd(Sightings_Brier_nodup$WS_DATE)))
 diffspace_Brier <- dist(Sightings_Brier_nodup@coords)
 difftime_Brier_fac <- as.factor(difftime_Brier)
 
-difftime_Quoddy<- dist(as.numeric(ymd(Sightings_Quoddy_nodup$WS_DATE)))
+difftime_Quoddy <- dist(as.numeric(ymd(Sightings_Quoddy_nodup$WS_DATE)))
 diffspace_Quoddy <- dist(Sightings_Quoddy_nodup@coords)
 difftime_Quoddy_fac <- as.factor(difftime_Quoddy)
 
