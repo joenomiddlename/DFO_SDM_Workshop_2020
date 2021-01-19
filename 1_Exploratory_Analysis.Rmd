@@ -106,7 +106,7 @@ source('utility_functions.R')
 
 So let's plot our data! Let's plot the survey sightings in blue, the survey tracklines in black, the whale watch sightings in purple, the whale watch ports in red. We'll add a terrain map to the background too.
 
-```{r, message=FALSE}
+```{r 'map-gmap', message=FALSE, cache=TRUE}
 gmap(Sightings_survey) +
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey) +
@@ -114,9 +114,10 @@ gmap(Sightings_survey) +
   gg(Sightings_DRWW_sp, colour='purple') +
   gg(WW_ports, colour='red')
 ```
+
 To remove the map layer, simply replace the `gmap(Sightings_survey)` with `ggplot()`! Notice the empty `ggplot()` function call.
 
-```{r, message=F}
+```{r 'map-noMapLayer', message=FALSE, cache=TRUE}
 ggplot() +
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey) +
@@ -127,7 +128,7 @@ ggplot() +
 
 Finally, for publication, there can be issues regarding copyright of Google Maps. Using OpenStreetMap can help. To guarantee this simply add the following argument: `source='osm', force=TRUE` to `gmap()`. Double check the console that the maps are indeed being downloaded from stamen or osm. For brevity we have suppressed the messages.
 
-```{r, message=FALSE, tidy=FALSE}
+```{r 'map-openStreet', message=FALSE, warning=FALSE, tidy=FALSE, cache=TRUE}
 gmap(Sightings_survey,source='osm',force=TRUE) +
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey) +
@@ -139,7 +140,7 @@ gmap(Sightings_survey,source='osm',force=TRUE) +
 This plot hides some crucial information regarding the data collection. For example, the survey sightings and tracklines do not come from a single survey, or even a single organisation! Let's plot this! The easiest way to do this is to subset the data accordingly! 
 
 
-```{r message=FALSE}
+```{r 'map-survey', message=FALSE, cache=TRUE}
 table(Effort_survey$DATASET)
 # there are 3 surveys
 ggplot() +
@@ -161,7 +162,7 @@ class(Effort_survey$YEAR)
 ```
 
 <div class="fold s o">
-```{r, tidy=FALSE}
+```{r 'map-years', tidy=FALSE, cache=TRUE}
 ggplot() +
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2007',], colour='purple') +
@@ -196,6 +197,7 @@ Next, we transform `Sightings_DRWW_sp`:
 Sightings_DRWW_sp <- spTransform(Sightings_DRWW_sp, Can_proj)
 Sightings_DRWW_sp@proj4string
 ```
+
 Notice the changed output from calling `@proj4string`. We repeat this for all the spatial objects that are points or lines.
 <div class="fold e"> 
 ```{r}
