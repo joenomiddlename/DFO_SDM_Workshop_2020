@@ -400,7 +400,7 @@ The second plot shows no evidence that the average spatial separation between wh
 
 We now repeat the plots, but for the whale watch boats that depart from Quoddy.
 
-```{r, message=F}
+```{r 'map-difftime', message=FALSE, cache=TRUE}
 ggplot(data=data.frame(difftime = as.numeric(difftime_Quoddy)[as.numeric(difftime_Quoddy)<85],
                        diffspace = as.numeric(diffspace_Quoddy)[as.numeric(difftime_Quoddy)<85]),
        aes(x=difftime, y=diffspace)) +
@@ -432,7 +432,7 @@ So, we continue on with our exploratory analysis. We now subset the data into a 
 Could we not also put 2011's whale watch data into the training set? Below is some (optional) code showing that we cannot. A whale is sighted by at least one whale watch company on every day in 2011 that a survey detects a whale. The plot below shows that these sightings could have been of the same animal. Even if they weren't, the tracklines in 2011 still visited areas that the whale watch vessels were present. Since our training and test datasets are required to be independent of each other, we must therefore also remove the 2011 whale watch sightings from the training data.
 
 <div class="fold e o">
-```{r, message=F}
+```{r 'map-2011', message=FALSE, cache=TRUE}
 # what dates were survey sightings made on in 2011?
 unique(Sightings_survey$DATE_LO[Sightings_survey$YEAR==2011])
 # Are sightings by the WW vessels made on these dates?
@@ -490,7 +490,7 @@ The 'CPUE' values are highly variable! The wild differences could be due to the 
 
 By taking a model-based approach to inference, we are able to combine the data from all three surveys to estimate the whale density across space. 
 
-```{r, message=F}
+```{r 'map-combined', message=FALSE, cache=TRUE}
 ggplot() +
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2007',], colour='red') +
@@ -509,7 +509,7 @@ xtabs(~DATASET+YEAR,Effort_survey@data)
 
 We now investigate trends between the whale density and the covariates bathymetry and Slope. A simple first step is to evaluate the empirical densities of each covariate at both the encounter locations and across the domain. One easy and quick way to do this is to convert the SpatialPixelsDataFrame objects into objects of class `im` from the *spatstat* package. Then, after creating a `ppp` point pattern object containing the sightings locations from all sources, we can easily extract the values of each covariate at each point location. Alternatively, we can use the function `over()` from the *sp* package. We choose to create `im` objects so that we can later use the `ppm` function from *spatstat* for exploratory analysis purposes. `ppm` fits Poisson process models, equivalent to Maxent models. 
 
-```{r , message=F, warning=F}
+```{r 'map-slope', message=FALSE, warning=FALSE, cache=TRUE}
 # Convert covariates to im class
 Slope_im <- as(as(Slope, 'SpatialGridDataFrame'),'im')
 Bathym_im <- as(as(Bathym, 'SpatialGridDataFrame'),'im')
@@ -578,7 +578,7 @@ We find some evidence that the whales prefer regions of higher slope and shallow
 
 Next, we can attempt to make a crude adjustment for effort and see if these estimates change. We have already created a SpatialPixelsDataFrame object containing distance from the two whale watch ports. Next, we can create a SpatialPixelsDataFrame containing the perpendicular distances to the nearest trackline. This fails to account for overlap in survey tracklines, but offers a reasonable approach to crudely control for effort.
 
-```{r,warning=F,message=F}
+```{r 'map-dectectionDistance', warning=FALSE, message=FALSE, cache=TRUE}
 Dist_Surveylines <- as(Dist_Brier,'SpatialPoints')
 Dist_Surveylines$Dist_surveylines <- as.numeric(apply(gDistance(Dist_Surveylines, Effort_survey,byid = T),2,min))
 # Define a 'pretty' colour palette
@@ -618,7 +618,7 @@ With this rough attempt at controlling for heterogeneous effort, we see that bot
 
 We can plot the true whale intensity predicted from this model:
 
-```{r}
+```{r 'fig-maxent', cache=TRUE}
 # remove the effects of observers for plotting
 pred_coef <- coef(Maxent_mod)
 pred_coef[c(1,4,5,6,7,8)] <- 0
@@ -630,7 +630,7 @@ plot(predict.ppm(Maxent_mod, ngrid=c(300,300),
 
 Alternatively, we can also plot the fitted observed intensity surface $\lambda_{obs}$ (=$\lambda_{true} \times \lambda_{effort}$) for all observer types. We plot the observed intensity surfaces for both the survey and Quoddy-based whale watch vessels.
 
-```{r}
+```{r 'fig-maxentFitted', cache=TRUE}
 pred_coef <- coef(Maxent_mod)
 plot(log(predict(Maxent_mod, ngrid=c(300,300),
              new.coef=pred_coef)[[3]]),superimpose=F,
@@ -651,7 +651,7 @@ If the empirical K function falls 'significantly' above the expected curve at a 
 
 The K function and empirical K function can also be computed for inhomogeneous Poisson process (or MAXENT) models. The interpretation of the plots is similar, with large discrepancies providing evidence of additional unexplained clustering/repulsion existing in the data that may be caused by unmeasured covariates. Let's plot these two curves now!
 
-```{r, warning=F}
+```{r 'fig-kFunctions', warning=FALSE, cache=TRUE}
 plot(Kinhom(All_obs_ppp,lambda=Maxent_mod,correction = 'best',normpower = 1))
 ```
 
