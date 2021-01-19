@@ -436,9 +436,9 @@ As we will see in the next tutorial, by taking a model-based approach to inferen
 
 We will investigate trends between the whale density and the covariates bathymetry and slope. 
 
-A quick first step is to evaluate whether the empirical densities of each covariate at the encounter locations (representing habitat used by the whale) differ from the empirical density across the domain (representing available habitat values). Such difference would indicate that the whales associated with a subset of the available habitat.  
+A quick first step is to evaluate whether the empirical densities of each covariate at the encounter locations (representing habitat used by the whale) differ from the empirical density across the domain (representing available habitat values). Such difference may indicate that the whales associated with a subset of the available habitat (or indicate differences in observer coverage).  
 
-One way to do this is to convert the SpatialPixelsDataFrame objects into objects of class `im` from the *spatstat* package. Then, after creating a `ppp` point pattern object containing the sightings locations from all sources, we can easily extract the values of each covariate at each point location^[Alternatively, we can use the function `over()` from the *sp* package. We choose to create `im` objects so that we can later use the `ppm` function from *spatstat* for exploratory analysis purposes.]. `ppm` fits Poisson process models, equivalent to Maxent models. 
+To extract the covariate values at each location, we will convert the SpatialPixelsDataFrame objects into objects of class `im` from the *spatstat* package. Then, after creating a `ppp` point pattern object containing the sightings locations from all sources, we can easily extract the values of each covariate at each point location^[Alternatively, we can use the function `over()` from the *sp* package. We choose to create `im` objects so that we can later use the `ppm` function from *spatstat* for exploratory analysis purposes. `ppm` fits Poisson process models, equivalent to Maxent models.]. 
 
 ```{r 'map-slope', message=FALSE, warning=FALSE, cache=TRUE}
 # Convert covariates to im class
@@ -457,19 +457,34 @@ All_obs_ppp <- ppp(x=c(Sightings_survey@coords[,1],
                    window = as(Domain, 'owin'))
 # Notice how easy it is to extract the values of slope at these locations!
 Slope_obs <- Slope_im[All_obs_ppp]
+```
+
+First, we plot the empirical density of the slope at the sightings locations in black and that throughout the domain (study area) in red. 
+
+```{r 'map-slope', message=FALSE, warning=FALSE, cache=TRUE}
 ggplot(data=data.frame(Slope_obs = Slope_obs),
-       aes(x=Slope_obs)) +
+       aes(x=Slope_obs, colour='Sightings')) +
   geom_density() +
   geom_density(data=data.frame(Slope_dom = as.numeric(Slope_im$v)),
-            aes(x=Slope_dom), colour='red') + xlab('Slope')
-# Perhaps a log transform is desirable here to make the covariate more 'normal'
+            aes(x=Slope_dom, colour='Domain')) + xlab('Slope') +
+  scale_color_manual(name = "Slope", values = c('Sightings' = 'black', 'Domain' = 'red'))
+
+```
+
+**JOE: add a comment in text here, and talk about the log transform rather than in code. It's just more digestable**
+
+Perhaps a log transform is desirable here to make the covariate more 'normal'.
+
+```{r 'map-slopeLog', message=FALSE, warning=FALSE, cache=TRUE}
 ggplot(data=data.frame(Slope_obs = log(Slope_obs)),
        aes(x=Slope_obs)) +
   geom_density() +
   geom_density(data=data.frame(Slope_dom = log(as.numeric(Slope_im$v))),
                aes(x=Slope_dom), colour='red') + xlab('log Slope')
+```
 # Perhaps there is evidence of whales preferring areas of higher slope?
 
+```{r 'map-bathy', message=FALSE, warning=FALSE, cache=TRUE}
 Bathym_obs <- Bathym_im[All_obs_ppp]
 ggplot(data=data.frame(Bathym_obs = Bathym_obs),
        aes(x=Bathym_obs)) +
@@ -487,10 +502,8 @@ ggplot(data=data.frame(Bathym_obs = log(1-Bathym_obs)),
                aes(x=Bathym_dom), colour='red') +
   geom_vline(xintercept = 0, colour='blue') + xlab('log Depth')
 # Perhaps there is evidence of whales preferring areas of shallower waters?
-
 ```
-
-For each covariate, we plot the empirical density at the sightings locations in black and at the background in red. From this, we see that sightings locations are associated with regions with shallower waters and flatter slopes compared with the domain as a whole. However, these results may simply reflect the types of regions preferentially visited by observers!
+From this, we see that sightings locations are associated with regions with shallower waters and flatter slopes compared with the domain as a whole. However, these results may simply reflect the types of regions preferentially visited by observers!
 
 Next, we could go one step further and fit Poisson point process models to the sightings data. These are equivalent to Maxent models. Ignoring effort for the time being, what does a Maxent model tell us?
 ```{r, message=F}
