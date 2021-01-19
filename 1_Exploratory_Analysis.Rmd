@@ -314,9 +314,9 @@ Let's look at the whale-watching data. Specifically, let's investigate the 2nd, 
 Sightings_DRWW_sp@data[2:4,c('WS_TIME','WS_DATE','PLATFORM')]
 ```
 
-Without additional information available on the database management protocols, we can investigate whether these sightings could be of the same individual. To investigate this hypothesis, we can compute the distance between the sightings, the time between the sightings, and thus the required travel speed of the individual under the assumed hypothesis. 
+Without additional information available on the database management protocols, we can investigate whether these sightings could be of the same individual. To investigate this hypothesis, we can compute the distance between the sightings using the `gDistance()` function, the time between the sightings, and the required travel speed of the individual under the assumed hypothesis.
+
 ```{r}
-Sightings_DRWW_sp@data[2:4,c('WS_TIME','WS_DATE','PLATFORM')]
 # How far away are these sightings in space (in kilometers)?
 gDistance(Sightings_DRWW_sp[2:4,], byid = T)
 # How far away are these sightings in time (in minutes)?
@@ -325,16 +325,17 @@ Sightings_DRWW_sp[3:4,]$WS_TIME-Sightings_DRWW_sp[2:3,]$WS_TIME
 gDistance(Sightings_DRWW_sp[2:4,], byid = T)[cbind(c(1,2),c(2:3))] / 
   (c(18, 9)/60)
 ```
-This hypothesis would imply a traveling speed of between 4km/h and 16km/h. Is this plausible?
 
-To be safe moving forward, we will discard all repeated sightings each day, keeping only the first sighting made each day by each company. Note that there is no overlap between the sighting locations from the two whale watch companies, indicating that an assumption of independent encounters between the two companies could be reasonable. 
+This hypothesis would imply a traveling speed of between 4km/h and 16km/h. Is this plausible? Since fin whales are known for their speed and can sustain much higher speeds (> 30km/h), we will discard all repeated sightings each day. We will keep only the first sighting made each day by each company. 
+
+Note that there is no overlap between the sighting locations from the two whale watch companies, indicating that an assumption of independent encounters between the two companies could be reasonable. 
 
 ```{r 'map-overlap', message=FALSE, cache=TRUE}
 Sightings_DRWW_sp$PLATFORM <- as.factor(Sightings_DRWW_sp$PLATFORM)
 ggplot() + gg(Domain) + gg(Sightings_DRWW_sp, colour=Sightings_DRWW_sp$PLATFORM_CODE)
 ```
 
-Thus we subset the data to keep only the initial sightings:
+Thus we subset the data to keep only the initial sightings from each company:
 
 ```{r}
 Sightings_Brier_nodup <- Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='BRIER ISLAND WHALEWATCH',]
