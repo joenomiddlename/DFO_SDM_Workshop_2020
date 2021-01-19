@@ -154,7 +154,7 @@ ggplot() +
 This is problematic! The DFO tracklines (in purple) do not overlap with the two NOAA surveys! Thus, any future model will be unable to identify any differences in protocol efficiency. This is because any model intercepts will be confounded with the latent spatial field, but more on that later!
 
 ### Exercise 1 {#Ex1}
-The surveys were conducted across 4 separate years! Next, let's plot the survey tracklines by year. Note that the names of the variables in the `Effort_Survey` are: `r names(Effort_survey)[1]` and `r names(Effort_survey)[2]`. Try this on your own! If you get stuck, click 'Show Answer Code'. Hint: The YEAR variable is of type character and contains 4 unique values (see below).
+In addition, the surveys were conducted across 4 separate years. Let's plot the survey tracklines by year. Note that the names of the variables in the `Effort_Survey` are: `r names(Effort_survey)[1]` and `r names(Effort_survey)[2]`. Try this on your own! If you get stuck, click 'Show Answer Code'. Hint: The YEAR variable is of type character and contains 4 unique values (see below).
 
 ```{r}
 table(Effort_survey$YEAR)
@@ -175,20 +175,21 @@ ggplot() +
 Note that the surveys from years 2007, 2008 and 2009 covered largely different regions! Again, this is problematic if we want to model any changes in the whale distribution over time! The effect of year will be confounded by the spatial field. That being said, the data from 2011 appear to be a good candidate for model comparison as the spatial range overlaps with the other 3 years' effort. We will holdout this data as our test data and use 2007, 2008, and 2009 as our training data.
 
 ```{r}
-xtabs(~ YEAR + DATASET,data=Effort_survey@data)
+xtabs(~ YEAR + DATASET, data=Effort_survey@data)
 ```
 2011's data comes exclusively from NOAA.
 
 ### Transforming the data into a new CRS
 
-For modelling, we will work in the NAD83 Canadian Spatial Reference System (UTM Zone 20N). This will help to preserve euclidean distance between points. The EPSG code is 2961.
+For modelling, we will transform the data from lat/lon into a new "Canadian" CRS: NAD83 datum with UTM Zone 20N projection. This projection will help to preserve euclidean distance between points. The EPSG code is 2961.
 
-To transform the data from lat/lon into the new CRS, we will use the `spTransform()` function. For example, to transform the Whale Watch sightings spatial object `Sightings_DRWW_sp`, we first define the CRS object as follows:
+To do the transformation, we will use the `spTransform()` function. For example, to transform the Whale Watch sightings spatial object `Sightings_DRWW_sp`, we first define the CRS object as follows:
 
 ```{r}
 Can_proj <- CRS("+init=EPSG:2961")
 Can_proj <- fm_crs_set_lengthunit(Can_proj, unit='km')
 ```
+
 The second line of code specifies that we want to work in units of km instead of the default meters. This can prove vital in applications to avoid numerical overflow.
 
 Next, we transform `Sightings_DRWW_sp`:
