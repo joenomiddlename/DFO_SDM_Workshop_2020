@@ -11,7 +11,6 @@ output:
 
 <script src="js/hideOutput.js"></script>
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -435,7 +434,11 @@ As we will see in the next tutorial, by taking a model-based approach to inferen
 
 ## Investigating trends between the environmental covariates and whale density
 
-We now investigate trends between the whale density and the covariates bathymetry and slope. A simple first step is to evaluate the empirical densities of each covariate at both the encounter locations and across the domain. One easy and quick way to do this is to convert the SpatialPixelsDataFrame objects into objects of class `im` from the *spatstat* package. Then, after creating a `ppp` point pattern object containing the sightings locations from all sources, we can easily extract the values of each covariate at each point location. Alternatively, we can use the function `over()` from the *sp* package. We choose to create `im` objects so that we can later use the `ppm` function from *spatstat* for exploratory analysis purposes. `ppm` fits Poisson process models, equivalent to Maxent models. 
+We will investigate trends between the whale density and the covariates bathymetry and slope. 
+
+A quick first step is to evaluate whether the empirical densities of each covariate at the encounter locations (representing habitat used by the whale) differ from the empirical density across the domain (representing available habitat values). Such difference would indicate that the whales associated with a subset of the available habitat.  
+
+One way to do this is to convert the SpatialPixelsDataFrame objects into objects of class `im` from the *spatstat* package. Then, after creating a `ppp` point pattern object containing the sightings locations from all sources, we can easily extract the values of each covariate at each point location^[Alternatively, we can use the function `over()` from the *sp* package. We choose to create `im` objects so that we can later use the `ppm` function from *spatstat* for exploratory analysis purposes.]. `ppm` fits Poisson process models, equivalent to Maxent models. 
 
 ```{r 'map-slope', message=FALSE, warning=FALSE, cache=TRUE}
 # Convert covariates to im class
