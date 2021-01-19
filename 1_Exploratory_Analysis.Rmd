@@ -1,6 +1,6 @@
 ---
-title: "Exploratory Analysis 1"
-subtitle: "Introduction to spatial R packages and plotting functions"
+title: "Exploratory Analysis"
+subtitle: "Graphically assessing model assumptions and trends"
 author: "Joe Watson and Marie Auger-Méthé"
 date: "07/01/2021"
 output: 
@@ -491,7 +491,7 @@ The 'CPUE' values are highly variable! The wild differences could be due to the 
 
 As we will see in the next tutorial, by taking a model-based approach to inference, we will be able to combine the data from all three surveys to estimate the whale density across space. Unfortunately, due to the lack of spatial overlap between the surveys' efforts (tracklines), we are unable to account for any differences between the survey protocols within a model without strong prior information available. For example, an intercept added to the model for each survey would be confounded by the spatial field.
 
-**JOE: I have removed the plots and code, but we may want to think about merging the above section with this one and reordering things to reduce repeating things and to make the flow easier.**
+**JOE: I have removed the plots and code that were similar to the survey plots at the very beginning, but we may want to think about merging the above section with this one and reordering things to reduce repeating things and to make the flow easier.**
 
 ## Graphically investigating trends between the environmental covariates and the whale density
 
