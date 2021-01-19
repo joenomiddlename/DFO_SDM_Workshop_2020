@@ -297,45 +297,9 @@ layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
 </div>
 
 
-## Exploratory Analysis 2: Testing model assumptions and investigating trends
+## Testing model assumptions and investigating trends
 
-```{r warning=FALSE, message=FALSE, error=FALSE}
-library(rgeos)
-library(rgdal)
-library(sp)
-library(maptools)
-library(spatstat)
-library(spdep)
-library(INLA)
-library(inlabru)
-library(readxl)
-library(lubridate)
-library(ggmap)
-library(raster)
-```
-
-Next, lets check our current working directory! 
-```{r}
-getwd()
-```
-
-We should be inside the folder titled: 'DFO_SDM_Workshop_2020'. If not, change this by navigating to the correct folder in the bottom right panel (folder view), opening it, and then clicking "Set as Working Directory" under the tab 'More'.
-
-Finally, let's turn off all warnings associated with coordinate reference systems. 
-```{r}
-rgdal::set_rgdal_show_exportToProj4_warnings(FALSE)
-rgdal::set_thin_PROJ6_warnings(TRUE)
-options("rgdal_show_exportToProj4_warnings"="none")
-```
-
-Now we can load in the precompiled data and functions
-```{r message=F}
-load('./Data/Compiled_Data_2.RData')
-source('utility_functions.R')
-```
-
-
-We will be fitting log-Gaussian Cox process models to the sightings data. This assumes that, conditional upon the density surface $\lambda_{obs}(\textbf{s})$, the sighting locations are **independent**. 
+We will be fitting log-Gaussian Cox process models to the sightings data. This model assumes that, conditional upon the density surface $\lambda_{obs}(\textbf{s})$, the sighting locations are **independent**. 
 
 Planned surveys can be designed to (approximately) satisfy the independence assumption. The boat speed can be fixed at a high value relative to the individuals' speeds and a narrow perpendicular field-of-view can be enforced. Then, assuming that the individuals of the target species are in equilibrium with respect to their stationary distribution $\lambda_{true}(\textbf{s})$ (i.e. the species' density) and locally mixing faster than the time between revisits by observers, the independence assumption may reasonably hold.
 
