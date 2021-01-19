@@ -215,46 +215,27 @@ Dist_Brier <- as(projectRaster(raster(Dist_Brier), crs=Can_proj), 'SpatialPixels
 Dist_Quoddy <- as(projectRaster(raster(Dist_Quoddy), crs=Can_proj), 'SpatialPixelsDataFrame')
 ```
 
-Plot the (transformed) Bathymetry, Slope, and Distance from Port spatial objects. We are going to combine these into a single plot using the `multiplot()` function from the *inlabru* package. This function takes as input ggplot objects and an argument `layout`, specifying how the plots should be arranged.
+Plot the (transformed) Bathymetry, Slope, and Distance from Port spatial objects. We are going to combine these into a single plot using the `multiplot()` function from the *inlabru* package. This function takes as input ggplot objects and an argument `layout`, specifying how the plots should be arranged (see [Additional tips]{#Ad2} for ways to change the layout).
 
 ```{r 'map-multiplot', message=FALSE, cache=TRUE}
 multiplot(ggplot() +
   gg(Domain) +
-  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
+  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') + 
+    coord_fixed(ratio = 1),
 ggplot() +
   gg(Domain) +
-  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope'),
+  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope') + 
+  coord_fixed(ratio = 1),
 ggplot() +
   gg(Domain) +
-  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)'),
+  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)') + 
+  coord_fixed(ratio = 1),
 ggplot() +
   gg(Domain) +
-  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)'),
-layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
+  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)')+ 
+  coord_fixed(ratio = 1),
+layout=matrix(1:4, nrow=2, ncol=2, byrow = TRUE))
 ```
-
-The `multiplot()` function is a very flexible function that enables publication-quality figures to be made with relative ease. 
-
-### Exercise 2 {#Ex2}
-Have a go at changing the argument `byrow=T` to `byrow=F`. What do you think will happen?
-
-<div class="fold s o"> 
-```{r 'map-multiplotOrder', message=FALSE, cache=TRUE}
-multiplot(ggplot() +
-  gg(Domain) +
-  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
-ggplot() +
-  gg(Domain) +
-  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope'),
-ggplot() +
-  gg(Domain) +
-  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)'),
-ggplot() +
-  gg(Domain) +
-  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)'),
-layout=matrix(1:4, nrow=2, ncol=2, byrow = F))
-```
-</div>
 
 Don't like the colour scheme? We can define our own manually!
 
@@ -286,7 +267,7 @@ ggplot() +
 layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
 ```  
 
-### Exercise 3 {#Ex3}
+### Exercise 2 {#Ex2}
 Have a go at creating your own colour palette function. Investigate the effects of changing both arguments to `brewer.pal`.
 
 <div class="fold s o"> 
@@ -320,8 +301,7 @@ layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
 If you got stuck on any of the exercises, then please feel free to try them again. Here are links to the 3 problems:
 
 1. [Plotting data by year](#Ex1)
-2. [Changing the layout of multiple plots](#Ex2)
-3. [Defining a custom colour palette in ggplot for spatial plots](#Ex3)
+2. [Defining a custom colour palette in ggplot for spatial plots](#Ex2)
 
 ### Bonus Exercises
 
@@ -331,7 +311,7 @@ If you got stuck on any of the exercises, then please feel free to try them agai
 
 ## Additional tips and code 
 
-### Using OpenStreetMaps instead of Google Maps{#Ad1}
+### Using OpenStreetMaps instead of Google Maps {#Ad1}
 
 For publication, there can be issues regarding copyright of Google Maps. Using OpenStreetMap can help. To guarantee this simply add the following argument: `source='osm', force=TRUE` to `gmap()`. Double check the console that the maps are indeed being downloaded from stamen or osm. For brevity we have suppressed the messages.
 
@@ -345,6 +325,71 @@ gmap(Sightings_survey, source='osm', force=TRUE) +
 ```
 
 Note for this to work it needs to be in the original project (lat/lon), not UTM.
+
+
+The `multiplot()` function is a very flexible function that enables publication-quality figures to be made with relative ease. 
+
+### Changing the layour of multiplot {#Ad2}
+
+To change the order of the plots you can change the argument `byrow=TRUE` to `byrow=FALSE`. 
+
+```{r 'map-multiplotOrder', message=FALSE, cache=TRUE}
+multiplot(ggplot() +
+  gg(Domain) +
+  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
+ggplot() +
+  gg(Domain) +
+  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope'),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)'),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)'),
+layout=matrix(1:4, nrow=2, ncol=2, byrow = FALSE))
+```
+
+We can also change the size of the figures by changing the matrix in the layout.
+
+```{r 'map-multiplotSubfigures', message=FALSE, cache=TRUE}
+multiplot(ggplot() +
+  gg(Domain) +
+  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
+ggplot() +
+  gg(Domain) +
+  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope'),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)'),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)'),
+layout=matrix(c(1,1,2,3,4,4), nrow=3, ncol=2, byrow = TRUE))
+```
+
+As you can see plots of different size stretches the maps, to keep the set projection we can use 
+`coord_fixed(ratio = 1)`.
+
+```{r 'map-multiplotProject', message=FALSE, cache=TRUE}
+multiplot(ggplot() +
+  gg(Domain) +
+  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') +
+    coord_fixed(ratio = 1),
+ggplot() +
+  gg(Domain) +
+  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope') +
+  coord_fixed(ratio = 1),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)') + 
+  coord_fixed(ratio = 1),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)') + 
+  coord_fixed(ratio = 1),
+layout=matrix(c(1,1,2,3,4,4), nrow=3, ncol=2, byrow = TRUE))
+```
+
 
 ## Acknowledgements
 The code for hiding the code chunks came from Martin Schmelzer, found [here](https://stackoverflow.com/questions/37755037/how-to-add-code-folding-to-output-chunks-in-rmarkdown-html-documents/37839683#37839683)
