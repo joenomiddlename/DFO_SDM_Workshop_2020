@@ -16,9 +16,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Exploratory Analysis 1: Introduction to spatial R packages and plotting functions
-
-### Introduction
+## Introduction
 
 Crucial to all good statistical analyses is a thorough exploratory analysis. In this document, we will introduce a few techniques for developing an understanding of our dataset, including an understanding of its limitations.
 
@@ -97,9 +95,9 @@ options("rgdal_show_exportToProj4_warnings"="none")
 ```
 
 
-### Plotting the data
+## Plotting the data
 
-Our first goal is generally to plot the data on a map. The`gg()` and `gmap()` functions from the inlabru package will prove extremely useful at plotting spatial data! Our spatial objects we will from the *sp* package. The class of objects from the *sp* package begin with 'Spatial'. For example **Spatial**PointsDataFrame.
+Our first goal is generally to plot the data on a map. The `gg()` and `gmap()` functions from the inlabru package will prove extremely useful at plotting spatial data! Our spatial objects we will from the *sp* package. The class of objects from the *sp* package begin with 'Spatial'. For example **Spatial**PointsDataFrame.
 
 We have written a bespoke function `gg.spatiallines_mod()` to easily add SpatialLinesDatFrame objects to the plots too. This will prove useful for plotting transect lines. We load the bespoke functions to the working environment now.
 
@@ -175,7 +173,7 @@ xtabs(~ YEAR + DATASET, data=Effort_survey@data)
 ```
 2011's data comes exclusively from NOAA.
 
-### Transforming the data into a new CRS
+## Transforming the data into a new CRS
 
 For modelling, we will transform the data from lat/lon into a new "Canadian" CRS: NAD83 datum with UTM Zone 20N projection. This projection will help to preserve euclidean distance between points. The EPSG code is 2961.
 
@@ -318,7 +316,7 @@ layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
 ```
 </div>
 
-### Exercises
+## Exercises
 
 If you got stuck on any of the exercises, then please feel free to try them again. Here are links to the 3 problems:
 
@@ -332,7 +330,10 @@ If you got stuck on any of the exercises, then please feel free to try them agai
 2. Transform one of the spatial objects into units of meters.
 3. (More challenging) Investigate the relationship of distance from port with the two sources of whale watch data? What do you notice? What functional form could explain this type of behaviour? **(Hint: use the `over()` function to extract the values of a spatial covariate (of type SpatialPixelsDataFrame) at point locations (stored as a SpatialPointsDataFrame object). Remember to subset the data accordingly!)**
 
-### Additional tips and code {#Ad1}
+## Additional tips and code 
+
+### Using OpenStreetMaps instead of Google Maps{#Ad1}
+
 For publication, there can be issues regarding copyright of Google Maps. Using OpenStreetMap can help. To guarantee this simply add the following argument: `source='osm', force=TRUE` to `gmap()`. Double check the console that the maps are indeed being downloaded from stamen or osm. For brevity we have suppressed the messages.
 
 ```{r 'map-openStreet', message=FALSE, warning=FALSE, tidy=FALSE, cache=TRUE, eval=FALSE}
