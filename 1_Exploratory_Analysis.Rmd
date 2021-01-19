@@ -298,7 +298,7 @@ layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
 
 ## Exercises
 
-If you got stuck on any of the exercises, then please feel free to try them again. Here are links to the 3 problems:
+If you got stuck on any of the exercises, then please feel free to try them again. Here are links to the problems:
 
 1. [Plotting data by year](#Ex1)
 2. [Defining a custom colour palette in ggplot for spatial plots](#Ex2)
@@ -329,7 +329,7 @@ Note for this to work it needs to be in the original project (lat/lon), not UTM.
 
 The `multiplot()` function is a very flexible function that enables publication-quality figures to be made with relative ease. 
 
-### Changing the layour of multiplot {#Ad2}
+### Changing the layout of multiplot() {#Ad2}
 
 To change the order of the plots you can change the argument `byrow=TRUE` to `byrow=FALSE`. 
 
