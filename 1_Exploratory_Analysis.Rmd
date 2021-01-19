@@ -212,7 +212,7 @@ WW_ports <- spTransform(WW_ports, Can_proj)
 ```
 </div>
 
-Transforming the 'raster'-like SpatialPixelsDataFrame objects (`Slope`, `Bathym`, `Dist_Brier`, and `Dist_Quoddy`) using `spTransform` would be innapropriate here. The projection leads to a curvature of the pixels. A more appropriate approach here is to use bilinear interpolation. The `projectRaster()` function from the *raster* package works great for this. This requires converting the `SpatialPixelsDataFrame` object into an object of type `raster`. This is made easy with the function `raster()`. Finally, to convert the `raster` object back into a `SpatialPixelsDataFrame`, we can use the `as()` function from the *maptools* package. This function is extremely useful for converting spatial objects between the popular packages: *sp*, *spatstat*, and *sf*. We use this function substantially throughout these workshops.
+Transforming the 'raster'-like SpatialPixelsDataFrame objects (`Slope`, `Bathym`, `Dist_Brier`, and `Dist_Quoddy`) using `spTransform` would be inappropriate here. The projection leads to a curvature of the pixels. A more appropriate approach here is to use bilinear interpolation. The `projectRaster()` function from the *raster* package works great for this. This requires converting the `SpatialPixelsDataFrame` object into an object of type `raster`. This is made easy with the function `raster()`. Finally, to convert the `raster` object back into a `SpatialPixelsDataFrame`, we can use the `as()` function from the *maptools* package. This function is extremely useful for converting spatial objects between the popular packages: *sp*, *spatstat*, and *sf*. We use this function substantially throughout the workshop.
 
 ```{r}
 Slope <- raster(Slope)
