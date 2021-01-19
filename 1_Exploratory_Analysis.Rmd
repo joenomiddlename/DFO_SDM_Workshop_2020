@@ -270,7 +270,7 @@ Don't like the colour scheme? We can define our own manually!
 
 ```{r}
 colsc <- function(...) {
-  scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(11,"RdYlBu")),
+  scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(11,"PuBuGn")),
                        limits = range(...))
 }
 ```
