@@ -303,11 +303,11 @@ We will be fitting log-Gaussian Cox process models to the sightings data. This m
 
 Planned surveys can be designed to (approximately) satisfy the independence assumption. The boat speed can be fixed at a high value relative to the individuals' speeds and a narrow perpendicular field-of-view can be enforced. Then, assuming that the individuals of the target species are in equilibrium with respect to their stationary distribution $\lambda_{true}(\textbf{s})$ (i.e. the species' density) and locally mixing faster than the time between revisits by observers, the independence assumption may reasonably hold.
 
-Conversely, no such assumptions can be made regarding the whale watch sightings. The unknown positions of the whale watch boats, the 360 degree fields-of-view on-board, the variable boat speed, and the repeated sightings of the same individuals throughout each day can all invalidate the independence assumption required to fit a log-Gaussian Cox process.
+Conversely, no such assumptions can be made regarding the whale-watch sightings. The unknown positions of the whale-watching boats, the 360 degree fields-of-view on-board, the variable boat speed, and the repeated sightings of the same individuals throughout each day can all invalidate the independence assumption required to fit a log-Gaussian Cox process.
 
 In our workshop, we will see some potential solutions to address this issue of independence. In this session, we will perform some exploratory analyses to investigate the suitability of the independence assumption, and to investigate possible ways of estimating observer effort. 
 
-### Investigating the autocorrelation between whale watch sighting locations
+### Investigating the autocorrelation between whale-watch sighting locations
 
 Let's look at the whale-watching data. Specifically, let's investigate the 2nd, 3rd and 4th sightings in the dataset. Notice that they were made on the same day and very close together in time. Often, little information is provided on the database management procedures. For example, are these multiple encounters with the same individual? Would the database discard or retain repeated sightings? 
 ```{r, warning=FALSE, message=F}
