@@ -215,7 +215,7 @@ Dist_Brier <- as(projectRaster(raster(Dist_Brier), crs=Can_proj), 'SpatialPixels
 Dist_Quoddy <- as(projectRaster(raster(Dist_Quoddy), crs=Can_proj), 'SpatialPixelsDataFrame')
 ```
 
-Plot the (transformed) Bathymetry, Slope, and Distance from Port spatial objects. We are going to combine these into a single plot using the `multiplot()` function from the *inlabru* package. This function takes as input ggplot objects and an argument `layout`, specifying how the plots should be arranged (see [Additional tips]{#Ad2} for ways to change the layout).
+Plot the (transformed) Bathymetry, Slope, and Distance from Port spatial objects. We are going to combine these into a single plot using the `multiplot()` function from the *inlabru* package. This function takes as input ggplot objects and an argument `layout`, specifying how the plots should be arranged (see [Additional tips](#Ad2) for ways to change the layout).
 
 ```{r 'map-multiplot', message=FALSE, cache=TRUE}
 multiplot(ggplot() +
