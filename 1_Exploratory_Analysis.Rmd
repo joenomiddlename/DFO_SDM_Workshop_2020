@@ -227,7 +227,7 @@ Dist_Quoddy <- as(projectRaster(raster(Dist_Quoddy), crs=Can_proj), 'SpatialPixe
 
 Plot the (transformed) Bathymetry, Slope, and Distance from Port spatial objects. We are going to combine these into a single plot using the `multiplot()` function from the *inlabru* package. This function takes as input ggplot objects and an argument `layout`, specifying how the plots should be arranged.
 
-```{r, message=F}
+```{r 'map-multiplot', message=FALSE, cache=TRUE}
 multiplot(ggplot() +
   gg(Domain) +
   gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
@@ -242,13 +242,14 @@ ggplot() +
   gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)'),
 layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
 ```
+
 The `multiplot()` function is a very flexible function that enables publication-quality figures to be made with relative ease. 
 
 ### Exercise 2 {#Ex2}
 Have a go at changing the argument `byrow=T` to `byrow=F`. What do you think will happen?
 
 <div class="fold s o"> 
-```{r, message=F}
+```{r 'map-multiplotOrder', message=FALSE, cache=TRUE}
 multiplot(ggplot() +
   gg(Domain) +
   gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
@@ -268,7 +269,7 @@ layout=matrix(1:4, nrow=2, ncol=2, byrow = F))
 Next, have a go at specifying a 3x2 matrix with entries (1,1,2,3,4,4). Notice what happens? Does this make sense to you?
 
 <div class="fold s o"> 
-```{r, message=F}
+```{r 'map-multiplotStretch', message=FALSE, cache=TRUE}
 multiplot(ggplot() +
   gg(Domain) +
   gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
@@ -295,7 +296,7 @@ colsc <- function(...) {
 ```
 Look at `?RColorBrewer::brewer.pal` to see what other colour palettes are available.
 
-```{r, message=F}
+```{r 'map-multiplotColor1', message=FALSE, cache=TRUE}
 multiplot(ggplot() +
   gg(Domain) +
   gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') +
@@ -319,7 +320,7 @@ layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
 Have a go at creating your own colour palette function. Investigate the effects of changing both arguments to `brewer.pal`.
 
 <div class="fold s o"> 
-```{r, message=F}
+```{r 'map-multiplotColor2', message=FALSE, cache=TRUE}
 colsc2 <- function(...){
   scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(7,"Spectral")),
                        limits = range(...))
