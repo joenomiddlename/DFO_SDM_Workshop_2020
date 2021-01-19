@@ -448,33 +448,11 @@ We have seen some evidence that residual autocorrelations remain in the sighting
 
 **JOE: this is likely the same whales staying in the area for a few days. I think you'll have to address this at some point, either here or later when talking about the modeling. It would be good to acknowledged here that this may be the case.**
 
-### Creating a training data set
+### Creating training and testing datasets
 
-So, we continue on with our exploratory analysis. We now subset the data into a training and test set. We choose the training set to contain all the sightings from 2007-2009. For the test data, we choose **all** the sightings from 2011. 
+**JOE: add one line about why you need a training and test dataset.**
 
-Could we not also put 2011's whale watch data into the training set? Below is some (optional) code showing that we cannot. A whale is sighted by at least one whale watch company on every day in 2011 that a survey detects a whale. The plot below shows that these sightings could have been of the same animal. Even if they weren't, the tracklines in 2011 still visited areas that the whale watch vessels were present. Since our training and test datasets are required to be independent of each other, we must therefore also remove the 2011 whale watch sightings from the training data.
-
-<div class="fold e o">
-```{r 'map-2011', message=FALSE, cache=TRUE}
-# what dates were survey sightings made on in 2011?
-unique(Sightings_survey$DATE_LO[Sightings_survey$YEAR==2011])
-# Are sightings by the WW vessels made on these dates?
-sum(grepl(Sightings_survey$DATE_LO[Sightings_survey$YEAR==2011][1],
-     x=c(Sightings_Quoddy_nodup$WS_DATE[Sightings_Quoddy_nodup$YEAR==2011],
-         Sightings_Brier_nodup$WS_DATE[Sightings_Brier_nodup$YEAR==2011])))>0
-sum(grepl(Sightings_survey$DATE_LO[Sightings_survey$YEAR==2011][2],
-     x=c(Sightings_Quoddy_nodup$WS_DATE[Sightings_Quoddy_nodup$YEAR==2011],
-         Sightings_Brier_nodup$WS_DATE[Sightings_Brier_nodup$YEAR==2011])))>0
-sum(grepl(Sightings_survey$DATE_LO[Sightings_survey$YEAR==2011][3],
-     x=c(Sightings_Quoddy_nodup$WS_DATE[Sightings_Quoddy_nodup$YEAR==2011],
-         Sightings_Brier_nodup$WS_DATE[Sightings_Brier_nodup$YEAR==2011])))>0
-# Could they be of the same animal? 
-ggplot() + gg(Domain) + 
-  gg(Sightings_survey[Sightings_survey$YEAR==2011,],colour='green') +
-  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR==2011,],colour='yellow')
-
-```
-</div>
+We now subset the data into a training and test set. We choose the training set to contain all the sightings from 2007-2009. For the test data, we choose **all** the sightings from 2011. See [Additional tips](#Ad3) for an explanation of why the 2011 whale-watching data cannot be added to the training dataset.
 
 Below we split the data into training and test data.
 
@@ -776,6 +754,32 @@ ggplot() +
   coord_fixed(ratio = 1),
 layout=matrix(c(1,1,2,3,4,4), nrow=3, ncol=2, byrow = TRUE))
 ```
+
+### Potential repeated whale-watch and survey sightings in 2011 {#Ad3}
+
+Could we not also put 2011's whale-watch data into the training set? Below is some (optional) code showing that we cannot. A whale is sighted by at least one whale watch company on every day in 2011 that a survey detects a whale. The plot below shows that these sightings could have been of the same animal. Even if they weren't, the tracklines in 2011 still visited areas that the whale watch vessels were present. Since our training and test datasets are required to be independent of each other, we must therefore also remove the 2011 whale watch sightings from the training data.
+
+<div class="fold e o">
+```{r 'map-2011', message=FALSE, cache=TRUE}
+# what dates were survey sightings made on in 2011?
+unique(Sightings_survey$DATE_LO[Sightings_survey$YEAR==2011])
+# Are sightings by the WW vessels made on these dates?
+sum(grepl(Sightings_survey$DATE_LO[Sightings_survey$YEAR==2011][1],
+     x=c(Sightings_Quoddy_nodup$WS_DATE[Sightings_Quoddy_nodup$YEAR==2011],
+         Sightings_Brier_nodup$WS_DATE[Sightings_Brier_nodup$YEAR==2011])))>0
+sum(grepl(Sightings_survey$DATE_LO[Sightings_survey$YEAR==2011][2],
+     x=c(Sightings_Quoddy_nodup$WS_DATE[Sightings_Quoddy_nodup$YEAR==2011],
+         Sightings_Brier_nodup$WS_DATE[Sightings_Brier_nodup$YEAR==2011])))>0
+sum(grepl(Sightings_survey$DATE_LO[Sightings_survey$YEAR==2011][3],
+     x=c(Sightings_Quoddy_nodup$WS_DATE[Sightings_Quoddy_nodup$YEAR==2011],
+         Sightings_Brier_nodup$WS_DATE[Sightings_Brier_nodup$YEAR==2011])))>0
+# Could they be of the same animal? 
+ggplot() + gg(Domain) + 
+  gg(Sightings_survey[Sightings_survey$YEAR==2011,],colour='green') +
+  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR==2011,],colour='yellow')
+
+```
+</div>
 
 
 ## Acknowledgements
