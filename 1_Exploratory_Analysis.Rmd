@@ -237,65 +237,7 @@ ggplot() +
 layout=matrix(1:4, nrow=2, ncol=2, byrow = TRUE))
 ```
 
-Don't like the colour scheme? We can define our own manually!
-
-```{r}
-colsc <- function(...) {
-  scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(11,"PuBuGn")),
-                       limits = range(...))
-}
-```
-Look at `?RColorBrewer::brewer.pal` to see what other colour palettes are available.
-
-```{r 'map-multiplotColor1', message=FALSE, cache=TRUE}
-multiplot(ggplot() +
-  gg(Domain) +
-  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') +
-  colsc(Bathym@data[,1]),
-ggplot() +
-  gg(Domain) +
-  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope') +
-  colsc(Slope@data[,1]),
-ggplot() +
-  gg(Domain) +
-  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)') +
-  colsc(Dist_Brier@data[,1]),
-ggplot() +
-  gg(Domain) +
-  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)') +
-  colsc(Dist_Quoddy@data[,1]),
-layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
-```  
-
-### Exercise 2 {#Ex2}
-Have a go at creating your own colour palette function. Investigate the effects of changing both arguments to `brewer.pal`.
-
-<div class="fold s o"> 
-```{r 'map-multiplotColor2', message=FALSE, cache=TRUE}
-colsc2 <- function(...){
-  scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(7,"Spectral")),
-                       limits = range(...))
-}
-multiplot(ggplot() +
-  gg(Domain) +
-  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') +
-  colsc2(Bathym@data[,1]),
-ggplot() +
-  gg(Domain) +
-  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope') +
-  colsc2(Slope@data[,1]),
-ggplot() +
-  gg(Domain) +
-  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)') +
-  colsc2(Dist_Brier@data[,1]),
-ggplot() +
-  gg(Domain) +
-  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)') +
-  colsc2(Dist_Quoddy@data[,1]),
-layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
-```
-</div>
-
+Don't like the colour scheme? See [Additional tips](#Ad3) to learn how to define your own manually.
 
 ## Testing model assumptions and investigating trends
 
@@ -452,7 +394,7 @@ We have seen some evidence that residual autocorrelations remain in the sighting
 
 **JOE: add one line about why you need a training and test dataset.**
 
-We now subset the data into a training and test set. We choose the training set to contain all the sightings from 2007-2009. For the test data, we choose **all** the sightings from 2011. See [Additional tips](#Ad3) for an explanation of why the potential repeated sighting in 2011 between survey and whale-watch datat, means that the whale-watching data cannot be added to the training dataset.
+We now subset the data into a training and test set. We choose the training set to contain all the sightings from 2007-2009. For the test data, we choose **all** the sightings from 2011. See [Additional tips](#Ad4) for an explanation of why the potential repeated sighting in 2011 between survey and whale-watch datat, means that the whale-watching data cannot be added to the training dataset.
 
 Below, we split the data into training and test data.
 
@@ -493,9 +435,9 @@ As we will see in the next tutorial, by taking a model-based approach to inferen
 
 **JOE: I have removed the plots and code that were similar to the survey plots at the very beginning, but we may want to think about merging the above section with this one and reordering things to reduce repeating things and to make the flow easier.**
 
-## Graphically investigating trends between the environmental covariates and the whale density
+## Investigating trends between the environmental covariates and whale density
 
-We now investigate trends between the whale density and the covariates bathymetry and Slope. A simple first step is to evaluate the empirical densities of each covariate at both the encounter locations and across the domain. One easy and quick way to do this is to convert the SpatialPixelsDataFrame objects into objects of class `im` from the *spatstat* package. Then, after creating a `ppp` point pattern object containing the sightings locations from all sources, we can easily extract the values of each covariate at each point location. Alternatively, we can use the function `over()` from the *sp* package. We choose to create `im` objects so that we can later use the `ppm` function from *spatstat* for exploratory analysis purposes. `ppm` fits Poisson process models, equivalent to Maxent models. 
+We now investigate trends between the whale density and the covariates bathymetry and slope. A simple first step is to evaluate the empirical densities of each covariate at both the encounter locations and across the domain. One easy and quick way to do this is to convert the SpatialPixelsDataFrame objects into objects of class `im` from the *spatstat* package. Then, after creating a `ppp` point pattern object containing the sightings locations from all sources, we can easily extract the values of each covariate at each point location. Alternatively, we can use the function `over()` from the *sp* package. We choose to create `im` objects so that we can later use the `ppm` function from *spatstat* for exploratory analysis purposes. `ppm` fits Poisson process models, equivalent to Maxent models. 
 
 ```{r 'map-slope', message=FALSE, warning=FALSE, cache=TRUE}
 # Convert covariates to im class
@@ -653,7 +595,6 @@ This is why we turn to log-Gaussian Cox processes in the next workshop. By assum
 If you got stuck on any of the exercises, then please feel free to try them again. Here are links to the problems:
 
 1. [Plotting data by year](#Ex1)
-2. [Defining a custom colour palette in ggplot for spatial plots](#Ex2)
 
 ### Bonus Exercises
 
@@ -742,7 +683,68 @@ ggplot() +
 layout=matrix(c(1,1,2,3,4,4), nrow=3, ncol=2, byrow = TRUE))
 ```
 
-### Potential repeated whale-watch and survey sightings in 2011 {#Ad3}
+### Define your own colour palette {#Ad3}
+
+We can define the colour palette easily.
+
+```{r}
+colsc <- function(...) {
+  scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(11,"PuBuGn")),
+                       limits = range(...))
+}
+```
+
+Look at `?RColorBrewer::brewer.pal` to see what other colour palettes are available.
+
+```{r 'map-multiplotColor1', message=FALSE, cache=TRUE}
+multiplot(ggplot() +
+  gg(Domain) +
+  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') +
+  colsc(Bathym@data[,1]),
+ggplot() +
+  gg(Domain) +
+  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope') +
+  colsc(Slope@data[,1]),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)') +
+  colsc(Dist_Brier@data[,1]),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)') +
+  colsc(Dist_Quoddy@data[,1]),
+layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
+```
+
+Have a go at creating your own colour palette function. Investigate the effects of changing both arguments to `brewer.pal`.
+
+<div class="fold s o"> 
+```{r 'map-multiplotColor2', message=FALSE, cache=TRUE}
+colsc2 <- function(...){
+  scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(7,"Spectral")),
+                       limits = range(...))
+}
+multiplot(ggplot() +
+  gg(Domain) +
+  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') +
+  colsc2(Bathym@data[,1]),
+ggplot() +
+  gg(Domain) +
+  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope') +
+  colsc2(Slope@data[,1]),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)') +
+  colsc2(Dist_Brier@data[,1]),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)') +
+  colsc2(Dist_Quoddy@data[,1]),
+layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
+```
+</div>
+
+### Potential repeated whale-watch and survey sightings in 2011 {#Ad4}
 
 Could we not also put 2011's whale-watch data into the training set? Below is some code showing that we cannot. A whale is sighted by at least one whale watch company on every day in 2011 that a survey detects a whale. The plot below shows that these sightings could have been of the same animal. Even if they weren't, the tracklines in 2011 still visited areas that the whale watch vessels were present. Since our training and test datasets are required to be independent of each other, we must therefore also remove the 2011 whale watch sightings from the training data.
 
