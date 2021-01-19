@@ -377,7 +377,19 @@ diffspace_Quoddy <- dist(Sightings_Quoddy_nodup@coords)
 difftime_Quoddy_fac <- as.factor(difftime_Quoddy)
 ```
 
-We will create multiple plots with days on the x-axis and km on the y-axis. The first plot restricted to only consider temporal differences of less than 85 days. 
+We will create multiple plots with days on the x-axis and km on the y-axis. The first plot restricted to only consider temporal differences of less than 85 days. We are plotting a sequence of boxplots to help detect patterns. 
+
+```{r 'fig-difference', message=FALSE, cache=TRUE}
+ggplot(data=data.frame(difftime = 
+difftime_Brier_fac[as.numeric(difftime_Brier)<85],
+                       diffspace = as.numeric(diffspace_Brier)[as.numeric(difftime_Brier)<85]),
+       aes(y=diffspace, group=difftime)) +
+  geom_boxplot() +
+  xlab('difference in time (days)') +
+  ylab('difference in space (km)')
+```
+
+The second plot is a different version, which uses a loess smoother curve to try to help detect the same patterns.
 
 ```{r 'fig-differencel85', message=FALSE, cache=TRUE}
 ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[as.numeric(difftime_Brier)<85],
@@ -389,9 +401,9 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[as.numeric(difftime
 
 ```
 
-This first plot indicates some moderate autocorrelation between the sightings, with encounters made ~1 month apart typically being around 50% further away than those made 24 hours apart. Notice that the trend plateaus after ~14 days. Perhaps this trend is due to the autocorrelation being caused exclusively by persistence in animal movement? Furthermore, the flat-line trend between day ~30 and day ~75 could be evidence in favour of an approximately constant density across the summer months. If the space use did indeed change dramatically across the months (e.g. due to migration), then we would expect to see a monotonically increasing trend over time.
+These two first plots indicate some moderate autocorrelation between the sightings, with encounters made ~1 month apart typically being around 50% further away than those made 24 hours apart. Notice that the trend plateaus after ~14 days. Perhaps this trend is due to the autocorrelation being caused exclusively by persistence in animal movement? Furthermore, the flat-line trend between day ~30 and day ~75 could be evidence in favour of an approximately constant density across the summer months. If the space use did indeed change dramatically across the months (e.g. due to migration), then we would expect to see a monotonically increasing trend over time.
 
-The second plot investigate the space-time relationship across years.
+The third plot investigate the space-time relationship across years.
 
 ```{r 'fig-differenceYears', message=FALSE, cache=TRUE}
 ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[],
@@ -402,19 +414,7 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[],
   ylab('difference in space (km)')
 ```
 
-This second plot shows no evidence that the average spatial separation between whale watch sightings differs year-to-year. This supports our assumption that the spatial density can be assumed to be constant across the years, albeit within the (very) small spatial region visited by the whale watch boats departing from Brier Island.
-
-**JOE: What's the goal of this next plot? Should it go with the first plot?**
-
-```{r 'fig-difference', message=FALSE, cache=TRUE}
-ggplot(data=data.frame(difftime = 
-difftime_Brier_fac[as.numeric(difftime_Brier)<85],
-                       diffspace = as.numeric(diffspace_Brier)[as.numeric(difftime_Brier)<85]),
-       aes(y=diffspace, group=difftime)) +
-  geom_boxplot() +
-  xlab('difference in time (days)') +
-  ylab('difference in space (km)')
-```
+This third plot shows no evidence that the average spatial separation between whale watch sightings differs year-to-year. This supports our assumption that the spatial density can be assumed to be constant across the years, albeit within the (very) small spatial region visited by the whale watch boats departing from Brier Island.
 
 
 We now repeat the plots, but for the whale watch boats that depart from Quoddy.
@@ -452,9 +452,9 @@ We have seen some evidence that residual autocorrelations remain in the sighting
 
 **JOE: add one line about why you need a training and test dataset.**
 
-We now subset the data into a training and test set. We choose the training set to contain all the sightings from 2007-2009. For the test data, we choose **all** the sightings from 2011. See [Additional tips](#Ad3) for an explanation of why the 2011 whale-watching data cannot be added to the training dataset.
+We now subset the data into a training and test set. We choose the training set to contain all the sightings from 2007-2009. For the test data, we choose **all** the sightings from 2011. See [Additional tips](#Ad3) for an explanation of why the potential repeated sighting in 2011 between survey and whale-watch datat, means that the whale-watching data cannot be added to the training dataset.
 
-Below we split the data into training and test data.
+Below, we split the data into training and test data.
 
 ```{r}
 Sightings_Brier_nodup_test <- Sightings_Brier_nodup[Sightings_Brier_nodup$YEAR==2011,]
@@ -471,7 +471,7 @@ table(Sightings_survey$YEAR)
 
 ```
 
-Next, we evaluate a crude estimate of the total amount of survey effort spent each year, as measured by the total trackline length. Using this, we then crudely estimate a 'catch per unit effort' measure by year.
+Next, we evaluate a crude estimate of the total amount of survey effort spent each year, as measured by the total trackline length. Using this, we then crudely estimate a 'catch per unit effort' (CPU) measure by year.
 
 ```{r}
 # How much survey effort (in trackline length) is there by year
@@ -489,22 +489,9 @@ table(Sightings_Brier_nodup$YEAR)
 
 The 'CPUE' values are highly variable! The wild differences could be due to the small efforts in years 2008 and 2009 relative to 2007. Alternatively, the differences could actually reflect real differences in whale density across the three distinct regions visited each year! Without taking a model-based approach and controlling for differences in spatial effort, it is unclear how to combine the sightings from these three surveys.
 
-By taking a model-based approach to inference, we are able to combine the data from all three surveys to estimate the whale density across space. 
+As we will see in the next tutorial, by taking a model-based approach to inference, we will be able to combine the data from all three surveys to estimate the whale density across space. Unfortunately, due to the lack of spatial overlap between the surveys' efforts (tracklines), we are unable to account for any differences between the survey protocols within a model without strong prior information available. For example, an intercept added to the model for each survey would be confounded by the spatial field.
 
-```{r 'map-combined', message=FALSE, cache=TRUE}
-ggplot() +
-  gg(Domain) +
-  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2007',], colour='red') +
-  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2008',], colour='black') +
-  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2009',], colour='blue') +
-  gg.spatiallines_mod(Effort_survey_test, colour='purple')
-```
-
-Note that the survey effort in 2011 (in purple) overlaps with all the previous years' surveys and WW data. 2011 therefore provides a reasonable test dataset for comparing models. The 3 years of surveys were conducted under 3 different surveys following similar (but different) protocols. Unfortunately, due to the lack of spatial overlap between the surveys' efforts (tracklines), we are unable to account for any differences between the survey protocols within a model without strong prior information available. For example, an intercept added to the model for each survey would be confounded by the spatial field.
-
-```{r}
-xtabs(~DATASET+YEAR,Effort_survey@data)
-```
+**JOE: I have removed the plots and code, but we may want to think about merging the above section with this one and reordering things to reduce repeating things and to make the flow easier.**
 
 ## Graphically investigating trends between the environmental covariates and the whale density
 
@@ -757,7 +744,7 @@ layout=matrix(c(1,1,2,3,4,4), nrow=3, ncol=2, byrow = TRUE))
 
 ### Potential repeated whale-watch and survey sightings in 2011 {#Ad3}
 
-Could we not also put 2011's whale-watch data into the training set? Below is some (optional) code showing that we cannot. A whale is sighted by at least one whale watch company on every day in 2011 that a survey detects a whale. The plot below shows that these sightings could have been of the same animal. Even if they weren't, the tracklines in 2011 still visited areas that the whale watch vessels were present. Since our training and test datasets are required to be independent of each other, we must therefore also remove the 2011 whale watch sightings from the training data.
+Could we not also put 2011's whale-watch data into the training set? Below is some code showing that we cannot. A whale is sighted by at least one whale watch company on every day in 2011 that a survey detects a whale. The plot below shows that these sightings could have been of the same animal. Even if they weren't, the tracklines in 2011 still visited areas that the whale watch vessels were present. Since our training and test datasets are required to be independent of each other, we must therefore also remove the 2011 whale watch sightings from the training data.
 
 <div class="fold e o">
 ```{r 'map-2011', message=FALSE, cache=TRUE}
