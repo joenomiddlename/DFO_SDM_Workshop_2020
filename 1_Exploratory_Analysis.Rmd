@@ -54,7 +54,7 @@ Now we can load in the precompiled data
 list2env(readRDS('./Data/Compiled_Data.rds'), globalenv())
 ```
 
-Second, to help play with model results quickly, we need to download the pre-compiled modelling result files, which can be found here: [here](https://ubcca-my.sharepoint.com/:u:/g/personal/joewatto_student_ubc_ca/Ea8lRO_ESL5CgfFSWqOT0LUBzskEWVVA_v6N2B2RZhr67w?email=m.auger-methe%40oceans.ubc.ca&e=TvsrM1).
+Second, to help play with model results quickly, we need to download the pre-compiled modelling result files, which can be found [here](https://ubcca-my.sharepoint.com/:u:/g/personal/joewatto_student_ubc_ca/Ea8lRO_ESL5CgfFSWqOT0LUBzskEWVVA_v6N2B2RZhr67w?email=m.auger-methe%40oceans.ubc.ca&e=TvsrM1).
 
 ### Fin whale data
 
@@ -99,7 +99,7 @@ options("rgdal_show_exportToProj4_warnings"="none")
 
 ### Plotting the data
 
-Our first goal is generally to plot the data on a map, and the inlabru package `gg()` function will prove extremely useful at plotting spatial data! The types of spatial objects we will be dealing with are from the *sp* package. The class of objects from the *sp* package begin with 'Spatial'. For example **Spatial**PointsDataFrame  Furthermore, if the data are in lat/lon format then the gmap() function can add a layer from Google Maps or OpenStreetMap to the plots.
+Our first goal is generally to plot the data on a map. The`gg()` and `gmap()` functions from the inlabru package will prove extremely useful at plotting spatial data! Our spatial objects we will from the *sp* package. The class of objects from the *sp* package begin with 'Spatial'. For example **Spatial**PointsDataFrame.
 
 We have written a bespoke function `gg.spatiallines_mod()` to easily add SpatialLinesDatFrame objects to the plots too. This will prove useful for plotting transect lines. We load the bespoke functions to the working environment now.
 
@@ -107,7 +107,9 @@ We have written a bespoke function `gg.spatiallines_mod()` to easily add Spatial
 source('utility_functions.R')
 ```
 
-So let's plot our data! Let's plot the survey sightings in blue, the survey tracklines in black, the whale watch sightings in purple, the whale watch ports in red. We'll add a terrain map to the background too.
+Let's plot our data! 
+
+If the data are in lat/lon format then the `gmap()` function can add a layer from Google Maps or OpenStreetMap to the plots. Let's plot the survey sightings in blue, the survey tracklines in black, the whale watch sightings in purple, the whale watch ports in red. We'll add a terrain map to the background too.
 
 ```{r 'map-gmap', message=FALSE, cache=TRUE}
 gmap(Sightings_survey) +
@@ -122,17 +124,6 @@ To remove the map layer, simply replace the `gmap(Sightings_survey)` with `ggplo
 
 ```{r 'map-noMapLayer', message=FALSE, cache=TRUE}
 ggplot() +
-  gg(Domain) +
-  gg.spatiallines_mod(Effort_survey) +
-  gg(Sightings_survey, colour='blue') +
-  gg(Sightings_DRWW_sp, colour='purple') +
-  gg(WW_ports, colour='red')
-```
-
-Finally, for publication, there can be issues regarding copyright of Google Maps. Using OpenStreetMap can help. To guarantee this simply add the following argument: `source='osm', force=TRUE` to `gmap()`. Double check the console that the maps are indeed being downloaded from stamen or osm. For brevity we have suppressed the messages.
-
-```{r 'map-openStreet', message=FALSE, warning=FALSE, tidy=FALSE, cache=TRUE}
-gmap(Sightings_survey,source='osm',force=TRUE) +
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey) +
   gg(Sightings_survey, colour='blue') +
@@ -338,6 +329,21 @@ If you got stuck on any of the exercises, then please feel free to try them agai
 1. Transform one of the spatial objects back into longitude latitude.
 2. Transform one of the spatial objects into units of meters.
 3. (More challenging) Investigate the relationship of distance from port with the two sources of whale watch data? What do you notice? What functional form could explain this type of behaviour? **(Hint: use the `over()` function to extract the values of a spatial covariate (of type SpatialPixelsDataFrame) at point locations (stored as a SpatialPointsDataFrame object). Remember to subset the data accordingly!)**
+
+### Additional tips and code
+
+For publication, there can be issues regarding copyright of Google Maps. Using OpenStreetMap can help. To guarantee this simply add the following argument: `source='osm', force=TRUE` to `gmap()`. Double check the console that the maps are indeed being downloaded from stamen or osm. For brevity we have suppressed the messages.
+
+```{r 'map-openStreet', message=FALSE, warning=FALSE, tidy=FALSE, cache=TRUE}
+gmap(Sightings_survey, source='osm', force=TRUE) +
+  gg(Domain) +
+  gg.spatiallines_mod(Effort_survey) +
+  gg(Sightings_survey, colour='blue') +
+  gg(Sightings_DRWW_sp, colour='purple') +
+  gg(WW_ports, colour='red')
+```
+
+
 
 ## Acknowledgements
 The code for hiding the code chunks came from Martin Schmelzer, found [here](https://stackoverflow.com/questions/37755037/how-to-add-code-folding-to-output-chunks-in-rmarkdown-html-documents/37839683#37839683)
