@@ -107,7 +107,7 @@ source('utility_functions.R')
 
 Let's plot our data! 
 
-If the data are in lat/lon format then the `gmap()` function can add a layer from Google Maps or OpenStreetMap to the plots. Let's plot the survey sightings in blue, the survey tracklines in black, the whale watch sightings in purple, the whale watch ports in red.
+If the data are in lat/lon format then the `gmap()` function will automatically add a terrain layer from Google Maps to the plots. Let's plot the survey sightings in blue, the survey tracklines in black, the whale watch sightings in purple, the whale watch ports in red.
 
 ```{r 'map-gmap', message=FALSE, cache=TRUE}
 gmap(Sightings_survey) +
@@ -120,10 +120,10 @@ gmap(Sightings_survey) +
 
 By default `gmap` uses Google maps, see [Additional tips](#Ad1) for ways to use open-source maps for publication.
 
-To remove the map layer, simply replace the `gmap(Sightings_survey)` with `ggplot()`! Notice the empty `ggplot()` function call.
+To remove the map layer, simply replace the `gmap(Sightings_survey)` with `ggplot()`.
 
 ```{r 'map-noMapLayer', message=FALSE, cache=TRUE}
-ggplot() +
+ggplot() + # Notice the empty ggplot() call
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey) +
   gg(Sightings_survey, colour='blue') +
@@ -131,8 +131,7 @@ ggplot() +
   gg(WW_ports, colour='red')
 ```
 
-This plot hides some crucial information regarding the data collection. For example, the survey sightings and tracklines do not come from a single survey, or even a single organisation! Let's plot this! The easiest way to do this is to subset the data accordingly! 
-
+This plot hides some crucial information regarding the data collection. For example, the survey sightings and tracklines do not come from a single survey, or even a single organisation! Let's plot this! The easiest way to do this is to subset the data accordingly!
 
 ```{r 'map-survey', message=FALSE, cache=TRUE}
 table(Effort_survey$DATASET)
