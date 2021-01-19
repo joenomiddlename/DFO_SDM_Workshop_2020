@@ -109,7 +109,7 @@ source('utility_functions.R')
 
 Let's plot our data! 
 
-If the data are in lat/lon format then the `gmap()` function can add a layer from Google Maps or OpenStreetMap to the plots. Let's plot the survey sightings in blue, the survey tracklines in black, the whale watch sightings in purple, the whale watch ports in red. We'll add a terrain map to the background too.
+If the data are in lat/lon format then the `gmap()` function can add a layer from Google Maps or OpenStreetMap to the plots. Let's plot the survey sightings in blue, the survey tracklines in black, the whale watch sightings in purple, the whale watch ports in red.
 
 ```{r 'map-gmap', message=FALSE, cache=TRUE}
 gmap(Sightings_survey) +
