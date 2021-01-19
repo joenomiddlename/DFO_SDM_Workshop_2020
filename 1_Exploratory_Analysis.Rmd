@@ -59,7 +59,9 @@ Second, to help play with model results quickly, we need to download the pre-com
 ### Fin whale data
 
 The data we use throughout this workshop is data on fin whales. We use two main data sources:
+
 * sightings from systematic DFO?? boat surveys
+
 * sightings from two? whale-watching operators
 
 The sightings are from 201?. The sightings from the systematic survey, but not those of the whale-watching operators, are accompanied with the boat trackline.
@@ -70,6 +72,7 @@ These data are spatial data. The first thing we must always do is check for cons
 ```{r}
 Sightings_DRWW_sp@proj4string 
 ```
+
 We check the CRS of the other objects, but omit the code for brevity.
 <div class="fold e">
 ```{r, echo=FALSE, message=FALSE}
