@@ -59,7 +59,9 @@ Second, to help play with model results quickly, we need to download the pre-com
 ### Fin whale data
 
 The data we use throughout this workshop is data on fin whales. We use two main data sources:
+
 * sightings from systematic DFO?? boat surveys
+
 * sightings from two? whale-watching operators
 
 The sightings are from 201?. The sightings from the systematic survey, but not those of the whale-watching operators, are accompanied with the boat trackline.
@@ -70,6 +72,7 @@ These data are spatial data. The first thing we must always do is check for cons
 ```{r}
 Sightings_DRWW_sp@proj4string 
 ```
+
 We check the CRS of the other objects, but omit the code for brevity.
 <div class="fold e">
 ```{r, echo=FALSE, message=FALSE}
@@ -106,7 +109,7 @@ source('utility_functions.R')
 
 So let's plot our data! Let's plot the survey sightings in blue, the survey tracklines in black, the whale watch sightings in purple, the whale watch ports in red. We'll add a terrain map to the background too.
 
-```{r, message=FALSE}
+```{r 'map-gmap', message=FALSE, cache=TRUE}
 gmap(Sightings_survey) +
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey) +
@@ -114,9 +117,10 @@ gmap(Sightings_survey) +
   gg(Sightings_DRWW_sp, colour='purple') +
   gg(WW_ports, colour='red')
 ```
+
 To remove the map layer, simply replace the `gmap(Sightings_survey)` with `ggplot()`! Notice the empty `ggplot()` function call.
 
-```{r, message=F}
+```{r 'map-noMapLayer', message=FALSE, cache=TRUE}
 ggplot() +
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey) +
@@ -127,7 +131,7 @@ ggplot() +
 
 Finally, for publication, there can be issues regarding copyright of Google Maps. Using OpenStreetMap can help. To guarantee this simply add the following argument: `source='osm', force=TRUE` to `gmap()`. Double check the console that the maps are indeed being downloaded from stamen or osm. For brevity we have suppressed the messages.
 
-```{r, message=FALSE, tidy=FALSE}
+```{r 'map-openStreet', message=FALSE, warning=FALSE, tidy=FALSE, cache=TRUE}
 gmap(Sightings_survey,source='osm',force=TRUE) +
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey) +
@@ -139,7 +143,7 @@ gmap(Sightings_survey,source='osm',force=TRUE) +
 This plot hides some crucial information regarding the data collection. For example, the survey sightings and tracklines do not come from a single survey, or even a single organisation! Let's plot this! The easiest way to do this is to subset the data accordingly! 
 
 
-```{r message=FALSE}
+```{r 'map-survey', message=FALSE, cache=TRUE}
 table(Effort_survey$DATASET)
 # there are 3 surveys
 ggplot() +
@@ -153,7 +157,7 @@ ggplot() +
 This is problematic! The DFO tracklines (in purple) do not overlap with the two NOAA surveys! Thus, any future model will be unable to identify any differences in protocol efficiency. This is because any model intercepts will be confounded with the latent spatial field, but more on that later!
 
 ### Exercise 1 {#Ex1}
-The surveys were conducted across 3 separate years! Next, let's plot the survey tracklines by year. Note that the names of the variables in the `Effort_Survey` are: `r names(Effort_survey)[1]` and `r names(Effort_survey)[2]`. Try this on your own! If you get stuck, click 'Show Answer Code'. Hint: The YEAR variable is of type character and contains 4 unique values (see below).
+In addition, the surveys were conducted across 4 separate years. Let's plot the survey tracklines by year. Note that the names of the variables in the `Effort_Survey` are: `r names(Effort_survey)[1]` and `r names(Effort_survey)[2]`. Try this on your own! If you get stuck, click 'Show Answer Code'. Hint: The YEAR variable is of type character and contains 4 unique values (see below).
 
 ```{r}
 table(Effort_survey$YEAR)
@@ -161,7 +165,7 @@ class(Effort_survey$YEAR)
 ```
 
 <div class="fold s o">
-```{r, tidy=FALSE}
+```{r 'map-years', tidy=FALSE, cache=TRUE}
 ggplot() +
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2007',], colour='purple') +
@@ -174,20 +178,21 @@ ggplot() +
 Note that the surveys from years 2007, 2008 and 2009 covered largely different regions! Again, this is problematic if we want to model any changes in the whale distribution over time! The effect of year will be confounded by the spatial field. That being said, the data from 2011 appear to be a good candidate for model comparison as the spatial range overlaps with the other 3 years' effort. We will holdout this data as our test data and use 2007, 2008, and 2009 as our training data.
 
 ```{r}
-xtabs(~ YEAR + DATASET,data=Effort_survey@data)
+xtabs(~ YEAR + DATASET, data=Effort_survey@data)
 ```
 2011's data comes exclusively from NOAA.
 
 ### Transforming the data into a new CRS
 
-For modelling, we will work in the NAD83 Canadian Spatial Reference System (UTM Zone 20N). This will help to preserve euclidean distance between points. The EPSG code is 2961.
+For modelling, we will transform the data from lat/lon into a new "Canadian" CRS: NAD83 datum with UTM Zone 20N projection. This projection will help to preserve euclidean distance between points. The EPSG code is 2961.
 
-To transform the data from lat/lon into the new CRS, we will use the `spTransform()` function. For example, to transform the Whale Watch sightings spatial object `Sightings_DRWW_sp`, we first define the CRS object as follows:
+To do the transformation, we will use the `spTransform()` function. For example, to transform the Whale Watch sightings spatial object `Sightings_DRWW_sp`, we first define the CRS object as follows:
 
 ```{r}
 Can_proj <- CRS("+init=EPSG:2961")
 Can_proj <- fm_crs_set_lengthunit(Can_proj, unit='km')
 ```
+
 The second line of code specifies that we want to work in units of km instead of the default meters. This can prove vital in applications to avoid numerical overflow.
 
 Next, we transform `Sightings_DRWW_sp`:
@@ -196,6 +201,7 @@ Next, we transform `Sightings_DRWW_sp`:
 Sightings_DRWW_sp <- spTransform(Sightings_DRWW_sp, Can_proj)
 Sightings_DRWW_sp@proj4string
 ```
+
 Notice the changed output from calling `@proj4string`. We repeat this for all the spatial objects that are points or lines.
 <div class="fold e"> 
 ```{r}
@@ -206,7 +212,7 @@ WW_ports <- spTransform(WW_ports, Can_proj)
 ```
 </div>
 
-Transforming the 'raster'-like SpatialPixelsDataFrame objects (`Slope`, `Bathym`, `Dist_Brier`, and `Dist_Quoddy`) using `spTransform` would be innapropriate here. The projection leads to a curvature of the pixels. A more appropriate approach here is to use bilinear interpolation. The `projectRaster()` function from the *raster* package works great for this. This requires converting the `SpatialPixelsDataFrame` object into an object of type `raster`. This is made easy with the function `raster()`. Finally, to convert the `raster` object back into a `SpatialPixelsDataFrame`, we can use the `as()` function from the *maptools* package. This function is extremely useful for converting spatial objects between the popular packages: *sp*, *spatstat*, and *sf*. We use this function substantially throughout these workshops.
+Transforming the 'raster'-like SpatialPixelsDataFrame objects (`Slope`, `Bathym`, `Dist_Brier`, and `Dist_Quoddy`) using `spTransform` would be inappropriate here. The projection leads to a curvature of the pixels. A more appropriate approach here is to use bilinear interpolation. The `projectRaster()` function from the *raster* package works great for this. This requires converting the `SpatialPixelsDataFrame` object into an object of type `raster`. This is made easy with the function `raster()`. Finally, to convert the `raster` object back into a `SpatialPixelsDataFrame`, we can use the `as()` function from the *maptools* package. This function is extremely useful for converting spatial objects between the popular packages: *sp*, *spatstat*, and *sf*. We use this function substantially throughout the workshop.
 
 ```{r}
 Slope <- raster(Slope)
@@ -221,7 +227,7 @@ Dist_Quoddy <- as(projectRaster(raster(Dist_Quoddy), crs=Can_proj), 'SpatialPixe
 
 Plot the (transformed) Bathymetry, Slope, and Distance from Port spatial objects. We are going to combine these into a single plot using the `multiplot()` function from the *inlabru* package. This function takes as input ggplot objects and an argument `layout`, specifying how the plots should be arranged.
 
-```{r, message=F}
+```{r 'map-multiplot', message=FALSE, cache=TRUE}
 multiplot(ggplot() +
   gg(Domain) +
   gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
@@ -236,13 +242,14 @@ ggplot() +
   gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)'),
 layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
 ```
+
 The `multiplot()` function is a very flexible function that enables publication-quality figures to be made with relative ease. 
 
 ### Exercise 2 {#Ex2}
 Have a go at changing the argument `byrow=T` to `byrow=F`. What do you think will happen?
 
 <div class="fold s o"> 
-```{r, message=F}
+```{r 'map-multiplotOrder', message=FALSE, cache=TRUE}
 multiplot(ggplot() +
   gg(Domain) +
   gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
@@ -262,7 +269,7 @@ layout=matrix(1:4, nrow=2, ncol=2, byrow = F))
 Next, have a go at specifying a 3x2 matrix with entries (1,1,2,3,4,4). Notice what happens? Does this make sense to you?
 
 <div class="fold s o"> 
-```{r, message=F}
+```{r 'map-multiplotStretch', message=FALSE, cache=TRUE}
 multiplot(ggplot() +
   gg(Domain) +
   gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
@@ -289,7 +296,7 @@ colsc <- function(...) {
 ```
 Look at `?RColorBrewer::brewer.pal` to see what other colour palettes are available.
 
-```{r, message=F}
+```{r 'map-multiplotColor1', message=FALSE, cache=TRUE}
 multiplot(ggplot() +
   gg(Domain) +
   gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') +
@@ -313,7 +320,7 @@ layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
 Have a go at creating your own colour palette function. Investigate the effects of changing both arguments to `brewer.pal`.
 
 <div class="fold s o"> 
-```{r, message=F}
+```{r 'map-multiplotColor2', message=FALSE, cache=TRUE}
 colsc2 <- function(...){
   scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(7,"Spectral")),
                        limits = range(...))
