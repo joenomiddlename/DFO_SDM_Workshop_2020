@@ -438,7 +438,7 @@ We will investigate trends between the whale density and the covariates bathymet
 
 A quick first step is to evaluate whether the empirical densities of each covariate at the encounter locations (representing habitat used by the whale) differ from the empirical density across the domain (representing available habitat values). Such difference may indicate that the whales associated with a subset of the available habitat (or indicate differences in observer coverage).  
 
-To extract the covariate values at each location, we will convert the SpatialPixelsDataFrame objects into objects of class `im` from the *spatstat* package. Then, after creating a `ppp` point pattern object containing the sightings locations from all sources, we can easily extract the values of each covariate at each point location^[Alternatively, we can use the function `over()` from the *sp* package. We choose to create `im` objects so that we can later use the `ppm` function from *spatstat* for exploratory analysis purposes. `ppm` fits Poisson process models, equivalent to Maxent models.]. 
+To extract the covariate values at each location, we will convert the SpatialPixelsDataFrame objects into objects of class `im` from the *spatstat* package. Then, after creating a `ppp` point pattern object containing the sightings locations from all sources, we can easily extract the values of each covariate at each point location^[Alternatively, we can use the function `over()` from the *sp* package. We choose to create `im` objects so that we can later use the `ppm` function from *spatstat* for exploratory analysis purposes. `ppm` fits Poisson process models, which can be equivalent to Maxent models.]. 
 
 ```{r 'extract-slopeAndBathy', message=FALSE, warning=FALSE, cache=TRUE}
 # Convert covariates to im class
@@ -513,21 +513,23 @@ ggplot(data=data.frame(Bathym_obs = log(1-Bathym_obs)),
 
 Perhaps there is evidence of whales preferring areas of shallower waters?
 
-From this, we see that sightings locations are associated with regions with shallower waters and flatter slopes compared with the domain as a whole. However, these results may simply reflect the types of regions preferentially visited by observers!
+These plots may suggests that sightings locations are associated with regions with flatter slopes and shallower waters compared what is available in the study area. However, these results may simply reflect the types of regions preferentially visited by observers!
 
-Next, we could go one step further and fit Poisson point process models to the sightings data. These are equivalent to Maxent models. Ignoring effort for the time being, what does a Maxent model tell us?
+We could go one step further and fit Poisson point process models to the sightings data using the `ppm()` function from the spatstat package. These can be equivalent to Maxent models. Ignoring effort for the time being, what does a Poisson point process model tell us?
+
 ```{r, message=F}
 log_Slope_im <- Slope_im
 log_Slope_im$v <- log(log_Slope_im$v)
 log_Bathym_im <- Bathym_im
 log_Bathym_im[log_Bathym_im >= 0] <- -1
 log_Bathym_im$v <- log(1-log_Bathym_im$v)
-Maxent_mod <- ppm(All_obs_ppp~log_Slope_im++log_Bathym_im,
+Ppm_1 <- ppm(All_obs_ppp~log_Slope_im++log_Bathym_im,
                   data=list(log_Slope_im=log_Slope_im, log_Bathym_im=log_Bathym_im,
                             Domain=as(Domain, 'owin')),
                   subset = Domain)
-summary(Maxent_mod)
+summary(Ppm_1)
 ```
+
 We find some evidence that the whales prefer regions of higher slope and shallower waters.
 
 Next, we can attempt to make a crude adjustment for effort and see if these estimates change. We have already created a SpatialPixelsDataFrame object containing distance from the two whale watch ports. Next, we can create a SpatialPixelsDataFrame containing the perpendicular distances to the nearest trackline. This fails to account for overlap in survey tracklines, but offers a reasonable approach to crudely control for effort.
@@ -553,7 +555,7 @@ Dist_Brier_sq$Dist_Brier_sq <- scale(Dist_Brier$Dist_Brier^2)
 Dist_Quoddy_sq <- as(Dist_Quoddy,'SpatialPixels')
 Dist_Quoddy_sq$Dist_Quoddy_sq <- scale(Dist_Quoddy$Dist_Quoddy^2)
 
-Maxent_mod <- ppm(All_obs_ppp~log_Slope_im+log_Bathym_im +
+Ppm_2 <- ppm(All_obs_ppp~log_Slope_im+log_Bathym_im +
                     I(ifelse(marks=='Brier',1,0)):Dist_Brier_im +
                     I(ifelse(marks=='Quoddy',1,0)):Dist_Quoddy_im +
                     I(ifelse(marks=='survey',1,0)):Dist_Survey_im +
@@ -565,18 +567,18 @@ Maxent_mod <- ppm(All_obs_ppp~log_Slope_im+log_Bathym_im +
                             Dist_Survey_im = as(as(Dist_Surveylines,'SpatialGridDataFrame'),'im'),
                             Domain=as(Domain, 'owin')),
                   subset = Domain)
-coef(summary(Maxent_mod))
+coef(summary(Ppm_2))
 ```
 
 With this rough attempt at controlling for heterogeneous effort, we see that both log slope and log depth are found to be significantly associated with the whale density, with positive coefficients for both. The negative effects of all three complicated expressions imply that a negative association between 'distance' and observed intensity is witnessed (agreeing with common sense).
 
 We can plot the true whale intensity predicted from this model:
 
-```{r 'fig-maxent', cache=TRUE}
+```{r 'fig-ppm', cache=TRUE}
 # remove the effects of observers for plotting
-pred_coef <- coef(Maxent_mod)
+pred_coef <- coef(Ppm_2)
 pred_coef[c(1,4,5,6,7,8)] <- 0
-plot(predict.ppm(Maxent_mod, ngrid=c(300,300),
+plot(predict.ppm(Ppm_2, ngrid=c(300,300),
              new.coef=pred_coef)[[1]],superimpose=F,
      hcl.colors(60, "YlOrRd", rev = TRUE))
 
@@ -585,12 +587,12 @@ plot(predict.ppm(Maxent_mod, ngrid=c(300,300),
 Alternatively, we can also plot the fitted observed intensity surface $\lambda_{obs}$ (=$\lambda_{true} \times \lambda_{effort}$) for all observer types. We plot the observed intensity surfaces for both the survey and Quoddy-based whale watch vessels.
 
 ```{r 'fig-maxentFitted', cache=TRUE}
-pred_coef <- coef(Maxent_mod)
-plot(log(predict(Maxent_mod, ngrid=c(300,300),
+pred_coef <- coef(Ppm_2)
+plot(log(predict(Ppm_2, ngrid=c(300,300),
              new.coef=pred_coef)[[3]]),superimpose=F,
      hcl.colors(60, "YlOrRd", rev = TRUE))
 # Plot Quoddy
-plot(log(predict(Maxent_mod, ngrid=c(300,300),
+plot(log(predict(Ppm_2, ngrid=c(300,300),
              new.coef=pred_coef)[[2]]),superimpose=F,
      hcl.colors(60, "YlOrRd", rev = TRUE))
 ```
@@ -603,10 +605,10 @@ We can actually investigate the suitability (or unsuitability) of this inhomogen
 
 If the empirical K function falls 'significantly' above the expected curve at a distance $r$, then additional clustering has been detected in the data that cannot be explained by the homogeneous model alone. Conversely, if the empirical K function falls 'significantly' below the expected curve at a distance $r$, then additional repulsion or regularity has been detected in the data that cannot be explained by the homogeneous Poisson model alone. This clustering or repulsion may be caused by covariates or biological processes that have been missed!
 
-The K function and empirical K function can also be computed for inhomogeneous Poisson process (or MAXENT) models. The interpretation of the plots is similar, with large discrepancies providing evidence of additional unexplained clustering/repulsion existing in the data that may be caused by unmeasured covariates. Let's plot these two curves now!
+The K function and empirical K function can also be computed for inhomogeneous Poisson process models. The interpretation of the plots is similar, with large discrepancies providing evidence of additional unexplained clustering/repulsion existing in the data that may be caused by unmeasured covariates. Let's plot these two curves now!
 
 ```{r 'fig-kFunctions', warning=FALSE, cache=TRUE}
-plot(Kinhom(All_obs_ppp,lambda=Maxent_mod,correction = 'best',normpower = 1))
+plot(Kinhom(All_obs_ppp,lambda=Ppm_2,correction = 'best',normpower = 1))
 ```
 
 We see a large discrepancy between the true curve (in red) and the empirical curve in black. Thus, the fitted model in its current form is inadequate.
