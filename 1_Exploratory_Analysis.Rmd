@@ -299,6 +299,8 @@ layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
 
 ## Testing model assumptions and investigating trends
 
+**JOE: we need to define all of the terms used later in the tutorial, e.g., $\lambda_{eff}$. Depending on the lecture, you can be or less technical. But they should all be described at least intuitively here up-front**
+
 We will be fitting log-Gaussian Cox process models to the sightings data. This model assumes that, conditional upon the density surface $\lambda_{obs}(\textbf{s})$, the sighting locations are **independent**. 
 
 Planned surveys can be designed to (approximately) satisfy the independence assumption. The boat speed can be fixed at a high value relative to the individuals' speeds and a narrow perpendicular field-of-view can be enforced. Then, assuming that the individuals of the target species are in equilibrium with respect to their stationary distribution $\lambda_{true}(\textbf{s})$ (i.e. the species' density) and locally mixing faster than the time between revisits by observers, the independence assumption may reasonably hold.
@@ -328,7 +330,7 @@ gDistance(Sightings_DRWW_sp[2:4,], byid = T)[cbind(c(1,2),c(2:3))] /
 
 This hypothesis would imply a traveling speed of between 4km/h and 16km/h. Is this plausible? Since fin whales are known for their speed and can sustain much higher speeds (> 30km/h), we will discard all repeated sightings each day. We will keep only the first sighting made each day by each company. 
 
-Note that there is no overlap between the sighting locations from the two whale watch companies, indicating that an assumption of independent encounters between the two companies could be reasonable. 
+Note that there is no overlap between the sighting locations from the two whale-watch companies, indicating that an assumption of independent encounters between the two companies could be reasonable. 
 
 ```{r 'map-overlap', message=FALSE, cache=TRUE}
 Sightings_DRWW_sp$PLATFORM <- as.factor(Sightings_DRWW_sp$PLATFORM)
