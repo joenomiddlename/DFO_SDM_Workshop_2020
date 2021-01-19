@@ -56,11 +56,11 @@ Planned surveys can be designed to (approximately) satisfy the independence assu
 
 Conversely, no such assumptions can be made regarding the whale watch sightings. The unknown positions of the whale watch boats, the 360 degree fields-of-view on-board, the variable boat speed, and the repeated sightings of the same individuals throughout each day can all invalidate the independence assumption required to fit a log-Gaussian Cox process.
 
-In these workshops, we will see some potential solutions to address this issue of independence. In this session, we will perform some exploratory analyses to investigate the suitability of the independence assumption, and to investigate possible ways of estimating observer effort. 
+In our workshop, we will see some potential solutions to address this issue of independence. In this session, we will perform some exploratory analyses to investigate the suitability of the independence assumption, and to investigate possible ways of estimating observer effort. 
 
 ### Investigating the autocorrelation between whale watch sighting locations
 
-Lets look at the whale watch data. Specifically, let's investigate the 2nd, 3rd and 4th sightings in the dataset. Notice that they were made on the same day and very close together in time. Often, little information is provided on the database management procedures. For example, are these multiple encounters with the same individual? Would the database discard or retain repeated sightings? 
+Let's look at the whale-watching data. Specifically, let's investigate the 2nd, 3rd and 4th sightings in the dataset. Notice that they were made on the same day and very close together in time. Often, little information is provided on the database management procedures. For example, are these multiple encounters with the same individual? Would the database discard or retain repeated sightings? 
 ```{r, warning=FALSE, message=F}
 Sightings_DRWW_sp@data[2:4,c('WS_TIME','WS_DATE','PLATFORM')]
 ```
@@ -80,7 +80,7 @@ This hypothesis would imply a traveling speed of between 4km/h and 16km/h. Is th
 
 To be safe moving forward, we will discard all repeated sightings each day, keeping only the first sighting made each day by each company. Note that there is no overlap between the sighting locations from the two whale watch companies, indicating that an assumption of independent encounters between the two companies could be reasonable. 
 
-```{r, message=F}
+```{r 'map-overlap', message=FALSE, cache=TRUE}
 Sightings_DRWW_sp$PLATFORM <- as.factor(Sightings_DRWW_sp$PLATFORM)
 ggplot() + gg(Domain) + gg(Sightings_DRWW_sp, colour=Sightings_DRWW_sp$PLATFORM_CODE)
 ```
@@ -111,7 +111,7 @@ How reasonable is our assumption that the species density remains constant acros
 If each sighting is indeed an independent realisation from a temporally static point process, then there should be no association between the spatial distances between the whale watch sightings and how far apart in time they were made. 
 
 So, we compute the distances in time and the euclidean distances in space between each sighting and plot time and space on the x and y axes respectively. 
-```{r, message=F}
+```{r 'fig-difference', message=FALSE, cache=TRUE}
 difftime_Brier<- dist(as.numeric(ymd(Sightings_Brier_nodup$WS_DATE)))
 diffspace_Brier <- dist(Sightings_Brier_nodup@coords)
 difftime_Brier_fac <- as.factor(difftime_Brier)
@@ -260,7 +260,7 @@ xtabs(~DATASET+YEAR,Effort_survey@data)
 
 We now investigate trends between the whale density and the covariates bathymetry and Slope. A simple first step is to evaluate the empirical densities of each covariate at both the encounter locations and across the domain. One easy and quick way to do this is to convert the SpatialPixelsDataFrame objects into objects of class `im` from the *spatstat* package. Then, after creating a `ppp` point pattern object containing the sightings locations from all sources, we can easily extract the values of each covariate at each point location. Alternatively, we can use the function `over()` from the *sp* package. We choose to create `im` objects so that we can later use the `ppm` function from *spatstat* for exploratory analysis purposes. `ppm` fits Poisson process models, equivalent to Maxent models. 
 
-```{r, message=F, warning=F}
+```{r , message=F, warning=F}
 # Convert covariates to im class
 Slope_im <- as(as(Slope, 'SpatialGridDataFrame'),'im')
 Bathym_im <- as(as(Bathym, 'SpatialGridDataFrame'),'im')
