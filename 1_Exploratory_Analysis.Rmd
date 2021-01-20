@@ -61,6 +61,8 @@ The data we use throughout this workshop is data on fin whales. We use two main 
 
 The sightings are from 201?. The sightings from the systematic survey, but not those of the whale-watching operators, are accompanied with the boat trackline.
 
+**JOE: add reference given by Shelley**
+
 ### Coordinate reference system
 
 These data are spatial data. The first thing we must always do is check for consistency between the coordinate reference systems (CRS) of each spatial object in use! To print the CRS of an *sp* object, simply add `@proj4string` to the name of the spatial object and run. For example, to check the CRS of the WW sightings we run:
