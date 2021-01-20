@@ -517,12 +517,14 @@ These plots may suggests that sightings locations are associated with regions wi
 
 We could go one step further and fit Poisson point process models to the sightings data using the `ppm()` function from the spatstat package. These can be equivalent to Maxent models. Ignoring effort for the time being, what does a Poisson point process model tell us?
 
-```{r, message=F}
+```{r 'ppm', message=FALSE, cache=TRUE}
+# Transforming the covariates
 log_Slope_im <- Slope_im
 log_Slope_im$v <- log(log_Slope_im$v)
 log_Bathym_im <- Bathym_im
 log_Bathym_im[log_Bathym_im >= 0] <- -1
 log_Bathym_im$v <- log(1-log_Bathym_im$v)
+# Fitting the Poisson point process model
 Ppm_1 <- ppm(All_obs_ppp~log_Slope_im++log_Bathym_im,
                   data=list(log_Slope_im=log_Slope_im, log_Bathym_im=log_Bathym_im,
                             Domain=as(Domain, 'owin')),
@@ -530,18 +532,15 @@ Ppm_1 <- ppm(All_obs_ppp~log_Slope_im++log_Bathym_im,
 summary(Ppm_1)
 ```
 
-We find some evidence that the whales prefer regions of higher slope and shallower waters.
+We find some evidence that the whales may be found more often in regions of higher slope and shallower waters.
 
-Next, we can attempt to make a crude adjustment for effort and see if these estimates change. We have already created a SpatialPixelsDataFrame object containing distance from the two whale watch ports. Next, we can create a SpatialPixelsDataFrame containing the perpendicular distances to the nearest trackline. This fails to account for overlap in survey tracklines, but offers a reasonable approach to crudely control for effort.
+**JOE: be specific here, base on the coefficient, Ztest, etc? Some people will know these models, some won't at all.**
+
+Next, we can attempt to make a crude adjustment for effort and see if these estimates change. We have already created a SpatialPixelsDataFrame object containing distance from the two whale-watch ports. Next, we can create a SpatialPixelsDataFrame containing the perpendicular distances to the nearest trackline. This fails to account for overlap in survey tracklines, but offers a reasonable approach to crudely control for effort.
 
 ```{r 'map-dectectionDistance', warning=FALSE, message=FALSE, cache=TRUE}
 Dist_Surveylines <- as(Dist_Brier,'SpatialPoints')
 Dist_Surveylines$Dist_surveylines <- as.numeric(apply(gDistance(Dist_Surveylines, Effort_survey,byid = T),2,min))
-# Define a 'pretty' colour palette
-colsc <- function(...) {
-  scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(11,"RdYlBu")),
-                       limits = range(...))
-}
 Dist_Surveylines <- as(Dist_Surveylines,'SpatialPixelsDataFrame')
 ggplot() + gg(Domain) + gg(Dist_Surveylines) + colsc(Dist_Surveylines@data[,1])
 # What is the maximum detection distance?
@@ -554,7 +553,9 @@ Dist_Brier_sq <- as(Dist_Brier,'SpatialPixels')
 Dist_Brier_sq$Dist_Brier_sq <- scale(Dist_Brier$Dist_Brier^2)
 Dist_Quoddy_sq <- as(Dist_Quoddy,'SpatialPixels')
 Dist_Quoddy_sq$Dist_Quoddy_sq <- scale(Dist_Quoddy$Dist_Quoddy^2)
+```
 
+```{r 'ppm2', warning=FALSE, message=FALSE, cache=TRUE}
 Ppm_2 <- ppm(All_obs_ppp~log_Slope_im+log_Bathym_im +
                     I(ifelse(marks=='Brier',1,0)):Dist_Brier_im +
                     I(ifelse(marks=='Quoddy',1,0)):Dist_Quoddy_im +
