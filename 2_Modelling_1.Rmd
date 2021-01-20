@@ -62,7 +62,7 @@ options("rgdal_show_exportToProj4_warnings"="none")
 
 ## Creating a mesh
 
-The log-Gaussian Cox process models we will be fitting require Gaussian random fields to be specified. These can become extremely computationally prohibitive, unless smart computational tricks are made. We will be using the approach of approximating an SPDE with a GMRF evaluated across a delauney triangulation. This approach was developed by @Lindgren2011 (Lindgren being an author of the `inlabru` package). 
+The log-Gaussian Cox process models we will be fitting require Gaussian random fields to be specified. These can become computationally prohibitive. We will use a smart computational trick, which approximates a stochastic partial differential equation (SPDE) with a Gaussian Markov random field (GMRF) evaluated across a delauney triangulation. This approach was developed by @Lindgren2011 (Lindgren being an author of the `inlabru` package). 
 
 The first step to using this approach is creating the mesh. Good rules of thumb are as follows:
 
