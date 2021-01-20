@@ -17,7 +17,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction
 
-**JOE: move up some of the motivation here**
+In this tutorial, we will be fitting Bayesian distance sampling-adjusted log-Gaussian Cox process models to the survey data using the *inlabru* package. This will provide us with the pre-requisite knowledge needed to fit integrative joint log-Gaussian Cox process models with both survey and opportunistic sightings data reported by whale watch companies!
 
 ### Load packages
 
@@ -60,15 +60,16 @@ rgdal::set_thin_PROJ6_warnings(TRUE)
 options("rgdal_show_exportToProj4_warnings"="none")
 ```
 
-### 
-
-In this tutorial, we will be fitting Bayesian distance sampling-adjusted log-Gaussian Cox process models to the survey data using the *inlabru* package. This will provide us with the pre-requisite knowledge needed to fit integrative joint log-Gaussian Cox process models with both survey and opportunistic sightings data reported by whale watch companies!
+## Creating a mesh
 
 The log-Gaussian Cox process models we will be fitting require Gaussian random fields to be specified. These can become extremely computationally prohibitive, unless smart computational tricks are made. We will be using the approach of approximating an SPDE with a GMRF evaluated across a delauney triangulation. This approach was developed by Lindgren et al 2011 (an author of the `inlabru` package). 
 
 The first step to using this approach is creating the mesh. Good rules of thumb are as follows:
+
 * define maximum triangle lengths no shorter than half of the expected spatial range of your problem. Spatial range here is loosely defined as the 'distance required for whale density to be independent of each other'. Note that it is impossible to detect clusters or hotspots with sizes smaller than the maximum length of triangles used.
+
 * Do not define the minimum triangle lengths too small. This could lead to very large meshes!
+
 * Use a minimum triangle angle of 21 degrees.
 
 So, we go ahead and define a first mesh using the function `inla.mesh.2d` from the *INLA* package. We choose minimum triangle edge lengths of 18km, maximum triangle edge lengths of 45km, minimum angles of 25 degrees and we specify that we want a hard boundary equal to the coastline (as defined by `DOMAIN`). Note that we can plot meshes using `gg` as before!
@@ -738,3 +739,4 @@ Coming up next, we will see how to incorporate presence-only datasets into our m
 4. [Bonus Exercise 1](#Ex4)
 5. [Bonus Exercise 2](#Ex5)
 
+# References
