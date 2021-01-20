@@ -15,7 +15,13 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Modelling: Fitting distance sampling log-Gaussian Cox process models using inlabru
+## Introduction
+
+In this tutorial, we will be fitting Bayesian distance sampling-adjusted log-Gaussian Cox process models to the survey data using the *inlabru* package. This will provide us with the pre-requisite knowledge needed to fit integrative joint log-Gaussian Cox process models with both survey and opportunistic sightings data reported by whale watch companies!
+
+### Load packages
+
+Let's load all the required R packages. See our tutorial *0_Installing_packages.html* for installation information.
 
 ```{r warning=FALSE, message=FALSE, error=FALSE}
 library(rgeos)
@@ -34,21 +40,18 @@ library(raster)
 
 **JOE: I've remove it from Exp. An. and put it here. We may need to change it or just change the starting values.**
 
-To get access to the model results quickly, we need to download the pre-compiled modelling result files, which can be found [here](https://ubcca-my.sharepoint.com/:u:/g/personal/joewatto_student_ubc_ca/Ea8lRO_ESL5CgfFSWqOT0LUBzskEWVVA_v6N2B2RZhr67w?email=m.auger-methe%40oceans.ubc.ca&e=TvsrM1).
+### File set up
 
 
-Next, lets check our current working directory! 
-```{r}
-getwd()
-```
-
-We should be inside the folder titled: 'DFO_SDM_Workshop_2020'. If not, change this by navigating to the correct folder in the bottom right panel (folder view), opening it, and then clicking "Set as Working Directory" under the tab 'More'.
+Using `getwd()` check that you are inside the folder 'DFO_SDM_Workshop_2020' that we downloaded in the previous tutorial. If not, change this by navigating to the correct folder in the bottom right panel (folder view), opening it, and then clicking "Set as Working Directory" under the tab 'More'.
 
 Now we can load in the precompiled data and functions
 ```{r message=F}
 list2env(readRDS('./Data/Modelling_Data.rds'),globalenv())
 source('utility_functions.R')
 ```
+
+In addition, to get access to the model results quickly, we need to download the pre-compiled modelling result files, which can be found [here](https://ubcca-my.sharepoint.com/:u:/g/personal/joewatto_student_ubc_ca/Ea8lRO_ESL5CgfFSWqOT0LUBzskEWVVA_v6N2B2RZhr67w?email=m.auger-methe%40oceans.ubc.ca&e=TvsrM1).
 
 Finally, let's turn off all warnings associated with coordinate reference systems. 
 ```{r}
@@ -57,13 +60,16 @@ rgdal::set_thin_PROJ6_warnings(TRUE)
 options("rgdal_show_exportToProj4_warnings"="none")
 ```
 
-In this session, we will be fitting Bayesian distance sampling-adjusted log-Gaussian Cox process models to the survey data using the *inlabru* package. This will provide us with the pre-requisite knowledge needed to fit integrative joint log-Gaussian Cox process models with both survey and opportunistic sightings data reported by whale watch companies!
+## Creating a mesh
 
 The log-Gaussian Cox process models we will be fitting require Gaussian random fields to be specified. These can become extremely computationally prohibitive, unless smart computational tricks are made. We will be using the approach of approximating an SPDE with a GMRF evaluated across a delauney triangulation. This approach was developed by Lindgren et al 2011 (an author of the `inlabru` package). 
 
 The first step to using this approach is creating the mesh. Good rules of thumb are as follows:
+
 * define maximum triangle lengths no shorter than half of the expected spatial range of your problem. Spatial range here is loosely defined as the 'distance required for whale density to be independent of each other'. Note that it is impossible to detect clusters or hotspots with sizes smaller than the maximum length of triangles used.
+
 * Do not define the minimum triangle lengths too small. This could lead to very large meshes!
+
 * Use a minimum triangle angle of 21 degrees.
 
 So, we go ahead and define a first mesh using the function `inla.mesh.2d` from the *INLA* package. We choose minimum triangle edge lengths of 18km, maximum triangle edge lengths of 45km, minimum angles of 25 degrees and we specify that we want a hard boundary equal to the coastline (as defined by `DOMAIN`). Note that we can plot meshes using `gg` as before!
@@ -733,3 +739,4 @@ Coming up next, we will see how to incorporate presence-only datasets into our m
 4. [Bonus Exercise 1](#Ex4)
 5. [Bonus Exercise 2](#Ex5)
 
+# References
