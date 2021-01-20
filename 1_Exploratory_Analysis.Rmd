@@ -389,7 +389,7 @@ We have seen some evidence that residual autocorrelations remain in the sighting
 
 ### Creating training and testing datasets
 
-**JOE: add one line about why you need a training and test dataset.**
+**JOE: add one line about why you need a training and test dataset. And specify whether the testing and the training is used in the exploratory analysis tutorial/activity. Or whether you are just using the training to explore and teh testing will be used another day/tutorial.**
 
 We now subset the data into a training and test set. We choose the training set to contain all the sightings from 2007-2009. For the test data, we choose **all** the sightings from 2011. See [Additional tips](#Ad4) for an explanation of why the potential repeated sighting in 2011 between survey and whale-watch datat, means that the whale-watching data cannot be added to the training dataset.
 
@@ -429,8 +429,6 @@ table(Sightings_Brier_nodup$YEAR)
 The 'CPUE' values are highly variable! The wild differences could be due to the small efforts in years 2008 and 2009 relative to 2007. Alternatively, the differences could actually reflect real differences in whale density across the three distinct regions visited each year! Without taking a model-based approach and controlling for differences in spatial effort, it is unclear how to combine the sightings from these three surveys.
 
 As we will see in the next tutorial, by taking a model-based approach to inference, we will be able to combine the data from all three surveys to estimate the whale density across space. Unfortunately, due to the lack of spatial overlap between the surveys' efforts (tracklines), we are unable to account for any differences between the survey protocols within a model without strong prior information available. For example, an intercept added to the model for each survey would be confounded by the spatial field.
-
-**JOE: I have removed the plots and code that were similar to the survey plots at the very beginning, but we may want to think about merging the above section with this one and reordering things to reduce repeating things and to make the flow easier.**
 
 ## Investigating trends between the environmental covariates and whale density
 
