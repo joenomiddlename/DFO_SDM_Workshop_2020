@@ -1,0 +1,735 @@
+---
+title: "Model Fitting"
+subtitle: "Fitting distance sampling log-Gaussian Cox process models using inlabru"
+author: "Joe Watson"
+date: "11/01/2021"
+output: 
+  html_document:
+    css: "CSSdefs.css"
+    after_body: footer.html
+---
+
+<script src="js/hideOutput.js"></script>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Modelling: Fitting distance sampling log-Gaussian Cox process models using inlabru
+
+```{r warning=FALSE, message=FALSE, error=FALSE}
+library(rgeos)
+library(rgdal)
+library(sp)
+library(maptools)
+library(spatstat)
+library(spdep)
+library(INLA)
+library(inlabru)
+library(readxl)
+library(lubridate)
+library(ggmap)
+library(raster)
+```
+
+**JOE: I've remove it from Exp. An. and put it here. We may need to change it or just change the starting values.**
+
+To get access to the model results quickly, we need to download the pre-compiled modelling result files, which can be found [here](https://ubcca-my.sharepoint.com/:u:/g/personal/joewatto_student_ubc_ca/Ea8lRO_ESL5CgfFSWqOT0LUBzskEWVVA_v6N2B2RZhr67w?email=m.auger-methe%40oceans.ubc.ca&e=TvsrM1).
+
+
+Next, lets check our current working directory! 
+```{r}
+getwd()
+```
+
+We should be inside the folder titled: 'DFO_SDM_Workshop_2020'. If not, change this by navigating to the correct folder in the bottom right panel (folder view), opening it, and then clicking "Set as Working Directory" under the tab 'More'.
+
+Now we can load in the precompiled data and functions
+```{r message=F}
+list2env(readRDS('./Data/Modelling_Data.rds'),globalenv())
+source('utility_functions.R')
+```
+
+Finally, let's turn off all warnings associated with coordinate reference systems. 
+```{r}
+rgdal::set_rgdal_show_exportToProj4_warnings(FALSE)
+rgdal::set_thin_PROJ6_warnings(TRUE)
+options("rgdal_show_exportToProj4_warnings"="none")
+```
+
+In this session, we will be fitting Bayesian distance sampling-adjusted log-Gaussian Cox process models to the survey data using the *inlabru* package. This will provide us with the pre-requisite knowledge needed to fit integrative joint log-Gaussian Cox process models with both survey and opportunistic sightings data reported by whale watch companies!
+
+The log-Gaussian Cox process models we will be fitting require Gaussian random fields to be specified. These can become extremely computationally prohibitive, unless smart computational tricks are made. We will be using the approach of approximating an SPDE with a GMRF evaluated across a delauney triangulation. This approach was developed by Lindgren et al 2011 (an author of the `inlabru` package). 
+
+The first step to using this approach is creating the mesh. Good rules of thumb are as follows:
+* define maximum triangle lengths no shorter than half of the expected spatial range of your problem. Spatial range here is loosely defined as the 'distance required for whale density to be independent of each other'. Note that it is impossible to detect clusters or hotspots with sizes smaller than the maximum length of triangles used.
+* Do not define the minimum triangle lengths too small. This could lead to very large meshes!
+* Use a minimum triangle angle of 21 degrees.
+
+So, we go ahead and define a first mesh using the function `inla.mesh.2d` from the *INLA* package. We choose minimum triangle edge lengths of 18km, maximum triangle edge lengths of 45km, minimum angles of 25 degrees and we specify that we want a hard boundary equal to the coastline (as defined by `DOMAIN`). Note that we can plot meshes using `gg` as before!
+
+```{r}
+seed <- c(12345)
+```
+
+
+```{r}
+mesh_land <- inla.mesh.2d(boundary = Domain,
+                               min.angle = 25,
+                               max.edge = 45,
+                               cutoff = 18)
+ggplot() + gg(mesh_land) + gg.spatiallines_mod(Effort_survey,colour='red')
+
+```
+
+Note that spatial correlations < 18km will not be detectable! We can print the number of mesh vertices (directly related to the length of time required later to fit the model).
+```{r}
+mesh_land$n # lots of triangle vertices can lead to slow computation time. 551 good
+plot(mesh_land)
+```
+
+We have a potential serious issue with this mesh. The coastline is very jagged, which could could lead to numerical instabilities to occur later. One easy solution to this is to buffer and/or smooth the coastline shapefile, making sure that all survey lines and sightings fall within the new modified shapefile. We do this below:
+
+```{r}
+# Use gSimplify to smooth the edges
+ggplot() + gg(gSimplify(Domain,tol=8)) + gg.spatiallines_mod(Effort_survey,colour='red')
+
+# Alternative is buffering
+# Buffered by 5km
+ggplot() + gg(gBuffer(Domain,width=5)) + gg.spatiallines_mod(Effort_survey,colour='red')
+# It still doesn't contain all the survey lines
+# Buffered by 10km
+ggplot() + gg(gBuffer(Domain,width=10)) + gg.spatiallines_mod(Effort_survey,colour='red')
+gContains(gBuffer(Domain,width=10), Effort_survey) # Again
+# Buffered by 10km and then smoothed
+ggplot() + gg(gSimplify(gBuffer(Domain,width=15),tol=5)) + gg.spatiallines_mod(Effort_survey,colour='red')
+gContains(gSimplify(gBuffer(Domain,width=15),tol=5), Effort_survey) # success - all effort lines are in domain
+
+Domain_smoothed <- gSimplify(gBuffer(Domain,width=15),tol=5)
+
+mesh_land <- inla.mesh.2d(boundary = Domain_smoothed,
+                         min.angle = 25,
+                         max.edge = 45,
+                         cutoff = 18)
+mesh_land$crs <- Can_proj
+plot(mesh_land)
+mesh_land$n
+ggplot() + #gg(gSimplify(gBuffer(Domain,width=15),tol=3)) +
+  gg(mesh_land) + 
+  gg.spatiallines_mod(Effort_survey,colour='red')
+```
+
+We name our buffered and smoothed shapefile as `Domain_smoothed` and name the corresponding mesh as `mesh_land`.
+
+An alternative 'solution' to the jagged mesh problem is to define the mesh within a much larger convex hull around the coastline. Unfortunately, this approach will not take into account the coastline and hence will measure spatial 'distance' as euclidean distance and not 'ocean-distance'. One such mesh is defined below:
+
+```{r}
+# Compare with a mesh that ignores the land barrier
+mesh_noland <- inla.mesh.2d(boundary = Domain_smoothed,
+                          min.angle = 25,
+                          max.edge = c(45,60),
+                          cutoff = 30,
+                          offset = c(10,20))
+mesh_noland$crs <- Can_proj
+plot(mesh_noland)
+mesh_noland$n
+```
+We ignore this mesh for the remainder of this session, since it fails to account for land as a barrier.
+
+Next, we need to redefine our covariates. Our covariates depth and slope were defined on the original (un-buffered) domain as defined by the shapefile Domain. Since we have buffered (i.e. extended) our coastline, we need to sensibly define covariate values at the extension locations. We choose to 'fill-in' these points with nearest neighbour imputations. Note that these values will not significantly affect the inference, as the effective area covered by these 'extension regions' are very small once we downweight by the effort surface $\lambda_{eff}$.  
+
+```{r}
+# Create the log depth and log slope covariates
+log_Depth <- Bathym
+log_Depth$FIWH_MAR_Bathymetry[log_Depth$FIWH_MAR_Bathymetry >= 0] <- 0
+log_Depth$FIWH_MAR_Bathymetry <- log(1-log_Depth$FIWH_MAR_Bathymetry)
+names(log_Depth) <- 'log_Depth' 
+# Define a set of pixels across our buffered domain
+pixels_Domain <- pixels( mesh_land,mask=gSimplify(gBuffer(Domain,width=19),tol=3),
+                         nx=400,ny=400)
+# Extract values of the covariate at the new pixel locations
+pixels_Domain$log_Depth <- over(pixels_Domain,log_Depth)$log_Depth
+# impute missing values with the nearest neighbour value
+pixels_Domain$log_Depth[is.na(pixels_Domain$log_Depth)] <- 
+  log_Depth$log_Depth[nncross(as(SpatialPoints(pixels_Domain@coords[which(is.na(pixels_Domain$log_Depth)),]),'ppp'),
+                          as(SpatialPoints(log_Depth@coords),'ppp'),
+                          what = 'which')]
+log_Depth <- pixels_Domain
+# Create a squared log depth covariate
+log_Depth_sq <- log_Depth
+names(log_Depth_sq) <- 'log_Depth_sq'
+log_Depth_sq$log_Depth_sq <- log_Depth_sq$log_Depth_sq^2
+# Repeat for slope
+log_Slope <- Slope
+log_Slope$FIWH_MAR_Slope <- log(1+log_Slope$FIWH_MAR_Slope)
+names(log_Slope) <- 'log_Slope'
+pixels_Domain <- pixels( mesh_land,mask=gSimplify(gBuffer(Domain,width=19),tol=3),
+                         nx=400,ny=400)
+pixels_Domain$log_Slope <- over(pixels_Domain,log_Slope)$log_Slope
+pixels_Domain$log_Slope[is.na(pixels_Domain$log_Slope)] <- 
+  log_Slope$log_Slope[nncross(as(SpatialPoints(pixels_Domain@coords[which(is.na(pixels_Domain$log_Slope)),]),'ppp'),
+                              as(SpatialPoints(log_Slope@coords),'ppp'),
+                              what = 'which')]
+log_Slope <- pixels_Domain
+log_Slope_sq <- log_Slope
+names(log_Slope_sq) <- 'log_Slope_sq'
+log_Slope_sq$log_Slope_sq <- log_Slope_sq$log_Slope_sq^2
+
+# Plot the covariates with mesh overlayed
+ggplot() + gg(log_Depth) + gg(mesh_land)
+ggplot() + gg(log_Slope) + gg(mesh_land)
+```
+
+Next, with our mesh and covariates defined, we need to define our Gaussian random field model and priors. To do this, we use the function `inla.spde2.pcmatern` from the *INLA* package. Note that the arguments `prior.sigma` and `prior.range` define arguments for the penalized complexity (PC) prior of the random field developed by Fuglstad, et al., (2016) and Simpson, et al., (2015).
+
+We are required to define PC priors, on the spatial range $\rho$ (the wiggliness) and marginal standard deviation $\sigma$ (the magnitude) of the field. PC priors take the form of prior probabilistic statements on quantiles, providing a user-friendly way of defining sensible, interpretable priors. We are asked to define the following two probabilistic statements:
+
+$$P(\rho < \rho_0) = p_{\rho} \\ P(\sigma > \sigma_0) = p_{\sigma}.$$
+The goal is to specify the lower tail quantile $\rho_0$ and probability $p_{\rho}$ for the range parameter and the upper tail quantile $\sigma_0$ and probability $p_{\sigma}$ for the marginal standard deviation. We choose these 4 parameters to help ensure that the field does not become to 'complex'; specifically we want to avoid the field becoming too 'wiggly' or 'large'. The PC prior then shrinks the spatial field towards the base model of no spatial variance and variance zero, hence the name 'Penalized Complexity'.
+
+We now define our model, with $\rho_0$, $p_{\rho}$, $\sigma_0$, and $p_{\sigma}$ fixed at 35km, 0.01, 2, and 0.01 respectively. 
+
+```{r}
+# First define the SPDE model
+matern_land <- inla.spde2.pcmatern(mesh_land, 
+                              prior.sigma = c(2, 0.01), 
+                              prior.range = c(35, 0.01))
+```
+
+Next, with the, mesh, covariates, and spatial model defined, we must now define our detection probability function. First, we define a half-normal detection probability function. This object will take the form of a base R function.
+
+```{r}
+# Define a half-normal detection probability function (code from inlabru tutorials)
+log_hn = function(distance, lsig){ 
+  -0.5*(distance/exp(lsig))^2
+}
+```
+Next, we need to separately define the components of the model: the SPDE, the intercept, and the detection function parameter `lsig`. We let `inlabru` know the type of object each component is. For example, we define our spatial field and give it the name mySpatial. We tell `inlabru` that the coordinates of the points are the locations at which we wish to evaluate the field at. Finally, we point `inlabru` to the model object we defined earlier (`matern_land`).  
+
+We repeat the process, defining the additional scalar terms `lsig` and `Intercept`. The arguments `1` (specified for the argument `main`) tells inlabru to evaluate the two terms at every data point.
+```{r}
+# (code taken from inlabru tutorials) We need to now 
+cmp_land1 <- ~ mySpatial(main = coordinates, model = matern_land) + 
+  lsig(1) + Intercept(1)
+```
+
+Next, we define the formula. This describes how these components are combined to 
+form the linear predictor. For example, the scalar parameter `lsig` is used in the linear predictor as an argument to the detection probability function `log_hn`. Note that the `log_hn` function is evaluated at a variable `distance`, which also appears on the left hand side of the formula. This tells inlabru that, along with the `coordinates`, the variable `distance` (containing the distances of each sighting from the trackline) is also a response variable of interest. The offset of log(2) is required due to the unknown direction of the detections. For now, we ignore covariates.
+
+```{r}
+formula_1 = coordinates + distance ~ mySpatial +
+  log_hn(distance, lsig) + 
+  Intercept + log(2)
+```
+
+
+This new approach to defining the components and the formula separately in two stages is what gives `inlabru` its generalisibility. Parameters can be included within a model non-linearly, unlike most other R packages! Behind the scenes, `inlabru` linearises the model via a Taylor series expansion.  Furthermore, components and formulae can be stacked together for datasets from differing sources, allowing for integrative joint models to be fit with relative ease!
+
+For detailed additional information on the types of model components allowed by `inlabru` and the linearisation procedure performed, call `?component` and [here](https://github.com/inlabru-org/inlabru/blob/devel/vignettes/method.Rmd).
+
+Before we fit the model, we have one final task to perform. It is often advised in distance sampling applications to threshold our upper detection distances at a 'sensible' value. Let's plot our observed distances from the trackline.
+
+```{r}
+hist(Sightings_survey$DISTANCE)
+```
+
+It looks like 2km could be a reasonable threshold value to choose. Let's set all values above 2km equal to 2km and scale the distances onto the km units scale. **This rescaling to units of km is crucial for numerical stability.**
+
+```{r}
+Sightings_survey$DISTANCE[Sightings_survey$DISTANCE>2000 & !is.na(Sightings_survey$DISTANCE)] <- 
+  2000
+# needs renaming to match the formula argument
+Sightings_survey$distance <- Sightings_survey$DISTANCE
+# There are a couple of missing distances. Impute these with the mean
+Sightings_survey$distance[is.na(Sightings_survey$distance)] <- mean(Sightings_survey$distance,na.rm=T)
+Sightings_survey <- Sightings_survey[,-c(8)]
+Sightings_survey$distance <- Sightings_survey$distance / 1000
+```
+
+<!-- Now, we split the survey tracklines into individual lines of length 2. Note that this is no longer neccessary  -->
+
+<!-- # The survey effort lines need splitting into length 2 lines -->
+<!-- # This will let inlabru easily crop tracklines to fit mesh -->
+<!-- Effort_survey_split <- spatial_lines_splitter(Effort_survey) -->
+<!-- ggplot() + gg(Domain) + gg(Effort_survey_split) -->
+<!-- ggplot() + gg(Domain) + gg.spatiallines_mod(Effort_survey) -->
+
+Now, we set the following global options for `inlabru`. 
+
+```{r}
+bru_options_set(
+  bru_verbose = TRUE,
+  verbose = TRUE,
+  control.inla=list(int.strategy='eb'),
+  num.threads=2
+)
+```
+
+First, we want both `INLA` and `inlabru` to display all messages about the convergence. These are the '`verbose`' arguments. These messages can help with diagnosing any issues with the model fitting. Next, for the purposes of this workshop, we tell `INLA` to perform an empirical Bayes analysis instead of a full Bayesian analysis. This speeds up computation dramatically, but fails to propogate the full uncertainties associated with the hyperparameters into inference. This is because these empirical Bayes analyses condition on the single 'most-likely' model defined by the posterior modes of the hyperparameters, compared with a fully-Bayesian analysis. The latter performs Bayesian model averaging by averaging across (possibly infinitely many) models defined by all possible combinations of hyperparameter values weighted by their prior probabilities. The discrepancies between these two strategies can be large and in a publication, `int.strategy` should be set to `auto` (the default setting). The number of threads (similar to cores) can be chosen. The higher the number, the faster the inference due to parallelisation. To see how many threads are available for use, run `detectCores()`. Always save at least 1 core for running background tasks!
+
+Now we fit our first log-Gaussian Cox process model in `inlabru`. We will demonstrate how to use the `like` and `bru` approach to model fitting. This allows for integrative joint models from different data sources or data streams to be easily combined.
+
+First, we define our likelihood object using the function `like`. We specify that the SpatialPointsDataFrame `Sightings_survey` is our data. Next, we specify the domains for both our response variables `coordinates` and `distance`. We point `coordinates` to the spatial mesh `mesh_land` and point the `distance` variable to a 1D mesh that we define. Note that we have set the upper limit to the distance domain equal to 2km. Next, we point the likelihood to the formula object we created earlier that defines the linear predictor and specify that a Cox process model is being fitted by specifying `family='cp'`. Note that a HUGE library of likelihoods are available. Calling `inla.list.models()` provides a list of every possible model, prior and latent effect available. Finally, we provide a sensible (negative) initial value for `lsig`.
+
+```{r, warning=F}
+fit = like(data = Sightings_survey,
+           samplers = Effort_survey,
+           domain = list(
+             coordinates = mesh_land,
+             distance = INLA::inla.mesh.1d(seq(0, 2, length.out = 30))),
+           formula = formula_1,
+           family = 'cp',
+           options = list(bru_initial = list(lsig = -1)))
+```
+
+Next, we call the function `bru`. This is the function that combines all the likelihood objects together with the specified components and performs model inference. Note that we only have a single likelihood object `fit`, with components `cmp_land1`. Fitting these models can take a while. For the purposes of this workshop, I have made all the pre-fitted model files available for use via the `readRDS` function.
+
+```{r, message=F}
+#fit <- bru(fit, components = cmp_land1) # can be slow
+fit <- readRDS('./Model_Files/fit.rds') # read in the pre-compiled model
+```
+
+Is this a good fit? One simple way of gauging how well a model fits the data is to assess it's DIC value. DIC is similar to AIC/BIC in that it trades of goodness-of-fit with a penalty for the complexity of the model under the Occam's Razor principle of 'simple explanations trump complicated ones when both predict outcomes equally well'. Whilst a lone DIC value is somewhat meaningless, we can compare the DIC values of competing models **fit to the same data** for comparison. The lower the DIC score, the better the model fit.
+
+```{r}
+fit$dic$dic #DIC is 840. This is our benchmark
+```
+
+Let's turn off the (slightly overwhelming) messages from `INLA` for the remainder of the workshop. 
+
+```{r}
+bru_options_set(
+  bru_verbose = TRUE,
+  verbose = FALSE,
+  control.inla=list(int.strategy='eb'),
+  num.threads=2
+)
+```
+
+## Exploring the conclusions from the `inlabru` model.
+
+Now that we have fit our log-Gaussian Cox process model in `inlabru`, what can we learn? What can we say about the whale density? Helpfully, `inlabru` provides many user-friendly functions for answering these questions. Three such functions are `spde.posterior`, `predict` and `pixels`. Let's see them in action.
+
+As a first objective, let's plot the predicted whale intensity across the domain. This plot can help to visually assess where the model predicts 'hotspots' or areas of high whale activity exist. The following workflow can help to make professional plots easily:
+
+- First, we must define SpatialPixels across our domain using the helper function `pixels`.
+- Next, we must predict a user-specified function of the random components across the SpatialPixels using the funtion `predict`. The package `inlabru` (and `INLA`) allows for approximate Monte Carlo samples of each random component to be generated from the posterior distributions of the model. The function `predict` then computes the user-specified function for each sample before taking the empirical mean, standard deviation, quantiles, etc., of these values. This approach allows the posterior distribution of arbitrarily complex nonlinear functions of parameters to be investigated. 
+- Finally, we can plot these prediction objects using `gg`. 
+
+Let's see it in action! Note that for the purposes of this workshop, we are going to use only 20 Monte Carlo samples. In practice, to reduce Monte Carlo error, this number may need to be >1000. The Monte Carlo standard error should always be reported.
+
+```{r, message=F}
+# 1) Define pixels for plotting
+plot_pixels <- pixels(mesh_land, mask = Domain)
+# 2) Predict the intensity defined by the function exp(mySpatial + Intercept) across the pixels
+pred_int <- predict(fit, plot_pixels, ~ exp(mySpatial + Intercept), n.samples = 20, seed=seed)
+# Define a 'pretty' colour palette
+colsc <- function(...) {
+  scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(11,"RdYlBu")),
+                       limits = range(...))
+}
+# What summary statistics have been computed for the intensity?
+names(pred_int)
+# 3) Plot the posterior mean intensity
+ggplot() + gg(pred_int[1]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+  colsc(pred_int@data$mean)
+# 4) Plot the posterior SD (note the index [2])
+ggplot() + gg(pred_int[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+  colsc(pred_int@data$sd)
+```
+
+Notice how lots of useful summary statistics are computed by default using the `predict` function! From these plots, we see 3 interesting features. First, a very low whale intensity is predicted in the regions frequently visited by the whale watching companies. Second, hotspots are identified in the Western region that had lots of survey effort focused in it, and in the center of the study region. Finally, evidence of a strong boundary effect in the South Eastern corner is seen. A very large mean and standard deviation is seen, indicating that some numerical instability may have occurred in this region. This can occur when the mesh becomes 'ugly', with tight triangles trying to recreate a jagged boundary. Whilst the large standard deviation implies that this should not impact estimates of posterior mean population size, it may impact any future estimates of uncertainty. One future solution could be to improve the mesh in this corner.
+
+Next, let's look at the posterior distributions of the spatial range and the marginal variance of the random field. For this, we use the functions `spde.posterior` and `plot`.
+
+```{r}
+spde.range <- spde.posterior(fit, "mySpatial", what = "range")
+plot(spde.range)
+spde.var <- spde.posterior(fit, "mySpatial", what = "variance")
+plot(spde.var)
+```
+We can see that the model is estimating a spatial field with a reasonably small variance and large spatial range. We are not concerned that the model is demonstrating severe overfitting.
+
+Next, we can plot the estimated detection probability function, with uncertainty intervals. For this, we use `predict` once again, with one slight modification. Instead of using `pixels` to define a set of SpatialPixels to plot over, we must manually specify a `data.frame` object with the desired values of `distance` to predict across. Then, we can use the function `plot` as before. Note: I have had some issues with using the `predict` function on non-spatial data.frames. If you get an error message, try using the `generate` - `sapply` method shown in the comments below.
+
+```{r}
+distdf <- data.frame(distance = seq(0, 2, length = 100))
+dfun <- predict(fit, distdf, ~ exp(log_hn(distance, lsig)), n.samples = 20, seed=seed)
+plot(dfun)
+
+# Manually if predict does not work
+#samples <- generate(fit, n.samples = 20, seed=seed)
+# distpred <- sapply(samples,FUN = function(x){return(exp(log_hn(distdf$dist,x$lsig)))})
+# ggplot(data.frame(probability=apply(distpred,1, mean),
+#                   LCL=apply(distpred,1, quantile, probs=c(0.025)),
+#                   UCL=apply(distpred,1, quantile, probs=c(0.975)),
+#                   distance=distdf$distance),
+#        aes(y=probability,x=distance,ymax=UCL,ymin=LCL)) +
+#   geom_line() + geom_ribbon(alpha=0.4)
+```
+
+This shows the probability of detecting a whale (given that it is at the 'surface'), as a function of distance from the vessel. The posterior mean and 95% credible intervals are shown. Note that for a publication, `n.samples` may need to be much higher. To estimate the Monte Carlo standard error at a distance 1, we can do the following:
+
+```{r}
+dfun$sd[50]/sqrt(20) #sqrt(20) by central limit theorem
+```
+
+<!-- Thus, by the central limit theorem, the confidence interval for the posterior mean of the distance sampling function evaluated at a distance of 1km is roughly `c(dfun$mean[50] - 2*(dfun$sd[50]/sqrt(20)), dfun$mean[50] + 2*(dfun$sd[50]/sqrt(20)))`, which equals  -->
+
+<!-- ```{r} -->
+<!-- c(dfun$mean[50] - 2*(dfun$sd[50]/sqrt(20)),  -->
+<!--   dfun$mean[50] + 2*(dfun$sd[50]/sqrt(20))) -->
+<!-- ``` -->
+
+This is huge!
+
+Crucially, `inlabru` provides user-friendly functions for predicting the population size! That is, we can investigate the posterior distribution for the expected number of whales with the following caveats:
+* We are assuming that **every encounter made was with a single individual**
+* We are assuming that all individuals can be spotted at distance 0m!
+* We have not factored in availability bias (perhaps whales are diving and missed)
+* We have not factored in the influence of group size on detection probability!
+
+Ignoring these issues for now, we predict the total population size falling within the Domain. To achieve this, we use the function `ipoints`. This sets up a series of integration points with weights (areas), to allow us to approximate the integral of the intensity surface across the domain with a Riemann sum approximation. Then, we use `predict`, with the user-specified function equal to a weighted sum of intensity. Note that `ipoints` creates a SpatialPointsDataFrame object with a single named variable `weight` containing the area of each region corresponding to each integration point.
+
+```{r}
+predpts <- ipoints(Domain, mesh_land)
+head(predpts$weight) # these are the areas of the regions corresponding each point.
+# Define the weighted sum function
+Lambda <- predict(fit, predpts, ~ sum(weight * exp(mySpatial + Intercept)), n.samples = 20, seed=seed)
+Lambda
+#around ~650 individuals with a large variance.
+```
+
+There remains a potential problem with our inference. If we look back at the plot of our domain, we notice that it extends in the South-Western direction far beyond our survey tracklines. Thus, there is a risk of extrapolation error! Ideally, we should restrict our predictions to lie 'close' to our effort! 
+
+### Exercise {#Ex1} 
+Plot a map of the whale intensity, but colour grey all pixels that lie over 30km away from the nearest survey trackline. Next, estimate the total number of whales in the region lying within 30km of the nearest trackline.
+
+Hint: To extract a subset of a SpatialPoints object `X` that lies within a 30km distance of another Spatial object `Y`, we run the following code:
+
+```{r, eval=F}
+X_subset < X[which(apply(gWithinDistance(X,Y,dist = 30,byid = T),2,sum)>0),]
+```
+
+Hint2: To convert a SpatialPixels object `A` to a SpatialPoints object `B` run the following:
+
+```{r, eval=F}
+B <- as(A, 'SpatialPointsDataFrame')
+```
+
+If you get really stuck, feel free to show the answer code!
+
+<div class="fold s o"> 
+```{r, message=F}
+# We need to convert the plot_pixels into a SpatialPoints object before subsetting!
+pred_int_restricted <- 
+  pred_int[which(apply(gWithinDistance(as(pred_int,'SpatialPoints'),Effort_survey,dist = 30,byid = T),2,sum)>0),]
+
+ggplot() + gg(pred_int_restricted[1]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+  colsc(pred_int_restricted@data$mean)
+ggplot() + gg(pred_int_restricted[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+  colsc(pred_int_restricted@data$sd)
+
+predpts_restricted <- predpts[
+  which(apply(gWithinDistance(predpts,Effort_survey,dist = 30,byid = T),2,sum)>0),]
+Lambda_restricted <- predict(fit, predpts_restricted, ~ sum(weight * exp(mySpatial + Intercept)), n.samples = 20, seed=seed)
+Lambda_restricted
+```
+</div>
+
+## Adding covariates to an `inlabru` model
+
+Adding environmental covariates to models is made extremely easy in `inlabru`. All that is required is that each covariate is converted to class SpatialPixelsDataFrame and that the covariate data are complete. By 'complete', we mean that a non-missing value is available at every point within the region defined by the mesh boundary.
+
+Let's add the log_Depth covariate. To do this, we need to redefine the components and formula. First we define the updated components.
+
+```{r}
+cmp_land2 <- ~ mySpatial(main = coordinates, model = matern_land) + 
+  Intercept(1) + log_Depth(main = log_Depth, model='linear') +
+  lsig(1)
+```
+
+Notice that we have defined a new variable called `log_Depth`. Using the argument `main`, we point the variable to the SpatialPixelsDataFrame object log_Depth. Finally, we tell `inlabru` that we are fitting a linear effect.
+
+Next, we redefine our new formula object:
+
+```{r}
+formula_2 = coordinates + distance ~ mySpatial +
+  Intercept + log_Depth +
+  log_hn(distance, lsig) + 
+  log(2)
+```
+
+The only change here, is the addition of the linear effect log_Depth to the linear predictor.
+
+Now we can fit the model using the `like`/`bru` approach:
+
+```{r, warning=F}
+fit2 = like(data = Sightings_survey,
+            samplers = Effort_survey,
+            domain = list(
+              coordinates = mesh_land,
+              distance = INLA::inla.mesh.1d(seq(0, 2, length.out = 30))),
+            formula = formula_2,
+            family = 'cp')
+# Slow to run bru, so we load the pre-compiled model instead 
+#fit2 <- bru(fit2, components = cmp_land2)
+fit2 <- readRDS('./Model_Files/fit2.rds')
+fit2$dic$dic # DIC is 840 again - no improvement
+summary(fit2)
+```
+So, we find that adding log_Depth to the model fails to improve the model fit, as judged by DIC. Furthermore, inspecting the output from `summary()`, we see that the 95% credible intervals cover zero. Thus, we fail to detect a significant effect of log_Depth.
+
+### Exercise {#Ex2} 
+Fit a model, with log_Slope included. Does this improve the model fit? Are either of the variables found to be significantly associated with the whale density? Note: Fitting the model is slow. Load the pre-fitted model by running `fit3 <- readRDS('./Model_Files/fit3.rds')` instead.
+
+<div class="fold s o"> 
+```{r, warning=F}
+cmp_land3 <- ~ mySpatial(main = coordinates, model = matern_land) + 
+  Intercept(1) + log_Slope(main = log_Slope, model='linear') +
+  lsig(1)
+
+formula_3 = coordinates + distance ~ mySpatial +
+  Intercept + log_Slope +
+  log_hn(distance, lsig) + 
+  log(2)
+
+fit3 = like(data = Sightings_survey,
+            samplers = Effort_survey,
+            domain = list(
+              coordinates = mesh_land,
+              distance = INLA::inla.mesh.1d(seq(0, 2, length.out = 30))),
+            formula = formula_3,
+            family = 'cp')
+#fit3 <- bru(fit3, components = cmp_land3)
+fit3 <- readRDS('./Model_Files/fit3.rds')
+fit3$dic$dic # DIC is 841.6 - no improvement
+summary(fit3)
+```
+</div>
+
+### Exercise {#Ex3} 
+Try adding both log_Slope and log_Depth variables. Does this improve the fit at all? Note: Fitting the model is slow. Load the pre-fitted model by running `fit4 <- readRDS('./Model_Files/fit4.rds')` instead.
+
+<div class="fold s o"> 
+```{r, warning=F}
+cmp_land4 <- ~ mySpatial(main = coordinates, model = matern_land) + 
+  Intercept(1) + log_Depth(main = log_Depth, model='linear') +
+  log_Slope(main = log_Slope, model = 'linear') + 
+  lsig(1)
+
+formula_4 = coordinates + distance ~ mySpatial +
+  Intercept + log_Depth + 
+  log_Slope + 
+  log_hn(distance, lsig) + 
+  log(2)
+
+fit4 = like(data = Sightings_survey,
+            samplers = Effort_survey,
+            domain = list(
+              coordinates = mesh_land,
+              distance = INLA::inla.mesh.1d(seq(0, 2, length.out = 30))),
+            formula = formula_4,
+            family = 'cp')
+#fit4 <- bru(fit4, components = cmp_land4)
+fit4 <- readRDS('./Model_Files/fit4.rds')
+fit4$dic$dic # DIC is 840 - no improvement
+summary(fit4)
+```
+</div>
+
+### (Bonus) Exercise {#Ex4}
+
+If you're interested, try fitting a model with log_Depth, log_Slope and log_Depth_sq all included. Notice that severe model instabilities are encountered. These can be seen by looking at the verbose output from inlabru. Notice how the deviation % does not converge towards zero. If you have extra time, notice how this instability leads to WILD predictions of population size! Fortunately you should notice that this numerical instability is detected with a higher DIC - phew!
+
+## Comparing the output from competing models
+
+So, we ultimately find that the model without covariates (`fit`) offers the best model fit to the survey dataset. The failure to detect a covariate effect should not come as a major surprise. The survey datasets are quite limited in size, with only 63 sightings in total! 
+
+That being said, the DIC values were almost equivalent for `fit` and `fit2` - the model which included log_Depth. Let's see how the predictions and parameter estimates change under the second model. Are the conclusions drawn from each model consistent? 
+
+```{r, message=F, warning=F}
+plot_pixels2 <- pixels(mesh_land, mask = Domain)
+
+pred_int2 <- predict(fit2, plot_pixels2, 
+                     ~ exp(mySpatial + Intercept + log_Depth), n.samples = 20, seed=seed)
+
+multiplot(ggplot() + gg(pred_int2[1]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+            colsc(c(pred_int2@data$mean,pred_int@data$mean)) + ggtitle('Covariate Model Mean'),
+          ggplot() + gg(pred_int2[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+            colsc(c(pred_int2@data$sd,pred_int@data$sd)) + ggtitle('Covariate Model SD'),
+          ggplot() + gg(pred_int[1]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+            colsc(c(pred_int2@data$mean,pred_int@data$mean)) + ggtitle('Covariate-Free Model Mean'),
+          ggplot() + gg(pred_int[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+            colsc(c(pred_int2@data$sd,pred_int@data$sd)) + ggtitle('Covariate-Free Model SD'),
+          layout = matrix(c(1:4),nrow=2,ncol=2,byrow = F))
+
+# Look at parameters of spde model
+spde.range2 <- spde.posterior(fit2, "mySpatial", what = "range")
+spde.var2 <- spde.posterior(fit2, "mySpatial", what = "variance")
+multiplot(plot(spde.range2)+ylim(range(spde.range$pdf)),plot(spde.range)+xlim(range(spde.range2$range)),
+          plot(spde.var2)+ylim(range(spde.var$pdf)),plot(spde.var)+xlim(range(spde.var2$variance)),
+          layout = matrix(1:4,2,2,byrow = F))
+```
+
+Next, we use `predict` and `plot` to display the estimated effect of log_Depth on the intensity. Note that the effect is nonlinear on the intensity scale, as the covariate is specified to be linear on the log intensity scale.
+```{r}
+# plot the covariate effects
+depthdf <- data.frame(log_Depth = seq(from=min(log_Depth@data$log_Depth),
+                                      to=max(log_Depth@data$log_Depth),
+                                      length.out = 100))
+depthpred <- predict(fit2, depthdf, ~ exp(log_Depth), n.samples=40, seed=seed)
+plot(depthpred)
+# Manually if the predict function breaks
+#samples <- generate(fit2, n.samples = 20,, seed=seed)
+# depthpred <- sapply(samples,FUN = function(x){return(depthdf$log_Depth*x$log_Depth)})
+# ggplot(data.frame(mean=apply(depthpred,1, mean),
+#                   LCL=apply(depthpred,1, quantile, probs=c(0.025)),
+#                   UCL=apply(depthpred,1, quantile, probs=c(0.975)),
+#                   logdepth=seq(from=min(log_Depth@data$log_Depth),
+#                             to=max(log_Depth@data$log_Depth),
+#                             length.out = 100)),
+#        aes(y=mean,x=logdepth,ymax=UCL,ymin=LCL)) +
+#   geom_line() + geom_ribbon(alpha=0.4)
+
+```
+Note that the credible intervals cover a huge range of effect sizes! We really fail to detect an effect of log_Depth from the survey data alone, and including it as a covariate may lead to predictions and inference with lower precision!
+
+Finally, we plot the estimated population size across both the entire domain and the restricted domain (restricted to points lying within 30km of the nearest survey trackline). We then plot the estimated detection function. Notice that the `predict` function fails to work for the variable `distance`! This is a bug in `inlabru` that will hopefully be corrected for soon. In the meantime, we manually extract the results by sampling all the components using the function `generate` and then manually combining them using `sapply`. Note that the variables `LCL` and `UCL` define a symmetric 95% credible interval.
+```{r}
+# Plot detection probability function
+distdf <- data.frame(distance = seq(0, 2, length = 100))
+#dfun2 <- predict(fit2, distdf, ~exp(log_hn(distance,lsig)),n.samples = 20)
+# If this calls an error run below
+samples <- generate(fit2, n.samples = 20, seed=seed)
+dfun2 <- sapply(samples,FUN = function(x){return(exp(log_hn(distdf$distance,x$lsig)))})
+ggplot(data.frame(mean=apply(dfun2,1, mean),
+                  LCL=apply(dfun2,1, quantile, probs=c(0.025)),
+                  UCL=apply(dfun2,1, quantile, probs=c(0.975)),
+                  distance=distdf$distance),
+       aes(y=mean,x=distance,ymax=UCL,ymin=LCL)) +
+  geom_line() + geom_ribbon(alpha=0.4)
+
+# We can look at the posterior for expected number of whales:
+predpts <- ipoints(Domain, mesh_land)
+# It looks like we do not need to do this!
+
+Lambda2 <- predict(fit2, predpts, ~ sum(weight * exp(mySpatial + Intercept +
+                                                       log_Depth)),
+                   n.samples=20, seed=seed)
+Lambda2
+Lambda
+
+# Avoid extrapolation
+Lambda2_restricted <- predict(fit2, predpts_restricted, 
+                              ~ sum(weight * exp(mySpatial + Intercept +
+                                                 log_Depth)),
+                              n.samples=20, seed=seed)
+Lambda2_restricted
+Lambda_restricted
+
+```
+We indeed see very similar estimates for the population size, with overlapping credible intervals. Interestingly, it appears estimates from the model with log_Depth (`fit2`) have a much greater uncertainty! Remember that in a publication we would draw far more than 20 samples! 
+
+
+### (BONUS) Exercise {#Ex5}
+Try fitting a model with sea surface temperature (SST) included. If you are interested, below is the code used to download and reformat the SST data from the ERDDAP database. If not, skip ahead to read in the pre-compiled SST object from file. Note: Fitting the model is slow. Load the pre-fitted model by running `fitextra <- readRDS('./Model_Files/fitextra.rds')` instead.
+
+<div class="fold e">
+
+```{r, eval=F}
+library(rerddap)
+library(tidyverse)
+rerddap::info('erdMH1sstdmday')
+# what are the lat/lon ranges of the Domain
+spTransform(Domain_smoothed,CRS('+proj=longlat +datum=WGS84 +no_defs'))@bbox
+# what are the date ranges
+range(Sightings_survey@data$DATE_LO)
+SST <- rerddap::griddap(rerddap::info('erdMH1sstdmday'),
+                 time=c("2007-06-01","2009-08-31"),
+                 latitude=c(40.1898,47.44040),
+                 longitude=c(-67.7430,-55.08343))
+unique(SST$data$time) # Monthly data
+# subset to the months we want
+SST <- SST$data[which(month(SST$data$time) %in% c(6,7,8)),]
+# average over the months - we are estimating a 'summer average' density
+SST$latlonfac <- as.factor(paste0(SST$lat,SST$lon))
+#SST <- as_tibble(SST)
+SST <-
+  SST %>%
+  select(lat,lon,latlonfac,sst) %>%
+  group_by(latlonfac) %>%
+  mutate(sst_avg = mean(sst, na.rm = TRUE)) %>%
+  distinct(latlonfac,.keep_all=T) %>%
+  select(lat,lon,sst_avg)
+
+SST_sp <- SpatialPixelsDataFrame(
+  points=cbind(SST$lon,SST$lat),
+  data=data.frame(SST$sst_avg),
+  proj4string = CRS('+proj=longlat +datum=WGS84 +no_defs'),
+  tolerance = 0.001
+)
+
+# reduce the resolution by a factor of 2 and then project onto the correct CRS
+SST_sp <- as(projectRaster(raster(SST_sp),crs=Can_proj),'SpatialPixelsDataFrame')
+ggplot() + gg(SST_sp) + gg(Domain)
+
+# extend the covariate by nearest neighbour imputation
+pixels_Domain <- pixels( mesh_land,mask=gSimplify(gBuffer(Domain,width=19),tol=3),
+                         nx=400,ny=400)
+pixels_Domain$SST <- over(pixels_Domain,SST_sp)$SST.sst_avg
+# impute missing values with the nearest neighbour value
+pixels_Domain$SST[is.na(pixels_Domain$SST)] <- 
+  SST_sp$SST.sst_avg[nncross(as(SpatialPoints(pixels_Domain@coords[which(is.na(pixels_Domain$SST)),]),'ppp'),
+                          as(SpatialPoints(SST_sp@coords),'ppp'),
+                          what = 'which')]
+SST_sp <- pixels_Domain
+ggplot() + gg(SST_sp) + gg(Domain)
+saveRDS(SST_sp, './Data/Covariates/SST_layer.rds')
+```
+</div>
+
+```{r}
+SST_sp <- readRDS('./Data/Covariates/SST_layer.rds')
+```
+
+So, with SST now loaded, do we find a significant association between whale intensity and SST? Does it improve the model fit? 
+
+<div class="fold s o"> 
+```{r, warning=F}
+cmp_land_extra <- ~ mySpatial(main = coordinates, model = matern_land) + 
+  Intercept(1) + SST(main = SST_sp, model='linear') +
+  lsig(1)
+
+formula_extra = coordinates + distance ~ mySpatial +
+  Intercept + SST +
+  log_hn(distance, lsig) + 
+  log(2)
+
+fitextra = like(data = Sightings_survey,
+            samplers = Effort_survey,
+            domain = list(
+              coordinates = mesh_land,
+              distance = INLA::inla.mesh.1d(seq(0, 2, length.out = 30))),
+            formula = formula_extra,
+            family = 'cp')
+#fitextra <- bru(fitextra, components = cmp_land_extra)
+fitextra <- readRDS('./Model_Files/fitextra.rds')
+fitextra$dic$dic # DIC is 841.7 - no improvement
+summary(fitextra)
+```
+</div>
+
+In this session, we have learned how to fit log-Gaussian Cox process models to survey datasets that followed distance sampling protocols within a Bayesian framework. We have seen how to compare models, how to predict intensity across space, and how to estimate population size. 
+
+Coming up next, we will see how to incorporate presence-only datasets into our models. Crucially, we will find that by incorporating presence-only datasets into our models, we may be able to uncover previously hidden species-environment relationships, and use these to improve the resolution of our maps of whale intensity!
+
+
+### Links to Every Exercise and Bonus Exercise
+
+1. [Exercise 1](#Ex1)
+2. [Exercise 2](#Ex2)
+3. [Exercise 3](#Ex3)
+4. [Bonus Exercise 1](#Ex4)
+5. [Bonus Exercise 2](#Ex5)
+

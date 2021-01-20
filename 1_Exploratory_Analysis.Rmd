@@ -1,6 +1,6 @@
 ---
-title: "Exploratory Analysis 1"
-subtitle: "Introduction to spatial R packages and plotting functions"
+title: "Exploratory Analysis"
+subtitle: "Graphically assessing model assumptions and trends"
 author: "Joe Watson and Marie Auger-Méthé"
 date: "07/01/2021"
 output: 
@@ -11,14 +11,11 @@ output:
 
 <script src="js/hideOutput.js"></script>
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Exploratory Analysis 1: Introduction to spatial R packages and plotting functions
-
-### Introduction
+## Introduction
 
 Crucial to all good statistical analyses is a thorough exploratory analysis. In this document, we will introduce a few techniques for developing an understanding of our dataset, including an understanding of its limitations.
 
@@ -45,7 +42,7 @@ library(raster)
 
 If you have not done so already, you need to download the two set of files associated with the workshop. 
 
-First, all the workshop script and tutorial files can be found on Github at [github.com/joenomiddlename/DFO_SDM_Workshop_2020](https://github.com/joenomiddlename/DFO_SDM_Workshop_2020). To download these files on your computer, press on *Code* and then *Download ZIP*. Once downloaded, unzip the *DFO_SDM_Workshop_2020-main.zip* file. To be able to access some of the precompiled data, we need to make the unzipped folder the working directory. To do so in R Studio, navigate to the correct folder using the bottom right panel (folder view, you can use *...* button) and open it. Then, click "Set as Working Directory" under the tab *'More'*.  
+All the workshop script and tutorial files can be found on Github at [github.com/joenomiddlename/DFO_SDM_Workshop_2020](https://github.com/joenomiddlename/DFO_SDM_Workshop_2020). To download these files on your computer, press on *Code* and then *Download ZIP*. Once downloaded, unzip the *DFO_SDM_Workshop_2020-main.zip* file. To be able to access some of the precompiled data, we need to make the unzipped folder the working directory. To do so in R Studio, navigate to the correct folder using the bottom right panel (folder view, you can use *...* button) and open it. Then, click "Set as Working Directory" under the tab *'More'*.  
 
 We should be inside the folder titled: 'DFO_SDM_Workshop_2020', you can verify this by using `getwd()`.
 
@@ -53,8 +50,6 @@ Now we can load in the precompiled data
 ```{r message=FALSE}
 list2env(readRDS('./Data/Compiled_Data.rds'), globalenv())
 ```
-
-Second, to help play with model results quickly, we need to download the pre-compiled modelling result files, which can be found here: [here](https://ubcca-my.sharepoint.com/:u:/g/personal/joewatto_student_ubc_ca/Ea8lRO_ESL5CgfFSWqOT0LUBzskEWVVA_v6N2B2RZhr67w?email=m.auger-methe%40oceans.ubc.ca&e=TvsrM1).
 
 ### Fin whale data
 
@@ -65,6 +60,8 @@ The data we use throughout this workshop is data on fin whales. We use two main 
 * sightings from two? whale-watching operators
 
 The sightings are from 201?. The sightings from the systematic survey, but not those of the whale-watching operators, are accompanied with the boat trackline.
+
+**JOE: add reference given by Shelley**
 
 ### Coordinate reference system
 
@@ -97,9 +94,9 @@ options("rgdal_show_exportToProj4_warnings"="none")
 ```
 
 
-### Plotting the data
+## Plotting the data
 
-Our first goal is generally to plot the data on a map, and the inlabru package `gg()` function will prove extremely useful at plotting spatial data! The types of spatial objects we will be dealing with are from the *sp* package. The class of objects from the *sp* package begin with 'Spatial'. For example **Spatial**PointsDataFrame  Furthermore, if the data are in lat/lon format then the gmap() function can add a layer from Google Maps or OpenStreetMap to the plots.
+Our first goal is generally to plot the data on a map. The `gg()` and `gmap()` functions from the inlabru package will prove extremely useful at plotting spatial data! Our spatial objects we will from the *sp* package. The class of objects from the *sp* package begin with 'Spatial'. For example **Spatial**PointsDataFrame.
 
 We have written a bespoke function `gg.spatiallines_mod()` to easily add SpatialLinesDatFrame objects to the plots too. This will prove useful for plotting transect lines. We load the bespoke functions to the working environment now.
 
@@ -107,7 +104,9 @@ We have written a bespoke function `gg.spatiallines_mod()` to easily add Spatial
 source('utility_functions.R')
 ```
 
-So let's plot our data! Let's plot the survey sightings in blue, the survey tracklines in black, the whale watch sightings in purple, the whale watch ports in red. We'll add a terrain map to the background too.
+Let's plot our data! 
+
+If the data are in lat/lon format then the `gmap()` function will automatically add a terrain layer from Google Maps to the plots. Let's plot the survey sightings in blue, the survey tracklines in black, the whale watch sightings in purple, the whale watch ports in red.
 
 ```{r 'map-gmap', message=FALSE, cache=TRUE}
 gmap(Sightings_survey) +
@@ -118,10 +117,12 @@ gmap(Sightings_survey) +
   gg(WW_ports, colour='red')
 ```
 
-To remove the map layer, simply replace the `gmap(Sightings_survey)` with `ggplot()`! Notice the empty `ggplot()` function call.
+By default `gmap` uses Google maps, see [Additional tips](#Ad1) for ways to use open-source maps for publication.
+
+To remove the map layer, simply replace the `gmap(Sightings_survey)` with `ggplot()`.
 
 ```{r 'map-noMapLayer', message=FALSE, cache=TRUE}
-ggplot() +
+ggplot() + # Notice the empty ggplot() call
   gg(Domain) +
   gg.spatiallines_mod(Effort_survey) +
   gg(Sightings_survey, colour='blue') +
@@ -129,19 +130,7 @@ ggplot() +
   gg(WW_ports, colour='red')
 ```
 
-Finally, for publication, there can be issues regarding copyright of Google Maps. Using OpenStreetMap can help. To guarantee this simply add the following argument: `source='osm', force=TRUE` to `gmap()`. Double check the console that the maps are indeed being downloaded from stamen or osm. For brevity we have suppressed the messages.
-
-```{r 'map-openStreet', message=FALSE, warning=FALSE, tidy=FALSE, cache=TRUE}
-gmap(Sightings_survey,source='osm',force=TRUE) +
-  gg(Domain) +
-  gg.spatiallines_mod(Effort_survey) +
-  gg(Sightings_survey, colour='blue') +
-  gg(Sightings_DRWW_sp, colour='purple') +
-  gg(WW_ports, colour='red')
-```
-
-This plot hides some crucial information regarding the data collection. For example, the survey sightings and tracklines do not come from a single survey, or even a single organisation! Let's plot this! The easiest way to do this is to subset the data accordingly! 
-
+This plot hides some crucial information regarding the data collection. For example, the survey sightings and tracklines do not come from a single survey, or even a single organisation! Let's plot this! The easiest way to do this is to subset the data accordingly!
 
 ```{r 'map-survey', message=FALSE, cache=TRUE}
 table(Effort_survey$DATASET)
@@ -182,7 +171,7 @@ xtabs(~ YEAR + DATASET, data=Effort_survey@data)
 ```
 2011's data comes exclusively from NOAA.
 
-### Transforming the data into a new CRS
+## Transforming the data into a new CRS
 
 For modelling, we will transform the data from lat/lon into a new "Canadian" CRS: NAD83 datum with UTM Zone 20N projection. This projection will help to preserve euclidean distance between points. The EPSG code is 2961.
 
@@ -225,30 +214,458 @@ Dist_Brier <- as(projectRaster(raster(Dist_Brier), crs=Can_proj), 'SpatialPixels
 Dist_Quoddy <- as(projectRaster(raster(Dist_Quoddy), crs=Can_proj), 'SpatialPixelsDataFrame')
 ```
 
-Plot the (transformed) Bathymetry, Slope, and Distance from Port spatial objects. We are going to combine these into a single plot using the `multiplot()` function from the *inlabru* package. This function takes as input ggplot objects and an argument `layout`, specifying how the plots should be arranged.
+Plot the (transformed) Bathymetry, Slope, and Distance from Port spatial objects. We are going to combine these into a single plot using the `multiplot()` function from the *inlabru* package. This function takes as input ggplot objects and an argument `layout`, specifying how the plots should be arranged (see [Additional tips](#Ad2) for ways to change the layout).
 
 ```{r 'map-multiplot', message=FALSE, cache=TRUE}
 multiplot(ggplot() +
   gg(Domain) +
-  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
+  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') + 
+    coord_fixed(ratio = 1),
 ggplot() +
   gg(Domain) +
-  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope'),
+  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope') + 
+  coord_fixed(ratio = 1),
 ggplot() +
   gg(Domain) +
-  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)'),
+  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)') + 
+  coord_fixed(ratio = 1),
 ggplot() +
   gg(Domain) +
-  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)'),
-layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
+  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)')+ 
+  coord_fixed(ratio = 1),
+layout=matrix(1:4, nrow=2, ncol=2, byrow = TRUE))
 ```
+
+Don't like the colour scheme? See [Additional tips](#Ad3) to learn how to define your own manually.
+
+## Testing model assumptions and investigating trends
+
+**JOE: we need to define all of the terms used later in the tutorial, e.g., $\lambda_{eff}$. Depending on the lecture, you can be or less technical. But they should all be described at least intuitively here up-front**
+
+We will be fitting log-Gaussian Cox process models to the sightings data. This model assumes that, conditional upon the density surface $\lambda_{obs}(\textbf{s})$, the sighting locations are **independent**. 
+
+Planned surveys can be designed to (approximately) satisfy the independence assumption. The boat speed can be fixed at a high value relative to the individuals' speeds and a narrow perpendicular field-of-view can be enforced. Then, assuming that the individuals of the target species are in equilibrium with respect to their stationary distribution $\lambda_{true}(\textbf{s})$ (i.e. the species' density) and locally mixing faster than the time between revisits by observers, the independence assumption may reasonably hold.
+
+Conversely, no such assumptions can be made regarding the whale-watch sightings. The unknown positions of the whale-watching boats, the 360 degree fields-of-view on-board, the variable boat speed, and the repeated sightings of the same individuals throughout each day can all invalidate the independence assumption required to fit a log-Gaussian Cox process.
+
+In our workshop, we will see some potential solutions to address this issue of independence. In this session, we will perform some exploratory analyses to investigate the suitability of the independence assumption, and to investigate possible ways of estimating observer effort. 
+
+### Investigating the autocorrelation between whale-watch sighting locations
+
+Let's look at the whale-watching data. Specifically, let's investigate the 2nd, 3rd and 4th sightings in the dataset. Notice that they were made on the same day and very close together in time. Often, little information is provided on the database management procedures. For example, are these multiple encounters with the same individual? Would the database discard or retain repeated sightings? 
+```{r, warning=FALSE, message=F}
+Sightings_DRWW_sp@data[2:4,c('WS_TIME','WS_DATE','PLATFORM')]
+```
+
+Without additional information available on the database management protocols, we can investigate whether these sightings could be of the same individual. To investigate this hypothesis, we can compute the distance between the sightings using the `gDistance()` function, the time between the sightings, and the required travel speed of the individual under the assumed hypothesis.
+
+```{r}
+# How far away are these sightings in space (in kilometers)?
+gDistance(Sightings_DRWW_sp[2:4,], byid = T)
+# How far away are these sightings in time (in minutes)?
+Sightings_DRWW_sp[3:4,]$WS_TIME-Sightings_DRWW_sp[2:3,]$WS_TIME
+# Could this be the same animal? How fast is this implied movement?
+gDistance(Sightings_DRWW_sp[2:4,], byid = T)[cbind(c(1,2),c(2:3))] / 
+  (c(18, 9)/60)
+```
+
+This hypothesis would imply a traveling speed of between 4km/h and 16km/h. Is this plausible? Since fin whales are known for their speed and can sustain much higher speeds (> 30km/h), we will discard all repeated sightings each day. We will keep only the first sighting made each day by each company. 
+
+Note that there is no overlap between the sighting locations from the two whale-watch companies, indicating that an assumption of independent encounters between the two companies could be reasonable. 
+
+```{r 'map-overlap', message=FALSE, cache=TRUE}
+Sightings_DRWW_sp$PLATFORM <- as.factor(Sightings_DRWW_sp$PLATFORM)
+ggplot() + gg(Domain) + gg(Sightings_DRWW_sp, colour=Sightings_DRWW_sp$PLATFORM_CODE)
+```
+
+Thus we subset the data to keep only the initial sightings from each company:
+
+```{r}
+Sightings_Brier_nodup <- Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='BRIER ISLAND WHALEWATCH',]
+Sightings_Brier_nodup <- Sightings_Brier_nodup[!duplicated(Sightings_Brier_nodup$WS_DATE),]
+
+Sightings_Quoddy_nodup <- Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='QUODDY LINK',]
+Sightings_Quoddy_nodup <- Sightings_Quoddy_nodup[!duplicated(Sightings_Quoddy_nodup$WS_DATE),]
+
+dim(Sightings_DRWW_sp)[1]; dim(Sightings_Brier_nodup)[1]; dim(Sightings_Quoddy_nodup)[1];
+```
+
+Notice that we have a total of `r 144+85` whale watch sightings after the subsetting procedure, down from an original count of 567 sightings.
+
+Strictly speaking, for a log-Gaussian Cox process model to be reasonable, it is required that the initial daily encounter locations from the whale watch vessels are independent realizations from $\lambda_{true}$. We will assume that the typical journeys/routes of the whale watch vessels remains constant across months and years under study. Thus, we assume that $\lambda_{eff}$ is constant through time. 
+
+### Is summer species density changing through time?
+
+As we discussed earlier, we are unable to model temporal changes in the species density due to the spatially non-overlapping survey efforts across the months and years. Thus any changes in the species density from June - August, or across the years 2007-2009 will be missed. Thus, we are forced to assume that the summer species density remains constant between 2007-2009. It is the summer species density that is our target for inference.
+
+<!-- Note that it may be tempting to use the superposition property of point processes to justify the modelling of an 'combined s' -->
+
+<!-- Superpositions of two **independent** LGCPS $X$ and $Y$ is itself a LGCP $Z$ with intensity $\lambda_Z$ equal to the sum of the intensities ($\lambda_X + \lambda_Y$). -->
+
+How reasonable is our assumption that the species density remains constant across the years and across the months? Again, we can visually assess the suitability of the assumption with a plot.
+
+If each sighting is indeed an independent realisation from a temporally static point process, then there should be no association between the spatial distances between the whale watch sightings and how far apart in time they were made. 
+
+To distances against time intervals, we first compute the distances in time and the euclidean distances in space between each sighting. 
+
+```{r, message=FALSE}
+difftime_Brier<- dist(as.numeric(ymd(Sightings_Brier_nodup$WS_DATE)))
+diffspace_Brier <- dist(Sightings_Brier_nodup@coords)
+difftime_Brier_fac <- as.factor(difftime_Brier)
+
+difftime_Quoddy <- dist(as.numeric(ymd(Sightings_Quoddy_nodup$WS_DATE)))
+diffspace_Quoddy <- dist(Sightings_Quoddy_nodup@coords)
+difftime_Quoddy_fac <- as.factor(difftime_Quoddy)
+```
+
+We will create multiple plots with days on the x-axis and km on the y-axis. The first plot restricted to only consider temporal differences of less than 85 days. We are plotting a sequence of boxplots to help detect patterns. 
+
+```{r 'fig-difference', message=FALSE, cache=TRUE}
+ggplot(data=data.frame(difftime = 
+difftime_Brier_fac[as.numeric(difftime_Brier)<85],
+                       diffspace = as.numeric(diffspace_Brier)[as.numeric(difftime_Brier)<85]),
+       aes(y=diffspace, group=difftime)) +
+  geom_boxplot() +
+  xlab('difference in time (days)') +
+  ylab('difference in space (km)')
+```
+
+The second plot is a different version, which uses a loess smoother curve to try to help detect the same patterns.
+
+```{r 'fig-differencel85', message=FALSE, cache=TRUE}
+ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[as.numeric(difftime_Brier)<85],
+                       diffspace = as.numeric(diffspace_Brier)[as.numeric(difftime_Brier)<85]),
+       aes(x=difftime, y=diffspace)) +
+  geom_point() + geom_smooth(method='loess') +
+  xlab('difference in time (days)') +
+  ylab('difference in space (km)')
+
+```
+
+These two first plots indicate some moderate autocorrelation between the sightings, with encounters made ~1 month apart typically being around 50% further away than those made 24 hours apart. Notice that the trend plateaus after ~14 days. Perhaps this trend is due to the autocorrelation being caused exclusively by persistence in animal movement? Furthermore, the flat-line trend between day ~30 and day ~75 could be evidence in favour of an approximately constant density across the summer months. If the space use did indeed change dramatically across the months (e.g. due to migration), then we would expect to see a monotonically increasing trend over time.
+
+The third plot investigate the space-time relationship across years.
+
+```{r 'fig-differenceYears', message=FALSE, cache=TRUE}
+ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[],
+                       diffspace = as.numeric(diffspace_Brier)[]),
+       aes(x=difftime, y=diffspace)) +
+  geom_point() + geom_smooth(method='loess')+
+  xlab('difference in time (days)') +
+  ylab('difference in space (km)')
+```
+
+This third plot shows no evidence that the average spatial separation between whale watch sightings differs year-to-year. This supports our assumption that the spatial density can be assumed to be constant across the years, albeit within the (very) small spatial region visited by the whale watch boats departing from Brier Island.
+
+
+We now repeat the plots, but for the whale watch boats that depart from Quoddy.
+
+```{r 'map-difftime', message=FALSE, cache=TRUE}
+ggplot(data=data.frame(difftime = as.numeric(difftime_Quoddy)[as.numeric(difftime_Quoddy)<85],
+                       diffspace = as.numeric(diffspace_Quoddy)[as.numeric(difftime_Quoddy)<85]),
+       aes(x=difftime, y=diffspace)) +
+  geom_point() + geom_smooth(method='loess')
+
+ggplot() + gg(Domain) + gg(Sightings_DRWW_sp, colour=Sightings_DRWW_sp$PLATFORM_CODE)
+
+ggplot(data=data.frame(difftime = as.numeric(difftime_Quoddy)[as.numeric(difftime_Quoddy)<85 & as.numeric(diffspace_Quoddy)<50],
+                       diffspace = as.numeric(diffspace_Quoddy)[as.numeric(difftime_Quoddy)<85 & as.numeric(diffspace_Quoddy)<50]),
+       aes(x=difftime, y=diffspace)) +
+  geom_point() + geom_smooth(method='loess')
+
+ggplot(data=data.frame(difftime = 
+difftime_Quoddy_fac[as.numeric(difftime_Quoddy)<85 & as.numeric(diffspace_Quoddy)<50],
+                       diffspace = as.numeric(diffspace_Quoddy)[as.numeric(difftime_Quoddy)<85 & as.numeric(diffspace_Quoddy)<50]),
+       aes(y=diffspace, group=difftime)) +
+  geom_boxplot() +
+  xlab('difference in time (days)') +
+  ylab('difference in space (km)')
+
+```
+
+In the first plot we see a large separation in the y-axis. This is caused by a cluster of sightings made way East of port. This is seen in the second plot as the right-most cluster of blue points. To stop this from impacting our estimate of trend, we restrict the spatial differences and times to be those within each of the two clusters of sightings. The third plot displays the results from doing this. Once again, we see some potential evidence of autocorrelation upto ~14 days. This could be due to persistence of animal movement. 
+
+We have seen some evidence that residual autocorrelations remain in the sightings data. This is despite subsetting the data to the initial daily sightings. The result of this may be overdispersion. We may be able to partially correct for this by using of a log-Gaussian Cox process. By including latent effects (e.g. spatial fields) in the model, we can hopefully capture some of this additional clustering. In fact, log-Gaussian Cox processes are always overdispersed relative to Poisson processes.
+
+**JOE: this is likely the same whales staying in the area for a few days. I think you'll have to address this at some point, either here or later when talking about the modeling. It would be good to acknowledged here that this may be the case.**
+
+### Creating training and testing datasets
+
+**JOE: add one line about why you need a training and test dataset. And specify whether the testing and the training is used in the exploratory analysis tutorial/activity. Or whether you are just using the training to explore and teh testing will be used another day/tutorial.**
+
+We now subset the data into a training and test set. We choose the training set to contain all the sightings from 2007-2009. For the test data, we choose **all** the sightings from 2011. See [Additional tips](#Ad4) for an explanation of why the potential repeated sighting in 2011 between survey and whale-watch datat, means that the whale-watching data cannot be added to the training dataset.
+
+Below, we split the data into training and test data.
+
+```{r}
+Sightings_Brier_nodup_test <- Sightings_Brier_nodup[Sightings_Brier_nodup$YEAR==2011,]
+Sightings_Brier_nodup <- Sightings_Brier_nodup[Sightings_Brier_nodup$YEAR!=2011,]
+Sightings_Quoddy_nodup_test <- Sightings_Quoddy_nodup[Sightings_Quoddy_nodup$YEAR==2011,]
+Sightings_Quoddy_nodup <- Sightings_Quoddy_nodup[Sightings_Quoddy_nodup$YEAR!=2011,]
+Sightings_survey_test <- Sightings_survey[Sightings_survey$YEAR==2011,]
+Sightings_survey <- Sightings_survey[Sightings_survey$YEAR!=2011,]
+Effort_survey_test <- Effort_survey[Effort_survey$YEAR=='2011',]
+Effort_survey <- Effort_survey[Effort_survey$YEAR!='2011',]
+
+# How many survey sightings by year?
+table(Sightings_survey$YEAR)
+
+```
+
+Next, we evaluate a crude estimate of the total amount of survey effort spent each year, as measured by the total trackline length. Using this, we then crudely estimate a 'catch per unit effort' (CPU) measure by year.
+
+```{r}
+# How much survey effort (in trackline length) is there by year
+by(gLength(Effort_survey,byid = T), Effort_survey$YEAR, sum)
+# Crude estimate of relative `CPUE'
+(table(Sightings_survey$YEAR) / 
+       by(gLength(Effort_survey,byid = T), Effort_survey$YEAR, sum))/
+  min(table(Sightings_survey$YEAR) / 
+        by(gLength(Effort_survey,byid = T), Effort_survey$YEAR, sum))
+
+# How many WW sightings by year
+table(Sightings_Quoddy_nodup$YEAR)
+table(Sightings_Brier_nodup$YEAR)
+```
+
+The 'CPUE' values are highly variable! The wild differences could be due to the small efforts in years 2008 and 2009 relative to 2007. Alternatively, the differences could actually reflect real differences in whale density across the three distinct regions visited each year! Without taking a model-based approach and controlling for differences in spatial effort, it is unclear how to combine the sightings from these three surveys.
+
+As we will see in the next tutorial, by taking a model-based approach to inference, we will be able to combine the data from all three surveys to estimate the whale density across space. Unfortunately, due to the lack of spatial overlap between the surveys' efforts (tracklines), we are unable to account for any differences between the survey protocols within a model without strong prior information available. For example, an intercept added to the model for each survey would be confounded by the spatial field.
+
+## Investigating trends between the environmental covariates and whale density
+
+We will investigate trends between the whale density and the covariates bathymetry and slope. 
+
+A quick first step is to evaluate whether the empirical densities of each covariate at the encounter locations (representing habitat used by the whale) differ from the empirical density across the domain (representing available habitat values). Such difference may indicate that the whales associated with a subset of the available habitat (or indicate differences in observer coverage).  
+
+To extract the covariate values at each location, we will convert the SpatialPixelsDataFrame objects into objects of class `im` from the *spatstat* package. Then, after creating a `ppp` point pattern object containing the sightings locations from all sources, we can easily extract the values of each covariate at each point location^[Alternatively, we can use the function `over()` from the *sp* package. We choose to create `im` objects so that we can later use the `ppm` function from *spatstat* for exploratory analysis purposes. `ppm` fits Poisson process models, which can be equivalent to Maxent models.]. 
+
+```{r 'extract-slopeAndBathy', message=FALSE, warning=FALSE, cache=TRUE}
+# Convert covariates to im class
+Slope_im <- as(as(Slope, 'SpatialGridDataFrame'),'im')
+Bathym_im <- as(as(Bathym, 'SpatialGridDataFrame'),'im')
+# Convert Observation locations to ppp object
+All_obs_ppp <- ppp(x=c(Sightings_survey@coords[,1],
+                       Sightings_Brier_nodup@coords[,1],
+                       Sightings_Quoddy_nodup@coords[,1]),
+                   y=c(Sightings_survey@coords[,2],
+                       Sightings_Brier_nodup@coords[,2],
+                       Sightings_Quoddy_nodup@coords[,2]),
+                   marks = as.factor(c(rep('survey',dim(Sightings_survey@coords)[1]),
+            rep('Brier',dim(Sightings_Brier_nodup@coords)[1]),
+            rep('Quoddy',dim(Sightings_Quoddy_nodup@coords)[1]))),
+                   window = as(Domain, 'owin'))
+# Notice how easy it is to extract the values of slope and bathymetry at these locations!
+Slope_obs <- Slope_im[All_obs_ppp]
+Bathym_obs <- Bathym_im[All_obs_ppp]
+```
+
+First, we plot the empirical densities of the slope at the sightings locations at throughout the domain (study area). 
+
+```{r 'map-slope', message=FALSE, warning=FALSE, cache=TRUE}
+ggplot(data=data.frame(Slope_obs = Slope_obs),
+       aes(x=Slope_obs, colour='Sightings')) +
+  geom_density() +
+  geom_density(data=data.frame(Slope_dom = as.numeric(Slope_im$v)),
+            aes(x=Slope_dom, colour='Domain')) + xlab('Slope') +
+  scale_color_manual(name = "Density", values = c('Sightings' = 'black', 'Domain' = 'red'))
+
+```
+
+**JOE: add a comment in text here, and talk about the log transform rather than in code. It's just more digestable**
+
+Perhaps a log transform is desirable here to make the covariate more 'normal'.
+
+```{r 'map-slopeLog', message=FALSE, warning=FALSE, cache=TRUE}
+ggplot(data=data.frame(Slope_obs = log(Slope_obs)),
+       aes(x=Slope_obs, colour='Sightings')) +
+  geom_density() +
+  geom_density(data=data.frame(Slope_dom = log(as.numeric(Slope_im$v))),
+               aes(x=Slope_dom, colour='Domain')) + xlab('log Slope') +
+  scale_color_manual(name = "Density", values = c('Sightings' = 'black', 'Domain' = 'red'))
+```
+
+Perhaps there is evidence of whales preferring areas of higher slope?
+
+We can do the same with bathymetry, but let's only consider values in water (max bathym is 313, so restrict to < 0).
+
+```{r 'map-bathy', message=FALSE, warning=FALSE, cache=TRUE}
+ggplot(data=data.frame(Bathym_obs = Bathym_obs),
+       aes(x=Bathym_obs, colour="Sightings")) +
+  geom_density() +
+  geom_density(data=data.frame(Bathym_dom = as.numeric(Bathym_im$v[Bathym_im$v<0])),
+               aes(x=Bathym_dom, colour='Domain')) + xlab('Bathymetry (m)') +
+  scale_color_manual(name = "Density", values = c('Sightings' = 'black', 'Domain' = 'red'))
+```
+
+
+Perhaps a log transform is desired here too and let's flip the sign to make it depth (larger is deeper).
+
+```{r 'map-bathyLog', message=FALSE, warning=FALSE, cache=TRUE}
+ggplot(data=data.frame(Bathym_obs = log(1-Bathym_obs)),
+       aes(x=Bathym_obs, colour="Sightings")) +
+  geom_density() +
+  geom_density(data=data.frame(Bathym_dom = log(as.numeric(1-Bathym_im$v[Bathym_im$v<0]))),
+               aes(x=Bathym_dom, colour="Domain")) +
+  geom_vline(xintercept = 0, colour='blue') + xlab('log Depth') +
+  scale_color_manual(name = "Density", values = c('Sightings' = 'black', 'Domain' = 'red'))
+```
+
+Perhaps there is evidence of whales preferring areas of shallower waters?
+
+These plots may suggests that sightings locations are associated with regions with flatter slopes and shallower waters compared what is available in the study area. However, these results may simply reflect the types of regions preferentially visited by observers!
+
+We could go one step further and fit Poisson point process models to the sightings data using the `ppm()` function from the spatstat package. These can be equivalent to Maxent models. Ignoring effort for the time being, what does a Poisson point process model tell us?
+
+```{r 'ppm', message=FALSE, cache=TRUE}
+# Transforming the covariates
+log_Slope_im <- Slope_im
+log_Slope_im$v <- log(log_Slope_im$v)
+log_Bathym_im <- Bathym_im
+log_Bathym_im[log_Bathym_im >= 0] <- -1
+log_Bathym_im$v <- log(1-log_Bathym_im$v)
+# Fitting the Poisson point process model
+Ppm_1 <- ppm(All_obs_ppp~log_Slope_im + log_Bathym_im,
+                  data=list(log_Slope_im=log_Slope_im, log_Bathym_im=log_Bathym_im,
+                            Domain=as(Domain, 'owin')),
+                  subset = Domain)
+summary(Ppm_1)
+```
+
+We find some evidence that the whales may be found more often in regions of higher slope and shallower waters.
+
+**JOE: be specific here, base on the coefficient, Ztest, etc? Some people will know these models, some won't at all.**
+
+Next, we can attempt to make a crude adjustment for effort and see if these estimates change. We have already created a SpatialPixelsDataFrame object containing distance from the two whale-watch ports. Next, we can create a SpatialPixelsDataFrame containing the perpendicular distances to the nearest trackline. This fails to account for overlap in survey tracklines, but offers a reasonable approach to crudely control for effort.
+
+```{r 'tracklinDistance', warning=FALSE, message=FALSE, cache=TRUE}
+Dist_Surveylines <- as(Dist_Brier,'SpatialPoints')
+Dist_Surveylines$Dist_surveylines <- as.numeric(apply(gDistance(Dist_Surveylines, 
+                                                                Effort_survey,byid = T),2,min))
+Dist_Surveylines <- as(Dist_Surveylines,'SpatialPixelsDataFrame')
+```
+
+We can then map the distance to the nearest trackline and plot the histogram of nearest distances. 
+
+```{r 'map-dectectionDistance', warning=FALSE, message=FALSE, cache=TRUE}
+# Map the distance through space
+ggplot() + gg(Domain) + gg(Dist_Surveylines)
+# What is the maximum detection distance?
+ggplot(Sightings_survey@data, aes(x=DISTANCE)) + geom_histogram()
+```
+
+Based on the histogram (**JOE: maybe add characteristics that made you choose this in brackets**), we will use a half-norm detection function in the Poisson point process model. Thus, we will square the values.
+
+```{r 'halfnorm', warning=FALSE, message=FALSE, cache=TRUE}
+Dist_Surveylines$Dist_surveylines <- scale(Dist_Surveylines$Dist_surveylines^2)
+Dist_Brier_sq <- as(Dist_Brier,'SpatialPixels')
+Dist_Brier_sq$Dist_Brier_sq <- scale(Dist_Brier$Dist_Brier^2)
+Dist_Quoddy_sq <- as(Dist_Quoddy,'SpatialPixels')
+Dist_Quoddy_sq$Dist_Quoddy_sq <- scale(Dist_Quoddy$Dist_Quoddy^2)
+```
+
+Now we can fit the Poisson point process models to the **JOE: you need a bit more info here.**.
+
+```{r 'ppm2', warning=FALSE, message=FALSE, cache=TRUE}
+Ppm_2 <- ppm(All_obs_ppp~log_Slope_im+log_Bathym_im +
+                    I(ifelse(marks=='Brier',1,0)):Dist_Brier_im +
+                    I(ifelse(marks=='Quoddy',1,0)):Dist_Quoddy_im +
+                    I(ifelse(marks=='survey',1,0)):Dist_Survey_im +
+                    marks,
+                  data=list(log_Slope_im=log_Slope_im, 
+                            log_Bathym_im=log_Bathym_im,
+                            Dist_Brier_im = as(as(Dist_Brier_sq,'SpatialGridDataFrame'),'im'),
+                            Dist_Quoddy_im = as(as(Dist_Quoddy_sq,'SpatialGridDataFrame'),'im'),
+                            Dist_Survey_im = as(as(Dist_Surveylines,'SpatialGridDataFrame'),'im'),
+                            Domain=as(Domain, 'owin')),
+                  subset = Domain)
+coef(summary(Ppm_2))
+```
+
+With this rough attempt at controlling for heterogeneous effort, we see that both log slope and log depth are found to be significantly associated with the whale density, with positive coefficients for both. The negative effects of all three complicated expressions imply that a negative association between 'distance' and observed intensity is witnessed (agreeing with common sense).
+
+We can plot the true whale intensity predicted from this model:
+
+```{r 'fig-ppm', cache=TRUE}
+# remove the effects of observers for plotting
+pred_coef <- coef(Ppm_2)
+pred_coef[c(1,4,5,6,7,8)] <- 0
+plot(predict.ppm(Ppm_2, ngrid=c(300,300),
+             new.coef=pred_coef)[[1]],superimpose=F,
+     hcl.colors(60, "YlOrRd", rev = TRUE))
+
+```
+
+Alternatively, we can also plot the fitted observed intensity surface $\lambda_{obs}$ (=$\lambda_{true} \times \lambda_{effort}$) for all observer types. We plot the observed intensity surfaces for both the survey and Quoddy-based whale watch vessels.
+
+```{r 'fig-maxentFitted', cache=TRUE}
+pred_coef <- coef(Ppm_2)
+plot(log(predict(Ppm_2, ngrid=c(300,300),
+             new.coef=pred_coef)[[3]]),superimpose=F,
+     hcl.colors(60, "YlOrRd", rev = TRUE))
+# Plot Quoddy
+plot(log(predict(Ppm_2, ngrid=c(300,300),
+             new.coef=pred_coef)[[2]]),superimpose=F,
+     hcl.colors(60, "YlOrRd", rev = TRUE))
+```
+
+This exploratory analysis is useful at informing us about possible species-environment relationships. By playing around with different covariates and functional forms (e.g. quadratic effects), we can develop an understanding of which models to formally compare in the modelling stage.
+
+### Assessing the suitability of an inhomogeneous Poisson process
+
+Unfortunately, by being in the inhomogeneous Poisson process class of point processes, the above models lack one crucial feature. They are unable to account for any additional spatial correlations/clustering that are frequently caused by unmeasured environmental covariates and biological processes acting behind the scenes. 
+
+**JOE: check these paragraphs, I've tried to simplify it to stick to inhomogenous, but I don't know the details, so I could have added some errors. In the footnote, you can add the form of inhomogenous rather than the homogenous.**
+
+We can actually investigate the suitability of this inhomogeneous Poisson process assumption by plotting the (estimated) inhomogeneous K functions. Loosely speaking, the K function evaluated at a distance r defines a (scalar multiple of) the expected number of extra events that occur within a distance $r$ of a randomly chosen point (event). The K function can be evaluated exactly for inhomogeneous Poisson processes^[for homogeneous Poisson processes it would takes the form $K(r) = \pi r^2$]. The empirical K function can also be computed from the data and compared with the true one. The empirical K function counts the observed number of inter-point distances (in the observed data) that fall within a sequence of distances $r_1, r_2 ,..., r_m$. Plotting the observed (empirical) and expected (true) K functions together allows for model assumptions to be assessed.
+
+If the empirical K function falls 'significantly' above the expected curve at a distance $r$, then additional clustering has been detected in the data that cannot be explained by the inhomogeneous model alone. Conversely, if the empirical K function falls 'significantly' below the expected curve at a distance $r$, then additional repulsion or regularity has been detected in the data that cannot be explained by the inhomogeneous Poisson model alone. This clustering or repulsion may be caused by covariates or biological processes that have been missed! Let's plot these two curves now!
+
+```{r 'fig-kFunctions', warning=FALSE, cache=TRUE}
+plot(Kinhom(All_obs_ppp,lambda=Ppm_2,correction = 'best',normpower = 1))
+```
+
+We see a large discrepancy between the true curve (in red) and the empirical curve in black. Thus, the fitted model in its current form is inadequate.
+
+This is why we turn to log-Gaussian Cox processes in the next tutorial. By assuming the intensity surface to be a realisation from a spatially-smooth (log-Gaussian) random field, we are able to adjust our inference to take into account any additional spatial correlations and/or unmeasured covariates! By doing this, both parameter estimates and measures of uncertainty should be better adjusted to account for these autocorrelations.
+
+
+## Exercises
+
+If you got stuck on any of the exercises, then please feel free to try them again. Here are links to the problems:
+
+1. [Plotting data by year](#Ex1)
+
+### Bonus Exercises
+
+1. Transform one of the spatial objects back into longitude latitude.
+2. Transform one of the spatial objects into units of meters.
+3. (More challenging) Investigate the relationship of distance from port with the two sources of whale watch data? What do you notice? What functional form could explain this type of behaviour? **(Hint: use the `over()` function to extract the values of a spatial covariate (of type SpatialPixelsDataFrame) at point locations (stored as a SpatialPointsDataFrame object). Remember to subset the data accordingly!)**
+
+## Additional tips and code 
+
+### Using OpenStreetMaps instead of Google Maps {#Ad1}
+
+For publication, there can be issues regarding copyright of Google Maps. Using OpenStreetMap can help. To guarantee this simply add the following argument: `source='osm', force=TRUE` to `gmap()`. Double check the console that the maps are indeed being downloaded from stamen or osm. For brevity we have suppressed the messages.
+
+```{r 'map-openStreet', message=FALSE, warning=FALSE, tidy=FALSE, cache=TRUE, eval=FALSE}
+gmap(Sightings_survey, source='osm', force=TRUE) +
+  gg(Domain) +
+  gg.spatiallines_mod(Effort_survey) +
+  gg(Sightings_survey, colour='blue') +
+  gg(Sightings_DRWW_sp, colour='purple') +
+  gg(WW_ports, colour='red')
+```
+
+Note for this to work it needs to be in the original project (lat/lon), not UTM.
+
 
 The `multiplot()` function is a very flexible function that enables publication-quality figures to be made with relative ease. 
 
-### Exercise 2 {#Ex2}
-Have a go at changing the argument `byrow=T` to `byrow=F`. What do you think will happen?
+### Changing the layout of multiplot() {#Ad2}
 
-<div class="fold s o"> 
+To change the order of the plots you can change the argument `byrow=TRUE` to `byrow=FALSE`. 
+
 ```{r 'map-multiplotOrder', message=FALSE, cache=TRUE}
 multiplot(ggplot() +
   gg(Domain) +
@@ -262,14 +679,12 @@ ggplot() +
 ggplot() +
   gg(Domain) +
   gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)'),
-layout=matrix(1:4, nrow=2, ncol=2, byrow = F))
+layout=matrix(1:4, nrow=2, ncol=2, byrow = FALSE))
 ```
-</div>
 
-Next, have a go at specifying a 3x2 matrix with entries (1,1,2,3,4,4). Notice what happens? Does this make sense to you?
+We can also change the size of the figures by changing the matrix in the layout.
 
-<div class="fold s o"> 
-```{r 'map-multiplotStretch', message=FALSE, cache=TRUE}
+```{r 'map-multiplotSubfigures', message=FALSE, cache=TRUE}
 multiplot(ggplot() +
   gg(Domain) +
   gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
@@ -282,18 +697,43 @@ ggplot() +
 ggplot() +
   gg(Domain) +
   gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)'),
-layout=matrix(c(1,1,2,3,4,4), nrow=3, ncol=2, byrow = T))
+layout=matrix(c(1,1,2,3,4,4), nrow=3, ncol=2, byrow = TRUE))
 ```
-</div>
 
-Don't like the colour scheme? We can define our own manually!
+As you can see plots of different size stretches the maps, to keep the set projection we can use 
+`coord_fixed(ratio = 1)`.
+
+```{r 'map-multiplotProject', message=FALSE, cache=TRUE}
+multiplot(ggplot() +
+  gg(Domain) +
+  gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') +
+    coord_fixed(ratio = 1),
+ggplot() +
+  gg(Domain) +
+  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope') +
+  coord_fixed(ratio = 1),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)') + 
+  coord_fixed(ratio = 1),
+ggplot() +
+  gg(Domain) +
+  gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)') + 
+  coord_fixed(ratio = 1),
+layout=matrix(c(1,1,2,3,4,4), nrow=3, ncol=2, byrow = TRUE))
+```
+
+### Define your own colour palette {#Ad3}
+
+We can define the colour palette easily.
 
 ```{r}
 colsc <- function(...) {
-  scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(11,"RdYlBu")),
+  scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(11,"PuBuGn")),
                        limits = range(...))
 }
 ```
+
 Look at `?RColorBrewer::brewer.pal` to see what other colour palettes are available.
 
 ```{r 'map-multiplotColor1', message=FALSE, cache=TRUE}
@@ -314,9 +754,8 @@ ggplot() +
   gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)') +
   colsc(Dist_Quoddy@data[,1]),
 layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
-```  
+```
 
-### Exercise 3 {#Ex3}
 Have a go at creating your own colour palette function. Investigate the effects of changing both arguments to `brewer.pal`.
 
 <div class="fold s o"> 
@@ -345,19 +784,32 @@ layout=matrix(1:4, nrow=2, ncol=2, byrow = T))
 ```
 </div>
 
-### Exercises
+### Potential repeated whale-watch and survey sightings in 2011 {#Ad4}
 
-If you got stuck on any of the exercises, then please feel free to try them again. Here are links to the 3 problems:
+Could we not also put 2011's whale-watch data into the training set? Below is some code showing that we cannot. A whale is sighted by at least one whale watch company on every day in 2011 that a survey detects a whale. The plot below shows that these sightings could have been of the same animal. Even if they weren't, the tracklines in 2011 still visited areas that the whale watch vessels were present. Since our training and test datasets are required to be independent of each other, we must therefore also remove the 2011 whale watch sightings from the training data.
 
-1. [Plotting data by year](#Ex1)
-2. [Changing the layout of multiple plots](#Ex2)
-3. [Defining a custom colour palette in ggplot for spatial plots](#Ex3)
+<div class="fold e o">
+```{r 'map-2011', message=FALSE, cache=TRUE}
+# what dates were survey sightings made on in 2011?
+unique(Sightings_survey$DATE_LO[Sightings_survey$YEAR==2011])
+# Are sightings by the WW vessels made on these dates?
+sum(grepl(Sightings_survey$DATE_LO[Sightings_survey$YEAR==2011][1],
+     x=c(Sightings_Quoddy_nodup$WS_DATE[Sightings_Quoddy_nodup$YEAR==2011],
+         Sightings_Brier_nodup$WS_DATE[Sightings_Brier_nodup$YEAR==2011])))>0
+sum(grepl(Sightings_survey$DATE_LO[Sightings_survey$YEAR==2011][2],
+     x=c(Sightings_Quoddy_nodup$WS_DATE[Sightings_Quoddy_nodup$YEAR==2011],
+         Sightings_Brier_nodup$WS_DATE[Sightings_Brier_nodup$YEAR==2011])))>0
+sum(grepl(Sightings_survey$DATE_LO[Sightings_survey$YEAR==2011][3],
+     x=c(Sightings_Quoddy_nodup$WS_DATE[Sightings_Quoddy_nodup$YEAR==2011],
+         Sightings_Brier_nodup$WS_DATE[Sightings_Brier_nodup$YEAR==2011])))>0
+# Could they be of the same animal? 
+ggplot() + gg(Domain) + 
+  gg(Sightings_survey[Sightings_survey$YEAR==2011,],colour='green') +
+  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR==2011,],colour='yellow')
 
-### Bonus Exercises
+```
+</div>
 
-1. Transform one of the spatial objects back into longitude latitude.
-2. Transform one of the spatial objects into units of meters.
-3. (More challenging) Investigate the relationship of distance from port with the two sources of whale watch data? What do you notice? What functional form could explain this type of behaviour? **(Hint: use the `over()` function to extract the values of a spatial covariate (of type SpatialPixelsDataFrame) at point locations (stored as a SpatialPointsDataFrame object). Remember to subset the data accordingly!)**
 
 ## Acknowledgements
 The code for hiding the code chunks came from Martin Schmelzer, found [here](https://stackoverflow.com/questions/37755037/how-to-add-code-folding-to-output-chunks-in-rmarkdown-html-documents/37839683#37839683)
