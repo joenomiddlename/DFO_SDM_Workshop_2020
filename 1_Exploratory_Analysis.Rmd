@@ -525,7 +525,7 @@ log_Bathym_im <- Bathym_im
 log_Bathym_im[log_Bathym_im >= 0] <- -1
 log_Bathym_im$v <- log(1-log_Bathym_im$v)
 # Fitting the Poisson point process model
-Ppm_1 <- ppm(All_obs_ppp~log_Slope_im++log_Bathym_im,
+Ppm_1 <- ppm(All_obs_ppp~log_Slope_im + log_Bathym_im,
                   data=list(log_Slope_im=log_Slope_im, log_Bathym_im=log_Bathym_im,
                             Domain=as(Domain, 'owin')),
                   subset = Domain)
@@ -538,22 +538,33 @@ We find some evidence that the whales may be found more often in regions of high
 
 Next, we can attempt to make a crude adjustment for effort and see if these estimates change. We have already created a SpatialPixelsDataFrame object containing distance from the two whale-watch ports. Next, we can create a SpatialPixelsDataFrame containing the perpendicular distances to the nearest trackline. This fails to account for overlap in survey tracklines, but offers a reasonable approach to crudely control for effort.
 
-```{r 'map-dectectionDistance', warning=FALSE, message=FALSE, cache=TRUE}
+```{r 'tracklinDistance', warning=FALSE, message=FALSE, cache=TRUE}
 Dist_Surveylines <- as(Dist_Brier,'SpatialPoints')
-Dist_Surveylines$Dist_surveylines <- as.numeric(apply(gDistance(Dist_Surveylines, Effort_survey,byid = T),2,min))
+Dist_Surveylines$Dist_surveylines <- as.numeric(apply(gDistance(Dist_Surveylines, 
+                                                                Effort_survey,byid = T),2,min))
 Dist_Surveylines <- as(Dist_Surveylines,'SpatialPixelsDataFrame')
-ggplot() + gg(Domain) + gg(Dist_Surveylines) + colsc(Dist_Surveylines@data[,1])
+```
+
+We can then map the distance to the nearest trackline and plot the histogram of nearest distances. 
+
+```{r 'map-dectectionDistance', warning=FALSE, message=FALSE, cache=TRUE}
+# Map the distance through space
+ggplot() + gg(Domain) + gg(Dist_Surveylines)
 # What is the maximum detection distance?
 ggplot(Sightings_survey@data, aes(x=DISTANCE)) + geom_histogram()
-# Let's add a half-norm detection probability function, capped at 5km
-Dist_Surveylines$Dist_surveylines[Dist_Surveylines$Dist_surveylines > 5000] <- 1e3
-# need to square the value
+```
+
+Based on the histogram (**JOE: maybe add characteristics that made you choose this in brackets**), we will use a half-norm detection function in the Poisson point process model. Thus, we will square the values.
+
+```{r 'halfnorm', warning=FALSE, message=FALSE, cache=TRUE}
 Dist_Surveylines$Dist_surveylines <- scale(Dist_Surveylines$Dist_surveylines^2)
 Dist_Brier_sq <- as(Dist_Brier,'SpatialPixels')
 Dist_Brier_sq$Dist_Brier_sq <- scale(Dist_Brier$Dist_Brier^2)
 Dist_Quoddy_sq <- as(Dist_Quoddy,'SpatialPixels')
 Dist_Quoddy_sq$Dist_Quoddy_sq <- scale(Dist_Quoddy$Dist_Quoddy^2)
 ```
+
+Now we can fit the Poisson point process models to the **JOE: you need a bit more info here.**.
 
 ```{r 'ppm2', warning=FALSE, message=FALSE, cache=TRUE}
 Ppm_2 <- ppm(All_obs_ppp~log_Slope_im+log_Bathym_im +
