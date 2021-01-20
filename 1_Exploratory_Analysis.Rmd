@@ -611,13 +611,15 @@ plot(log(predict(Ppm_2, ngrid=c(300,300),
 
 This exploratory analysis is useful at informing us about possible species-environment relationships. By playing around with different covariates and functional forms (e.g. quadratic effects), we can develop an understanding of which models to formally compare in the modelling stage.
 
+### Assessing the suitability of an inhomogeneous Poisson process
+
 Unfortunately, by being in the inhomogeneous Poisson process class of point processes, the above models lack one crucial feature. They are unable to account for any additional spatial correlations/clustering that are frequently caused by unmeasured environmental covariates and biological processes acting behind the scenes. 
 
-We can actually investigate the suitability (or unsuitability) of this inhomogeneous Poisson process assumption by plotting the (estimated) inhomogeneous K functions. Loosely speaking, for a homogeneous Poisson process (with constant intensity) the K function evaluated at a distance r defines a (scalar multiple of) the expected number of extra events that occur within a distance $r$ of a randomly chosen point (event). The K function can be evaluated exactly for homogeneous Poisson processes and takes the form $K(r) = \pi r^2$. The empirical K function can also be computed from the data and compared with the true one. The empirical K function counts the observed number of inter-point distances (in the observed data) that fall within a sequence of distances $r_1, r_2 ,..., r_m$. Plotting the observed (empirical) and expected (true) K functions together allows for model assumptions to be assessed.
+**JOE: check these paragraphs, I've tried to simplify it to stick to inhomogenous, but I don't know the details, so I could have added some errors. In the footnote, you can add the form of inhomogenous rather than the homogenous.**
 
-If the empirical K function falls 'significantly' above the expected curve at a distance $r$, then additional clustering has been detected in the data that cannot be explained by the homogeneous model alone. Conversely, if the empirical K function falls 'significantly' below the expected curve at a distance $r$, then additional repulsion or regularity has been detected in the data that cannot be explained by the homogeneous Poisson model alone. This clustering or repulsion may be caused by covariates or biological processes that have been missed!
+We can actually investigate the suitability of this inhomogeneous Poisson process assumption by plotting the (estimated) inhomogeneous K functions. Loosely speaking, the K function evaluated at a distance r defines a (scalar multiple of) the expected number of extra events that occur within a distance $r$ of a randomly chosen point (event). The K function can be evaluated exactly for inhomogeneous Poisson processes^[for homogeneous Poisson processes it would takes the form $K(r) = \pi r^2$]. The empirical K function can also be computed from the data and compared with the true one. The empirical K function counts the observed number of inter-point distances (in the observed data) that fall within a sequence of distances $r_1, r_2 ,..., r_m$. Plotting the observed (empirical) and expected (true) K functions together allows for model assumptions to be assessed.
 
-The K function and empirical K function can also be computed for inhomogeneous Poisson process models. The interpretation of the plots is similar, with large discrepancies providing evidence of additional unexplained clustering/repulsion existing in the data that may be caused by unmeasured covariates. Let's plot these two curves now!
+If the empirical K function falls 'significantly' above the expected curve at a distance $r$, then additional clustering has been detected in the data that cannot be explained by the inhomogeneous model alone. Conversely, if the empirical K function falls 'significantly' below the expected curve at a distance $r$, then additional repulsion or regularity has been detected in the data that cannot be explained by the inhomogeneous Poisson model alone. This clustering or repulsion may be caused by covariates or biological processes that have been missed! Let's plot these two curves now!
 
 ```{r 'fig-kFunctions', warning=FALSE, cache=TRUE}
 plot(Kinhom(All_obs_ppp,lambda=Ppm_2,correction = 'best',normpower = 1))
@@ -625,7 +627,7 @@ plot(Kinhom(All_obs_ppp,lambda=Ppm_2,correction = 'best',normpower = 1))
 
 We see a large discrepancy between the true curve (in red) and the empirical curve in black. Thus, the fitted model in its current form is inadequate.
 
-This is why we turn to log-Gaussian Cox processes in the next workshop. By assuming the intensity surface to be a realisation from a spatially-smooth (log-Gaussian) random field, we are able to adjust our inference to take into account any additional spatial correlations and/or unmeasured covariates! By doing this, both parameter estimates and measures of uncertainty should be better adjusted to account for these autocorrelations.
+This is why we turn to log-Gaussian Cox processes in the next tutorial. By assuming the intensity surface to be a realisation from a spatially-smooth (log-Gaussian) random field, we are able to adjust our inference to take into account any additional spatial correlations and/or unmeasured covariates! By doing this, both parameter estimates and measures of uncertainty should be better adjusted to account for these autocorrelations.
 
 
 ## Exercises
