@@ -43,6 +43,10 @@ remotes::install_github("inlabru-org/inlabru", ref="stable")
 
 ### Packages that require additional software
 
+The package *rgdal* requires that you install. gdal on your computer. gdal can be downloaded from [gdal.org](https://gdal.org). 
+
+**Many participants with `rgdal` and gdal already installed.** Verify that the version that's already installed is adequate. Load the `rgdal` package and use the function rgdal function `GDALis3ormore()` in R. It should return TRUE. We want gdal to use the appropriate PROJ transformation software ([proj.org/](https://proj.org/)), so in addition the rgdal function `PROJis6ormore()` should return TRUE. If either return FALSE, update your gdal.
+
 For those that may have some of the old versions of these packages installed (e.g., rgdal), you may need to update the packages. Note new version of some packages (e.g., sp) have made significant changes.
 
 ### Available on CRAN
