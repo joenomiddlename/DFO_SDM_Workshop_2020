@@ -95,7 +95,7 @@ install.packages("INLA", repos=c(getOption("repos"), INLA="https://inla.r-inla-d
 For more details, see [www.r-inla.org/download-install](https://www.r-inla.org/download-install).
 
 
-### Packages that require a special version
+### Package that requires a special version
 
 inlabru is available on CRAN, but the version we need for this workshop is the new version **only available on GithHub**.
 
@@ -111,6 +111,7 @@ Next, we will install `inlabru`
 remotes::install_github("inlabru-org/inlabru", ref="stable")
 ```
 
+Note, if you have an error of the type *Error: (converted from warning) package X was built under R version #.#.#* that aborts the whole install. Run `Sys.setenv("R_REMOTES_NO_ERRORS_FROM_WARNINGS" = "true")`.
 
 ### Packages available on CRAN
 
