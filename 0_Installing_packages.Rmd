@@ -86,10 +86,10 @@ install.packages(c('rgdal','rgeos','sp','sf','spdep','maptools','spatstat'), dep
 
 ### Packages not available on CRAN
 
-Our methodology highly depends on the INLA package. This package must be installed directly from the [www.r-inla.org](https://www.r-inla.org) website. To do so, you can run the following in R:
+Our methodology highly depends on the INLA package. This **testing** version of this package must be installed directly from the [www.r-inla.org](https://www.r-inla.org) website. To do so, you can run the following in R:
 
 ```{r eval=FALSE}
-install.packages("INLA", repos=c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE)
+install.packages("INLA", repos=c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/testing"), dep=TRUE)
 ```
 
 For more details, see [www.r-inla.org/download-install](https://www.r-inla.org/download-install).
