@@ -5,3 +5,5 @@
 
 *_cache/*
 *_files/*
+**/.DS_Store
+
