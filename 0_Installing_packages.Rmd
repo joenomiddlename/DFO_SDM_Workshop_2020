@@ -23,8 +23,9 @@ Some of the packages we will use in the workshop are not available on CRAN and s
 C++ compilers are needed. 
 
 For Mac, installing Xcode is an easy way to achieve this. 
-You can install Xcode deriectly from the App store (it's free).
-Xcode is a very large program, so its worth checking if you already have it installed. If not, open terminal and run:
+You can install Xcode directly from the App store (it's free).
+
+You can also install it via terminal, but because it is a very large program it's worth checking if you already have it installed. If not, open terminal and run:
 
 ```{r,eval=F}
 xcode-select --install
