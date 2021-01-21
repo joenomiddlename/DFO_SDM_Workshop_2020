@@ -124,9 +124,9 @@ We name our buffered and smoothed shapefile as `Domain_smoothed` and name the co
 
 One may be tempted to define the mesh within a much larger convex hull around the coastline, but see [Additional tips]{#Ad1} for explanation of why this is an inadequate approach. 
 
-Next, we need to redefine our covariates. Our covariates depth and slope were defined on the original (un-buffered) domain as defined by the shapefile Domain. Since we have buffered (i.e. extended) our coastline, we need to sensibly define covariate values at the extension locations. We choose to 'fill-in' these points with nearest neighbour imputations. Note that these values will not significantly affect the inference, as the effective area covered by these 'extension regions' are very small once we downweight by the effort surface $\lambda_{eff}$.  
+Next, we need to redefine our covariates. Our covariates depth and slope were defined on the original (un-buffered) domain as defined by the shapefile Domain. Since we have buffered (i.e. extended) our coastline, we need to sensibly define covariate values at the extension locations. We choose to 'fill-in' these points with nearest neighbour imputations. Note that these values will not significantly affect the inference, as the effective area covered by these 'extension regions' are very small once we downweight by the effort surface $\lambda_{eff}$.
 
-```{r}
+```{r `map-covariatesWithMesh`, cache=TRUE}
 # Create the log depth and log slope covariates
 log_Depth <- Bathym
 log_Depth$FIWH_MAR_Bathymetry[log_Depth$FIWH_MAR_Bathymetry >= 0] <- 0
@@ -167,6 +167,8 @@ log_Slope_sq$log_Slope_sq <- log_Slope_sq$log_Slope_sq^2
 ggplot() + gg(log_Depth) + gg(mesh_land)
 ggplot() + gg(log_Slope) + gg(mesh_land)
 ```
+
+## Defining Gaussian random field and priors
 
 Next, with our mesh and covariates defined, we need to define our Gaussian random field model and priors. To do this, we use the function `inla.spde2.pcmatern` from the *INLA* package. Note that the arguments `prior.sigma` and `prior.range` define arguments for the penalized complexity (PC) prior of the random field developed by Fuglstad, et al., (2016) and Simpson, et al., (2015).
 
@@ -744,6 +746,5 @@ plot(mesh_noland)
 mesh_noland$n
 ```
 We ignore this mesh for the remainder of this session, since it fails to account for land as a barrier.
-
 
 # References
