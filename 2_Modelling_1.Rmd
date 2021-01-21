@@ -62,7 +62,9 @@ options("rgdal_show_exportToProj4_warnings"="none")
 
 ## Creating a mesh
 
-The log-Gaussian Cox process models we will be fitting require Gaussian random fields to be specified. These can become computationally prohibitive. We will use a smart computational trick, which approximates a stochastic partial differential equation (SPDE) with a Gaussian Markov random field (GMRF) evaluated across a delauney triangulation. This approach was developed by @Lindgren2011 (Lindgren being an author of the `inlabru` package). 
+**JOE: I'm assuming some of these things will be discussed in the lectures, but some of the concepts that you are talking about here will be really difficult to grasp to an average ecologist. I think it's worth defining the important terms again here, e.g., Guassian random fields. You should NOT defined the terms that are not essential e.g. SPDE. FOr those just stating they are a trick, as you did, is sufficient.**
+
+The log-Gaussian Cox process models we will be fitting require Gaussian random fields to be specified. These can become computationally prohibitive. We will use a smart computational trick, which approximates a stochastic partial differential equation (SPDE) with a Gaussian Markov random field (GMRF) evaluated across a delauney triangulation mesh. This approach was developed by @Lindgren2011 (Lindgren being an author of the `inlabru` package). 
 
 The first step to using this approach is creating the mesh. Good rules of thumb are as follows:
 
@@ -170,7 +172,9 @@ ggplot() + gg(log_Slope) + gg(mesh_land)
 
 ## Defining Gaussian random field and priors
 
-Next, with our mesh and covariates defined, we need to define our Gaussian random field model and priors. To do this, we use the function `inla.spde2.pcmatern` from the *INLA* package. Note that the arguments `prior.sigma` and `prior.range` define arguments for the penalized complexity (PC) prior of the random field developed by Fuglstad, et al., (2016) and Simpson, et al., (2015).
+**JOE: this is quite dense. We will have to work on this part.**
+
+Next, with our mesh and covariates defined, we need to define our Gaussian random field model and priors. To do this, we use the function `inla.spde2.pcmatern` from the *INLA* package. Note that the arguments `prior.sigma` and `prior.range` define arguments for the penalized complexity (PC) prior of the random field developed by @Simpson2017 and @Fuglstad2019.
 
 We are required to define PC priors, on the spatial range $\rho$ (the wiggliness) and marginal standard deviation $\sigma$ (the magnitude) of the field. PC priors take the form of prior probabilistic statements on quantiles, providing a user-friendly way of defining sensible, interpretable priors. We are asked to define the following two probabilistic statements:
 
@@ -186,7 +190,7 @@ matern_land <- inla.spde2.pcmatern(mesh_land,
                               prior.range = c(35, 0.01))
 ```
 
-Next, with the, mesh, covariates, and spatial model defined, we must now define our detection probability function. First, we define a half-normal detection probability function. This object will take the form of a base R function.
+Next, with the mesh, covariates, and spatial model defined, we must now define our detection probability function. First, we define a half-normal detection probability function. This object will take the form of a base R function.
 
 ```{r}
 # Define a half-normal detection probability function (code from inlabru tutorials)
@@ -194,11 +198,12 @@ log_hn = function(distance, lsig){
   -0.5*(distance/exp(lsig))^2
 }
 ```
+
 Next, we need to separately define the components of the model: the SPDE, the intercept, and the detection function parameter `lsig`. We let `inlabru` know the type of object each component is. For example, we define our spatial field and give it the name mySpatial. We tell `inlabru` that the coordinates of the points are the locations at which we wish to evaluate the field at. Finally, we point `inlabru` to the model object we defined earlier (`matern_land`).  
 
 We repeat the process, defining the additional scalar terms `lsig` and `Intercept`. The arguments `1` (specified for the argument `main`) tells inlabru to evaluate the two terms at every data point.
+
 ```{r}
-# (code taken from inlabru tutorials) We need to now 
 cmp_land1 <- ~ mySpatial(main = coordinates, model = matern_land) + 
   lsig(1) + Intercept(1)
 ```
