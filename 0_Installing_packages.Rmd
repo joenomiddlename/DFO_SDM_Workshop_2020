@@ -16,13 +16,16 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Installing packages: tips to install some of the packages
 
-Some of the packages we will use in the workshop are not available on CRAN and some even require the installation of software and compilers.
+Some of the packages we will use in the workshop are not available on CRAN and some require the installation of additional software and compilers.
 
 ### Compilers
 
 C++ compilers are needed. 
 
-For Mac, installing Xcode is an easy way to achieve this. Xcode is a very large program, so its worth checking if you already have it installed. If not, open terminal and run:
+For Mac, installing Xcode is an easy way to achieve this. 
+You can install Xcode directly from the App store (it's free).
+
+You can also install it via terminal, but because it is a very large program it's worth checking if you already have it installed. If not, open terminal and run:
 
 ```{r,eval=F}
 xcode-select --install
@@ -46,6 +49,7 @@ sudo apt install build-essential
 
 ### Required GIS software
 The latest version of gdal and geos is **required**. The workshop material **will not work without these**.
+*Note new version of some of these GIS software and packages (e.g., sp) have made significant changes and might affect other code.*
 
 On Mac, installing these is easiest done using homebrew. With homebrew installed, open terminal and run:
 
@@ -65,6 +69,7 @@ sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
 sudo apt-get update
 sudo apt-get install libudunits2-dev libgdal-dev libgeos-dev libproj-dev 
 ```
+
 
 ### Installing the latest version of the spatial packages
 
@@ -101,6 +106,7 @@ Next, we will install `inlabru`
 ```{r eval=FALSE}
 remotes::install_github("inlabru-org/inlabru", ref="stable")
 ```
+
 
 ### Packages available on CRAN
 

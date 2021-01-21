@@ -3,6 +3,7 @@ title: "Model Fitting"
 subtitle: "Fitting distance sampling log-Gaussian Cox process models using inlabru"
 author: "Joe Watson"
 date: "11/01/2021"
+bibliography: bibliography.bib
 output: 
   html_document:
     css: "CSSdefs.css"
@@ -38,10 +39,7 @@ library(ggmap)
 library(raster)
 ```
 
-**JOE: I've remove it from Exp. An. and put it here. We may need to change it or just change the starting values.**
-
 ### File set up
-
 
 Using `getwd()` check that you are inside the folder 'DFO_SDM_Workshop_2020' that we downloaded in the previous tutorial. If not, change this by navigating to the correct folder in the bottom right panel (folder view), opening it, and then clicking "Set as Working Directory" under the tab 'More'.
 
@@ -50,6 +48,8 @@ Now we can load in the precompiled data and functions
 list2env(readRDS('./Data/Modelling_Data.rds'),globalenv())
 source('utility_functions.R')
 ```
+
+**JOE: I've remove it from Exp. An. and put it here. We may need to change it or just change the starting values.**
 
 In addition, to get access to the model results quickly, we need to download the pre-compiled modelling result files, which can be found [here](https://ubcca-my.sharepoint.com/:u:/g/personal/joewatto_student_ubc_ca/Ea8lRO_ESL5CgfFSWqOT0LUBzskEWVVA_v6N2B2RZhr67w?email=m.auger-methe%40oceans.ubc.ca&e=TvsrM1).
 
@@ -62,7 +62,9 @@ options("rgdal_show_exportToProj4_warnings"="none")
 
 ## Creating a mesh
 
-The log-Gaussian Cox process models we will be fitting require Gaussian random fields to be specified. These can become extremely computationally prohibitive, unless smart computational tricks are made. We will be using the approach of approximating an SPDE with a GMRF evaluated across a delauney triangulation. This approach was developed by Lindgren et al 2011 (an author of the `inlabru` package). 
+**JOE: I'm assuming some of these things will be discussed in the lectures, but some of the concepts that you are talking about here will be really difficult to grasp to an average ecologist. I think it's worth defining the important terms again here, e.g., Guassian random fields. You should NOT defined the terms that are not essential e.g. SPDE. FOr those just stating they are a trick, as you did, is sufficient.**
+
+The log-Gaussian Cox process models we will be fitting require Gaussian random fields to be specified. These can become computationally prohibitive. We will use a smart computational trick, which approximates a stochastic partial differential equation (SPDE) with a Gaussian Markov random field (GMRF) evaluated across a delauney triangulation mesh. This approach was developed by @Lindgren2011 (Lindgren being an author of the `inlabru` package). 
 
 The first step to using this approach is creating the mesh. Good rules of thumb are as follows:
 
@@ -72,14 +74,9 @@ The first step to using this approach is creating the mesh. Good rules of thumb 
 
 * Use a minimum triangle angle of 21 degrees.
 
-So, we go ahead and define a first mesh using the function `inla.mesh.2d` from the *INLA* package. We choose minimum triangle edge lengths of 18km, maximum triangle edge lengths of 45km, minimum angles of 25 degrees and we specify that we want a hard boundary equal to the coastline (as defined by `DOMAIN`). Note that we can plot meshes using `gg` as before!
+We define a first mesh using the function `inla.mesh.2d` from the *INLA* package. We choose minimum triangle edge lengths of 18km, maximum triangle edge lengths of 45km, minimum angles of 25 degrees and we specify that we want a hard boundary equal to the coastline (as defined by the SpatialPolygonDataFrame `DOMAIN`). Note that we can plot meshes using `gg` as before^[Alternatively we could use `plot(mesh_land)`].
 
-```{r}
-seed <- c(12345)
-```
-
-
-```{r}
+```{r `map-mesh`, cache=TRUE}
 mesh_land <- inla.mesh.2d(boundary = Domain,
                                min.angle = 25,
                                max.edge = 45,
@@ -89,16 +86,17 @@ ggplot() + gg(mesh_land) + gg.spatiallines_mod(Effort_survey,colour='red')
 ```
 
 Note that spatial correlations < 18km will not be detectable! We can print the number of mesh vertices (directly related to the length of time required later to fit the model).
+
 ```{r}
 mesh_land$n # lots of triangle vertices can lead to slow computation time. 551 good
-plot(mesh_land)
 ```
 
-We have a potential serious issue with this mesh. The coastline is very jagged, which could could lead to numerical instabilities to occur later. One easy solution to this is to buffer and/or smooth the coastline shapefile, making sure that all survey lines and sightings fall within the new modified shapefile. We do this below:
+We have a potential serious issue with this mesh. The coastline is jagged, which could lead to numerical instabilities to occur later. One easy solution to this is to buffer and/or smooth the coastline shapefile, making sure that all survey lines and sightings fall within the new modified shapefile. We do this below:
 
-```{r}
+```{r `map-meshSimplified`, cache=TRUE}
 # Use gSimplify to smooth the edges
-ggplot() + gg(gSimplify(Domain,tol=8)) + gg.spatiallines_mod(Effort_survey,colour='red')
+ggplot() + gg(gSimplify(Domain,tol=8)) +
+  gg.spatiallines_mod(Effort_survey,colour='red')
 
 # Alternative is buffering
 # Buffered by 5km
@@ -118,33 +116,19 @@ mesh_land <- inla.mesh.2d(boundary = Domain_smoothed,
                          max.edge = 45,
                          cutoff = 18)
 mesh_land$crs <- Can_proj
-plot(mesh_land)
 mesh_land$n
-ggplot() + #gg(gSimplify(gBuffer(Domain,width=15),tol=3)) +
+ggplot() +
   gg(mesh_land) + 
   gg.spatiallines_mod(Effort_survey,colour='red')
 ```
 
 We name our buffered and smoothed shapefile as `Domain_smoothed` and name the corresponding mesh as `mesh_land`.
 
-An alternative 'solution' to the jagged mesh problem is to define the mesh within a much larger convex hull around the coastline. Unfortunately, this approach will not take into account the coastline and hence will measure spatial 'distance' as euclidean distance and not 'ocean-distance'. One such mesh is defined below:
+One may be tempted to define the mesh within a much larger convex hull around the coastline, but see [Additional tips]{#Ad1} for explanation of why this is an inadequate approach. 
 
-```{r}
-# Compare with a mesh that ignores the land barrier
-mesh_noland <- inla.mesh.2d(boundary = Domain_smoothed,
-                          min.angle = 25,
-                          max.edge = c(45,60),
-                          cutoff = 30,
-                          offset = c(10,20))
-mesh_noland$crs <- Can_proj
-plot(mesh_noland)
-mesh_noland$n
-```
-We ignore this mesh for the remainder of this session, since it fails to account for land as a barrier.
+Next, we need to redefine our covariates. Our covariates depth and slope were defined on the original (un-buffered) domain as defined by the shapefile Domain. Since we have buffered (i.e. extended) our coastline, we need to sensibly define covariate values at the extension locations. We choose to 'fill-in' these points with nearest neighbour imputations. Note that these values will not significantly affect the inference, as the effective area covered by these 'extension regions' are very small once we downweight by the effort surface $\lambda_{eff}$.
 
-Next, we need to redefine our covariates. Our covariates depth and slope were defined on the original (un-buffered) domain as defined by the shapefile Domain. Since we have buffered (i.e. extended) our coastline, we need to sensibly define covariate values at the extension locations. We choose to 'fill-in' these points with nearest neighbour imputations. Note that these values will not significantly affect the inference, as the effective area covered by these 'extension regions' are very small once we downweight by the effort surface $\lambda_{eff}$.  
-
-```{r}
+```{r `map-covariatesWithMesh`, cache=TRUE}
 # Create the log depth and log slope covariates
 log_Depth <- Bathym
 log_Depth$FIWH_MAR_Bathymetry[log_Depth$FIWH_MAR_Bathymetry >= 0] <- 0
@@ -186,7 +170,11 @@ ggplot() + gg(log_Depth) + gg(mesh_land)
 ggplot() + gg(log_Slope) + gg(mesh_land)
 ```
 
-Next, with our mesh and covariates defined, we need to define our Gaussian random field model and priors. To do this, we use the function `inla.spde2.pcmatern` from the *INLA* package. Note that the arguments `prior.sigma` and `prior.range` define arguments for the penalized complexity (PC) prior of the random field developed by Fuglstad, et al., (2016) and Simpson, et al., (2015).
+## Defining Gaussian random field and priors
+
+**JOE: this is quite dense. We will have to work on this part.**
+
+Next, with our mesh and covariates defined, we need to define our Gaussian random field model and priors. To do this, we use the function `inla.spde2.pcmatern` from the *INLA* package. Note that the arguments `prior.sigma` and `prior.range` define arguments for the penalized complexity (PC) prior of the random field developed by @Simpson2017 and @Fuglstad2019.
 
 We are required to define PC priors, on the spatial range $\rho$ (the wiggliness) and marginal standard deviation $\sigma$ (the magnitude) of the field. PC priors take the form of prior probabilistic statements on quantiles, providing a user-friendly way of defining sensible, interpretable priors. We are asked to define the following two probabilistic statements:
 
@@ -202,7 +190,7 @@ matern_land <- inla.spde2.pcmatern(mesh_land,
                               prior.range = c(35, 0.01))
 ```
 
-Next, with the, mesh, covariates, and spatial model defined, we must now define our detection probability function. First, we define a half-normal detection probability function. This object will take the form of a base R function.
+Next, with the mesh, covariates, and spatial model defined, we must now define our detection probability function. First, we define a half-normal detection probability function. This object will take the form of a base R function.
 
 ```{r}
 # Define a half-normal detection probability function (code from inlabru tutorials)
@@ -210,11 +198,12 @@ log_hn = function(distance, lsig){
   -0.5*(distance/exp(lsig))^2
 }
 ```
+
 Next, we need to separately define the components of the model: the SPDE, the intercept, and the detection function parameter `lsig`. We let `inlabru` know the type of object each component is. For example, we define our spatial field and give it the name mySpatial. We tell `inlabru` that the coordinates of the points are the locations at which we wish to evaluate the field at. Finally, we point `inlabru` to the model object we defined earlier (`matern_land`).  
 
 We repeat the process, defining the additional scalar terms `lsig` and `Intercept`. The arguments `1` (specified for the argument `main`) tells inlabru to evaluate the two terms at every data point.
+
 ```{r}
-# (code taken from inlabru tutorials) We need to now 
 cmp_land1 <- ~ mySpatial(main = coordinates, model = matern_land) + 
   lsig(1) + Intercept(1)
 ```
@@ -323,6 +312,11 @@ As a first objective, let's plot the predicted whale intensity across the domain
 - Finally, we can plot these prediction objects using `gg`. 
 
 Let's see it in action! Note that for the purposes of this workshop, we are going to use only 20 Monte Carlo samples. In practice, to reduce Monte Carlo error, this number may need to be >1000. The Monte Carlo standard error should always be reported.
+
+```{r}
+seed <- c(12345)
+```
+
 
 ```{r, message=F}
 # 1) Define pixels for plotting
@@ -738,5 +732,24 @@ Coming up next, we will see how to incorporate presence-only datasets into our m
 3. [Exercise 3](#Ex3)
 4. [Bonus Exercise 1](#Ex4)
 5. [Bonus Exercise 2](#Ex5)
+
+## Additional tips and code 
+
+### Problems with larger mesh {#Ad1}
+
+An alternative 'solution' to the jagged mesh problem is to define the mesh within a much larger convex hull around the coastline. Unfortunately, this approach will not take into account the coastline and hence will measure spatial 'distance' as euclidean distance and not 'ocean-distance'. One such mesh is defined below:
+
+```{r}
+# Compare with a mesh that ignores the land barrier
+mesh_noland <- inla.mesh.2d(boundary = Domain_smoothed,
+                          min.angle = 25,
+                          max.edge = c(45,60),
+                          cutoff = 30,
+                          offset = c(10,20))
+mesh_noland$crs <- Can_proj
+plot(mesh_noland)
+mesh_noland$n
+```
+We ignore this mesh for the remainder of this session, since it fails to account for land as a barrier.
 
 # References
