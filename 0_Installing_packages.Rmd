@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Installing packages: tips to install some of the packages
 
-Some of the packages we will use in the workshop are not available on CRAN and some even require the installation of software and compilers.
+Some of the packages we will use in the workshop are not available on CRAN and some require the installation of additional software and compilers.
 
 ### Compilers
 
