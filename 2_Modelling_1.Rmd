@@ -66,9 +66,9 @@ Log-Gaussian Cox process models require the specification of Gaussian random fie
 
 The first step to using this approach is creating the mesh. Good rules of thumb are as follows:
 
-* define maximum triangle lengths no shorter than half of the expected spatial range of your problem. Spatial range here is loosely defined as the 'distance required for whale density to be independent of each other'. Note that it is impossible to detect clusters or hotspots with sizes smaller than the maximum length of triangles used.
+* define maximum triangle lengths no shorter than half of the expected spatial range of your problem. Spatial range here is loosely defined as the 'distance required between two locations for the whale intensity at these two locations to be approximately independent of each other'. Note that it is impossible to detect clusters or hotspots with sizes smaller than the maximum length of triangles used.
 
-* Do not define the minimum triangle lengths too small. This could lead to very large meshes!
+* Do not define the minimum triangle lengths too small. This could lead to very large meshes! This is specified with the argument `cutoff`.
 
 * Use a minimum triangle angle of 21 degrees.
 
@@ -107,14 +107,14 @@ gContains(gBuffer(Domain,width=15), Effort_survey)
 # Success, does contain all the survey lines!
 ```
 
-**JOE: explain why you go on and simplify it. If it's not needed add this as an additional tip/code, that sometime this can be achieved by simplifiying.**
+Looking at the buffered coastline, we see that the boundary is quite 'wiggly'. This may prove problematic when trying to fit a series of triangles around it. To 'straighten out' the boundary, we can 'simplify' it using `gSimplify`. The amount of 'straightening' is specified by the tolerance argument `tol`.
 
 ```{r `map-meshSimplified`, cache=TRUE}
 # Use gSimplify to smooth the edges
 ggplot() + gg(gSimplify(gBuffer(Domain,width=15),tol=5)) + gg.spatiallines_mod(Effort_survey,colour='red')
 gContains(gSimplify(gBuffer(Domain,width=15),tol=5), Effort_survey) 
 
-Domain_smoothed <- gSimplify(gBuffer(Domain,width=15),tol=5)
+Domain_smoothed <- gSimplify(gBuffer(Domain,width=15),tol=5) # again all the survey tracklines are contained in the modified boundary
 ```
 
 Using this new buffered and smoothed domain/study area shapefile (i.e. `Domain_smoothed`), we create below a new mesh named `mesh_land`.
@@ -135,10 +135,11 @@ One may be tempted to define the mesh within a much larger convex hull around th
 
 ### Redefining the covariates using the new mesh
 
-Next, we need to redefine our covariates. Our covariates depth and slope were defined on the original (un-buffered) domain as defined by the shapefile Domain. Since we have buffered (i.e. extended) our coastline, we need to sensibly define covariate values at the extension locations. We choose to 'fill-in' these points with nearest neighbour imputations. These values will not significantly affect the inference, as the effective area covered by these 'extension regions' are very small once we downweight by the effort surface $\lambda_{eff}$.
+Next, we need to redefine our covariates. Our covariates depth and slope were defined on the original (un-buffered) domain as defined by the SpatialPolygons `Domain`. Since we have buffered (i.e. extended) our coastline, we need to sensibly define covariate values at the extension locations. We choose to 'fill-in' these points with nearest neighbour imputations. These values will not significantly affect the inference, as the effective area covered by these 'extension regions' are very small once we downweight by the effort surface $\lambda_{eff}$.
 
 **JOE: there is too much on this chunk of code. You'll see on Github that I've made a suggestion: just create the transformed variables in the previous tutorial (which we kind of do, 1_Exploratory_Analysis) and explain that this is what we will use throughout, and just add them to the data we here and focus on the domain part. Make sure they have the same name in all tutorial. I think right now they don't.**
 
+<div class="fold s o"> 
 ```{r `map-covariatesWithMesh`, cache=TRUE}
 # Create the log depth and log slope covariates
 log_Depth <- Bathym
@@ -180,6 +181,7 @@ log_Slope_sq$log_Slope_sq <- log_Slope_sq$log_Slope_sq^2
 ggplot() + gg(log_Depth) + gg(mesh_land)
 ggplot() + gg(log_Slope) + gg(mesh_land)
 ```
+</div>
 
 ### Defining Gaussian random field and priors
 
@@ -187,7 +189,55 @@ ggplot() + gg(log_Slope) + gg(mesh_land)
 
 Next, we need to define our Gaussian random field model and its priors. To do this, we use the function `inla.spde2.pcmatern` from the *INLA* package. Note that the arguments `prior.sigma` and `prior.range` define arguments for the penalized complexity (PC) prior of the random field developed by @Simpson2017 and @Fuglstad2019.
 
-We are required to define PC priors, on the spatial range $\rho$ (the wiggliness) and marginal standard deviation $\sigma$ (the magnitude) of the field. PC priors take the form of prior probabilistic statements on quantiles, providing a user-friendly way of defining sensible, interpretable priors. We are asked to define the following two probabilistic statements:
+We are required to define PC priors, on the spatial range $\rho$ (the wiggliness) and marginal standard deviation $\sigma$ (the magnitude) of the field. PC priors take the form of prior probabilistic statements on quantiles, providing a user-friendly way of defining sensible, interpretable priors. 
+
+Before defining our priors, let's remind ourselves how the Gaussian random field is affected by the range and marginal standard deviation. Below is a chunk of code that simulates and plots a single Gaussian random field on the unit square. You are asked to specify the range and marginal standard deviation:
+
+```{r, eval=F}
+# Specify spatial range and variance
+sim_range <- 0.1
+sim_sd <- 2
+
+# define inla mesh
+mesh <- inla.mesh.2d(loc.domain = cbind(c(0,1,1,0),c(0,0,1,1)),
+                     min.angle = 21, max.edge = 0.04, cutoff = 0.02)
+plot(mesh)
+mesh$n
+
+# define spde
+spde_obj <- inla.spde2.pcmatern(mesh, constr = T,
+                                prior.range = c(sim_range, 0.5),
+                                prior.sigma = c(sim_sd, 0.5))
+
+# define indices
+index <- inla.spde.make.index('smooth',n.spde = spde_obj$n.spde)
+
+# define prediction matrix
+A_proj_pred <- inla.spde.make.A(mesh, loc = mesh$loc[,c(1,2)])
+
+# simulate GRF
+Q = inla.spde2.precision(spde_obj, theta = c(log(sim_range), log(sim_sd) ))
+field <- inla.qsample(Q=Q)
+field <- field - mean(field)
+
+plot_pixels <- pixels(mesh, mask=as(owin(),'SpatialPolygons'), nx=150, ny=150)
+
+# predict the values onto a high res grid
+A_proj_grid <- inla.spde.make.A(mesh, loc=plot_pixels@coords)
+
+plot_pixels$field <- as.numeric(A_proj_grid %*% field)
+
+colsc <- function(...) {
+  scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(11,"RdYlBu")),
+                       limits = range(..., na.rm=TRUE))
+}
+
+ggplot() + gg(plot_pixels) + colsc(plot_pixels$field) +
+  ggtitle(paste0('SD = ',sd,'  Range = ',range))
+```
+
+
+We are asked to define the following two probabilistic statements:
 
 $$P(\rho < \rho_0) = p_{\rho} \\ P(\sigma > \sigma_0) = p_{\sigma}.$$
 The goal is to specify the lower tail quantile $\rho_0$ and probability $p_{\rho}$ for the range parameter and the upper tail quantile $\sigma_0$ and probability $p_{\sigma}$ for the marginal standard deviation. We choose these 4 parameters to help ensure that the field does not become to 'complex'; specifically we want to avoid the field becoming too 'wiggly' or 'large'. The PC prior shrinks the spatial field towards the base model of no spatial variance and variance zero, hence the name 'Penalized Complexity'.
@@ -326,7 +376,7 @@ bru_options_set(
 
 ## Exploring the conclusions from the `inlabru` model.
 
-Now that we have fit our log-Gaussian Cox process model, what can we learn? What can we say about the whale density? 
+Now that we have fit our log-Gaussian Cox process model, what can we learn? What can we say about the whale intensity? 
 
 `inlabru` provides many user-friendly functions for answering these questions. Three such functions are `spde.posterior`, `predict` and `pixels`. Let's see them in action.
 
@@ -558,7 +608,7 @@ So, we find that adding log_Depth to the model fails to improve the model fit, a
 
 ### Exercise 2 {#Ex2} 
 
-Fit a model, with log_Slope included. Does this improve the model fit? Are either of the variables found to be significantly associated with the whale density?
+Fit a model, with log_Slope included. Does this improve the model fit? Are either of the variables found to be significantly associated with the whale intensity?
 
 Hint: Remember that there are multiple steps.
 
@@ -763,7 +813,7 @@ SST <- rerddap::griddap(rerddap::info('erdMH1sstdmday'),
 unique(SST$data$time) # Monthly data
 # subset to the months we want
 SST <- SST$data[which(month(SST$data$time) %in% c(6,7,8)),]
-# average over the months - we are estimating a 'summer average' density
+# average over the months - we are estimating a 'summer average' intensity
 SST$latlonfac <- as.factor(paste0(SST$lat,SST$lon))
 #SST <- as_tibble(SST)
 SST <-
