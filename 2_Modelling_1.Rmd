@@ -64,7 +64,7 @@ options("rgdal_show_exportToProj4_warnings"="none")
 
 **JOE: I'm assuming some of these things will be discussed in the lectures, but some of the concepts that you are talking about here will be really difficult to grasp to an average ecologist. I think it's worth defining the important terms again here, e.g., Guassian random fields. You should NOT defined the terms that are not essential e.g. SPDE. FOr those just stating they are a trick, as you did, is sufficient.**
 
-The log-Gaussian Cox process models we will be fitting require Gaussian random fields to be specified. These can become computationally prohibitive. We will use a smart computational trick, which approximates a stochastic partial differential equation (SPDE) with a Gaussian Markov random field (GMRF) evaluated across a delauney triangulation mesh. This approach was developed by @Lindgren2011 (Lindgren being an author of the `inlabru` package). 
+Log-Gaussian Cox process models require the specification of Gaussian random fields. Gaussian random fields can become computationally prohibitive. We will use a smart computational trick, which approximates a stochastic partial differential equation (SPDE) with a Gaussian Markov random field (GMRF) evaluated across a delauney triangulation mesh. This approach was developed by @Lindgren2011 (Lindgren being an author of the `inlabru` package). 
 
 The first step to using this approach is creating the mesh. Good rules of thumb are as follows:
 
@@ -74,7 +74,7 @@ The first step to using this approach is creating the mesh. Good rules of thumb 
 
 * Use a minimum triangle angle of 21 degrees.
 
-We define a first mesh using the function `inla.mesh.2d` from the *INLA* package. We choose minimum triangle edge lengths of 18km, maximum triangle edge lengths of 45km, minimum angles of 25 degrees and we specify that we want a hard boundary equal to the coastline (as defined by the SpatialPolygonDataFrame `DOMAIN`). Note that we can plot meshes using `gg` as before^[Alternatively we could use `plot(mesh_land)`].
+We define a first mesh using the function `inla.mesh.2d` from the *INLA* package. We choose a minimum triangle edge length of 18km, a maximum triangle edge length of 45km, a minimum angles of 25 degrees and we specify that we want a hard boundary equal to the coastline (as defined by the SpatialPolygonDataFrame `DOMAIN`). Note that we can plot meshes using `gg` as before^[Alternatively we could use `plot(mesh_land)`].
 
 ```{r `map-mesh`, cache=TRUE}
 mesh_land <- inla.mesh.2d(boundary = Domain,
@@ -82,7 +82,6 @@ mesh_land <- inla.mesh.2d(boundary = Domain,
                                max.edge = 45,
                                cutoff = 18)
 ggplot() + gg(mesh_land) + gg.spatiallines_mod(Effort_survey,colour='red')
-
 ```
 
 Note that spatial correlations < 18km will not be detectable! We can print the number of mesh vertices (directly related to the length of time required later to fit the model).
@@ -91,26 +90,38 @@ Note that spatial correlations < 18km will not be detectable! We can print the n
 mesh_land$n # lots of triangle vertices can lead to slow computation time. 551 good
 ```
 
-We have a potential serious issue with this mesh. The coastline is jagged, which could lead to numerical instabilities to occur later. One easy solution to this is to buffer and/or smooth the coastline shapefile, making sure that all survey lines and sightings fall within the new modified shapefile. We do this below:
+We have a potential serious issue with this mesh. The coastline is jagged, which could lead to numerical instabilities to occur later. One easy solution is to buffer and/or smooth the coastline shapefile, making sure that all survey lines and sightings fall within the new modified shapefile. We do this below, by first looking at the right buffer size.
+
+```{r `map-meshBuffered`, cache=TRUE}
+# Buffered by 5km
+ggplot() + gg(gBuffer(Domain, width=5)) + gg.spatiallines_mod(Effort_survey,colour='red')
+gContains(gBuffer(Domain, width=5), Effort_survey)
+# Doesn't contain all the survey lines
+
+# Buffered by 10km
+ggplot() + gg(gBuffer(Domain,width=10)) + gg.spatiallines_mod(Effort_survey,colour='red')
+gContains(gBuffer(Domain,width=10), Effort_survey) 
+# Again, doesn't contain all the survey lines
+
+# Buffered by 15km
+ggplot() + gg(gBuffer(Domain,width=15)) + gg.spatiallines_mod(Effort_survey,colour='red')
+gContains(gBuffer(Domain,width=15), Effort_survey) 
+# Success, does contain all the survey lines!
+```
+
+**JOE: explain why you go on and simplify it. If it's not needed add this as an additional tip/code, that sometime this can be achieved by simplifiying.**
 
 ```{r `map-meshSimplified`, cache=TRUE}
 # Use gSimplify to smooth the edges
-ggplot() + gg(gSimplify(Domain,tol=8)) +
-  gg.spatiallines_mod(Effort_survey,colour='red')
-
-# Alternative is buffering
-# Buffered by 5km
-ggplot() + gg(gBuffer(Domain,width=5)) + gg.spatiallines_mod(Effort_survey,colour='red')
-# It still doesn't contain all the survey lines
-# Buffered by 10km
-ggplot() + gg(gBuffer(Domain,width=10)) + gg.spatiallines_mod(Effort_survey,colour='red')
-gContains(gBuffer(Domain,width=10), Effort_survey) # Again
-# Buffered by 10km and then smoothed
 ggplot() + gg(gSimplify(gBuffer(Domain,width=15),tol=5)) + gg.spatiallines_mod(Effort_survey,colour='red')
-gContains(gSimplify(gBuffer(Domain,width=15),tol=5), Effort_survey) # success - all effort lines are in domain
+gContains(gSimplify(gBuffer(Domain,width=15),tol=5), Effort_survey) 
 
 Domain_smoothed <- gSimplify(gBuffer(Domain,width=15),tol=5)
+```
 
+Using this new buffered and smoothed domain/study area shapefile (i.e. `Domain_smoothed`), we create below a new mesh named `mesh_land`.
+
+```{r `map-newMesh`, cache=TRUE}
 mesh_land <- inla.mesh.2d(boundary = Domain_smoothed,
                          min.angle = 25,
                          max.edge = 45,
@@ -121,8 +132,6 @@ ggplot() +
   gg(mesh_land) + 
   gg.spatiallines_mod(Effort_survey,colour='red')
 ```
-
-We name our buffered and smoothed shapefile as `Domain_smoothed` and name the corresponding mesh as `mesh_land`.
 
 One may be tempted to define the mesh within a much larger convex hull around the coastline, but see [Additional tips]{#Ad1} for explanation of why this is an inadequate approach. 
 
