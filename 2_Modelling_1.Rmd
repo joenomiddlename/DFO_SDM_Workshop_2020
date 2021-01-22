@@ -216,33 +216,7 @@ log_hn = function(distance, lsig){
 }
 ```
 
-## Creating the log-Gaussian cox model
-
-**JOE: by model here, what do you mean? The full log-cox model? I'm assuming LGCM. Please check below. I had a really hard time understanding what was happening. I made many changes, but I'm not 100% sure that it's right or what it does exactly. Is this first one a formula also?**
-
-Next, we need to combine the components of the model: the SPDE (**JOE: Replace SPDE by something else, maybe GRF?m since you kind of say that the SPDE is just a trick/apporximation and it's not a term we use after**), the detection function parameter `lsig`, and the intercept. mySpatial (**JOE: is that really a name or a function^**) will define our spatial field using the model object we defined earlier (`matern_land`) and will tell `inlabru` that the `coordinates` of the points are the locations at which we wish to evaluate the field at. **JOE: I don't understand the coordinates. It's not an object, is it an argument of the matern_land?** The scalar terms for the detection function `lsig` and the `Intercept` have the arguments `1` (specified for the argument `main`) tells inlabru to evaluate the two terms at every data point. **JOE: specified for main? But the 1 is for lsig and insterpcet. What do you mean, you mean a detection parameter and an intecept is estimated for each data points?**
-
-```{r 'mySpatial', cache=TRUE}
-cmp_land1 <- ~ mySpatial(main = coordinates, model = matern_land) + 
-  lsig(1) + Intercept(1)
-```
-
-**JOE: please check, again I find this a bit confusing, and I made some changes, but I'm not 100% sure I understand**
-
-Next, we define the formula. This formula describes how these components are combined to form the linear predictor. For example, the scalar parameter `lsig` is used in the linear predictor as an argument to the detection probability function `log_hn`. The `log_hn` function is evaluated at a variable `distance`, which also appears on the left hand side of the formula. This tells inlabru that, along with the `coordinates`, the variable `distance` (containing the distances of each sighting from the trackline) is also a response variable of interest. The offset of log(2) is required due to the unknown direction of the detections. For now, we ignore covariates.
-
-```{r}
-formula_1 = coordinates + distance ~ mySpatial +
-  log_hn(distance, lsig) + 
-  Intercept + log(2)
-```
-
-
-This new approach to defining the components and the formula separately in two stages is what gives `inlabru` its generalisibility. Parameters can be included within a model non-linearly, unlike most other R packages! Behind the scenes, `inlabru` linearises the model via a Taylor series expansion.  Furthermore, components and formulae can be stacked together for datasets from differing sources, allowing for integrative joint models to be fit with relative ease!
-
-For detailed additional information on the types of model components allowed by `inlabru` and the linearisation procedure performed, call `?component` and [here](https://github.com/inlabru-org/inlabru/blob/devel/vignettes/method.Rmd).
-
-Before we fit the model, we have one final task to perform. It is often advised in distance sampling applications to threshold our upper detection distances at a 'sensible' value. Let's plot our observed distances from the trackline.
+In addition, it is often advised in distance sampling applications to threshold our upper detection distances at a 'sensible' value. Let's plot our observed distances from the trackline.
 
 ```{r}
 hist(Sightings_survey$DISTANCE)
@@ -261,15 +235,35 @@ Sightings_survey <- Sightings_survey[,-c(8)]
 Sightings_survey$distance <- Sightings_survey$distance / 1000
 ```
 
-<!-- Now, we split the survey tracklines into individual lines of length 2. Note that this is no longer neccessary  -->
+## Combining the components of the log-Gaussian cox model
 
-<!-- # The survey effort lines need splitting into length 2 lines -->
-<!-- # This will let inlabru easily crop tracklines to fit mesh -->
-<!-- Effort_survey_split <- spatial_lines_splitter(Effort_survey) -->
-<!-- ggplot() + gg(Domain) + gg(Effort_survey_split) -->
-<!-- ggplot() + gg(Domain) + gg.spatiallines_mod(Effort_survey) -->
+**JOE: by model here, what do you mean? The full log-cox model? I'm assuming LGCM. Please check below. I had a really hard time understanding what was happening. I made many changes, but I'm not 100% sure that it's right or what it does exactly. Is this first one a formula also?**
 
-Now, we set the following global options for `inlabru`. 
+Next, we need to describe how inlabru should combine the components of the model: the SPDE (**JOE: Replace SPDE by something else, maybe GRF?m since you kind of say that the SPDE is just a trick/apporximation and it's not a term we use after**), the detection function parameter `lsig`, and the intercept. mySpatial (**JOE: is that really a name or a function^**) will define our spatial field using the model object we defined earlier (`matern_land`) and will tell `inlabru` that the `coordinates` of the points are the locations at which we wish to evaluate the field at. **JOE: I don't understand the coordinates. It's not an object, is it an argument of the matern_land?** The scalar terms for the detection function `lsig` and the `Intercept` have the arguments `1` (specified for the argument `main`) tells inlabru to evaluate the two terms at every data point. **JOE: specified for main? But the 1 is for lsig and insterpcet. What do you mean, you mean a detection parameter and an intecept is estimated for each data points?**
+
+```{r 'mySpatial', cache=TRUE}
+cmp_land1 <- ~ mySpatial(main = coordinates, model = matern_land) + 
+  lsig(1) + Intercept(1)
+```
+
+**JOE: please check, again I find this a bit confusing, and I made some changes, but I'm not 100% sure I understand. Why is the distance the response? **
+
+Next, we define the formula. This formula describes how these components are combined to form the linear predictor. For example, the scalar parameter `lsig` is used in the linear predictor as an argument to the detection probability function `log_hn`. The `log_hn` function is evaluated at a variable `distance`, which also appears on the left hand side of the formula. This tells inlabru that, along with the `coordinates`, the variable `distance` (containing the distances of each sighting from the trackline) is also a response variable of interest. The offset of log(2) is required due to the unknown direction of the detections. For now, we ignore covariates.
+
+```{r}
+formula_1 = coordinates + distance ~ mySpatial +
+  log_hn(distance, lsig) + 
+  Intercept + log(2)
+```
+
+
+Defining the components and the formula separately in two stages is what gives `inlabru` its generalisibility. Parameters can be included within a model non-linearly, unlike most other R packages! Behind the scenes, `inlabru` linearises the model via a Taylor series expansion.  Furthermore, components and formulae can be stacked together for datasets from differing sources, allowing for integrative joint models to be fit with relative ease!
+
+For detailed additional information on the types of model components allowed by `inlabru` and the linearisation procedure performed, call `?component` and [here](https://github.com/inlabru-org/inlabru/blob/devel/vignettes/method.Rmd).
+
+## Fitting the model
+
+Before fitting the model, we set the following global options for `inlabru`.
 
 ```{r}
 bru_options_set(
@@ -280,7 +274,7 @@ bru_options_set(
 )
 ```
 
-First, we want both `INLA` and `inlabru` to display all messages about the convergence. These are the '`verbose`' arguments. These messages can help with diagnosing any issues with the model fitting. Next, for the purposes of this workshop, we tell `INLA` to perform an empirical Bayes analysis instead of a full Bayesian analysis. This speeds up computation dramatically, but fails to propogate the full uncertainties associated with the hyperparameters into inference. This is because these empirical Bayes analyses condition on the single 'most-likely' model defined by the posterior modes of the hyperparameters, compared with a fully-Bayesian analysis. The latter performs Bayesian model averaging by averaging across (possibly infinitely many) models defined by all possible combinations of hyperparameter values weighted by their prior probabilities. The discrepancies between these two strategies can be large and in a publication, `int.strategy` should be set to `auto` (the default setting). The number of threads (similar to cores) can be chosen. The higher the number, the faster the inference due to parallelisation. To see how many threads are available for use, run `detectCores()`. Always save at least 1 core for running background tasks!
+We want both `INLA` and `inlabru` to display all messages about the convergence, because these messages can help with diagnosing any issues with the model fitting. These are the '`verbose`' arguments. Next, for the purposes of this workshop, we tell `INLA` to perform an empirical Bayes analysis instead of a full Bayesian analysis. This speeds up computation dramatically, but fails to propogate the full uncertainties associated with the hyperparameters into inference. This is because these empirical Bayes analyses condition on the single 'most-likely' model defined by the posterior modes of the hyperparameters, compared with a fully-Bayesian analysis. The latter performs Bayesian model averaging by averaging across (possibly infinitely many) models defined by all possible combinations of hyperparameter values weighted by their prior probabilities. The discrepancies between these two strategies can be large and in a publication, `int.strategy` should be set to `auto` (the default setting). The number of threads (similar to cores) can be chosen. The higher the number, the faster the inference due to parallelisation. To see how many threads are available for use, run `detectCores()`. Always save at least 1 core for running background tasks!
 
 Now we fit our first log-Gaussian Cox process model in `inlabru`. We will demonstrate how to use the `like` and `bru` approach to model fitting. This allows for integrative joint models from different data sources or data streams to be easily combined.
 
