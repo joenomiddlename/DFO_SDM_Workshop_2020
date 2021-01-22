@@ -60,7 +60,9 @@ rgdal::set_thin_PROJ6_warnings(TRUE)
 options("rgdal_show_exportToProj4_warnings"="none")
 ```
 
-## Creating a mesh
+## Defining the components of a log-Gaussian Cox process model
+
+### Creating a mesh
 
 **JOE: I'm assuming some of these things will be discussed in the lectures, but some of the concepts that you are talking about here will be really difficult to grasp to an average ecologist. I think it's worth defining the important terms again here, e.g., Guassian random fields. You should NOT defined the terms that are not essential e.g. SPDE. FOr those just stating they are a trick, as you did, is sufficient.**
 
@@ -183,7 +185,7 @@ ggplot() + gg(log_Depth) + gg(mesh_land)
 ggplot() + gg(log_Slope) + gg(mesh_land)
 ```
 
-## Defining Gaussian random field and priors
+### Defining Gaussian random field and priors
 
 **JOE: this is quite dense. We will have to work on this part. For example, I'm not sure what's the standard deviation (magnitude) of the field. So, I suggest that before you jump into the priors, you talk about the fields and how they can vary. Could you show 3 GRF that vary in range and sd? You could do it in a way that they don't see the code, just the figures. (Code chunk argument echo=FALSE)**
 
@@ -203,7 +205,7 @@ matern_land <- inla.spde2.pcmatern(mesh_land,
                               prior.range = c(35, 0.01))
 ```
 
-### Detection probability function
+### Defining the detection probability function
 
 Next, we must now define our detection probability function. First, we define a half-normal detection probability function. This object will take the form of a base R function.
 
@@ -214,19 +216,20 @@ log_hn = function(distance, lsig){
 }
 ```
 
-**JOE: by model here, what do you mean? The GRF?**
+## Creating the log-Gaussian cox model
 
-Next, we need to combined the components of the model: the SPDE, the intercept, and the detection function parameter `lsig`. We let `inlabru` know the type of object each component is. For example, we define our spatial field and give it the name mySpatial. We tell `inlabru` that the coordinates of the points are the locations at which we wish to evaluate the field at. Finally, we point `inlabru` to the model object we defined earlier (`matern_land`).  
+**JOE: by model here, what do you mean? The full log-cox model? I'm assuming LGCM. Please check below. I had a really hard time understanding what was happening. I made many changes, but I'm not 100% sure that it's right or what it does exactly. Is this first one a formula also?**
 
-We repeat the process, defining the additional scalar terms `lsig` and `Intercept`. The arguments `1` (specified for the argument `main`) tells inlabru to evaluate the two terms at every data point.
+Next, we need to combine the components of the model: the SPDE (**JOE: Replace SPDE by something else, maybe GRF?m since you kind of say that the SPDE is just a trick/apporximation and it's not a term we use after**), the detection function parameter `lsig`, and the intercept. mySpatial (**JOE: is that really a name or a function^**) will define our spatial field using the model object we defined earlier (`matern_land`) and will tell `inlabru` that the `coordinates` of the points are the locations at which we wish to evaluate the field at. **JOE: I don't understand the coordinates. It's not an object, is it an argument of the matern_land?** The scalar terms for the detection function `lsig` and the `Intercept` have the arguments `1` (specified for the argument `main`) tells inlabru to evaluate the two terms at every data point. **JOE: specified for main? But the 1 is for lsig and insterpcet. What do you mean, you mean a detection parameter and an intecept is estimated for each data points?**
 
-```{r}
+```{r 'mySpatial', cache=TRUE}
 cmp_land1 <- ~ mySpatial(main = coordinates, model = matern_land) + 
   lsig(1) + Intercept(1)
 ```
 
-Next, we define the formula. This describes how these components are combined to 
-form the linear predictor. For example, the scalar parameter `lsig` is used in the linear predictor as an argument to the detection probability function `log_hn`. Note that the `log_hn` function is evaluated at a variable `distance`, which also appears on the left hand side of the formula. This tells inlabru that, along with the `coordinates`, the variable `distance` (containing the distances of each sighting from the trackline) is also a response variable of interest. The offset of log(2) is required due to the unknown direction of the detections. For now, we ignore covariates.
+**JOE: please check, again I find this a bit confusing, and I made some changes, but I'm not 100% sure I understand**
+
+Next, we define the formula. This formula describes how these components are combined to form the linear predictor. For example, the scalar parameter `lsig` is used in the linear predictor as an argument to the detection probability function `log_hn`. The `log_hn` function is evaluated at a variable `distance`, which also appears on the left hand side of the formula. This tells inlabru that, along with the `coordinates`, the variable `distance` (containing the distances of each sighting from the trackline) is also a response variable of interest. The offset of log(2) is required due to the unknown direction of the detections. For now, we ignore covariates.
 
 ```{r}
 formula_1 = coordinates + distance ~ mySpatial +
