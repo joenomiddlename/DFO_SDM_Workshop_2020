@@ -135,7 +135,11 @@ ggplot() +
 
 One may be tempted to define the mesh within a much larger convex hull around the coastline, but see [Additional tips]{#Ad1} for explanation of why this is an inadequate approach. 
 
-Next, we need to redefine our covariates. Our covariates depth and slope were defined on the original (un-buffered) domain as defined by the shapefile Domain. Since we have buffered (i.e. extended) our coastline, we need to sensibly define covariate values at the extension locations. We choose to 'fill-in' these points with nearest neighbour imputations. Note that these values will not significantly affect the inference, as the effective area covered by these 'extension regions' are very small once we downweight by the effort surface $\lambda_{eff}$.
+### Redefining the covariates using the new mesh
+
+Next, we need to redefine our covariates. Our covariates depth and slope were defined on the original (un-buffered) domain as defined by the shapefile Domain. Since we have buffered (i.e. extended) our coastline, we need to sensibly define covariate values at the extension locations. We choose to 'fill-in' these points with nearest neighbour imputations. These values will not significantly affect the inference, as the effective area covered by these 'extension regions' are very small once we downweight by the effort surface $\lambda_{eff}$.
+
+**JOE: there is too much on this chunk of code. You'll see on Github that I've made a suggestion: just create the transformed variables in the previous tutorial (which we kind of do, 1_Exploratory_Analysis) and explain that this is what we will use throughout, and just add them to the data we here and focus on the domain part. Make sure they have the same name in all tutorial. I think right now they don't.**
 
 ```{r `map-covariatesWithMesh`, cache=TRUE}
 # Create the log depth and log slope covariates
@@ -181,18 +185,18 @@ ggplot() + gg(log_Slope) + gg(mesh_land)
 
 ## Defining Gaussian random field and priors
 
-**JOE: this is quite dense. We will have to work on this part.**
+**JOE: this is quite dense. We will have to work on this part. For example, I'm not sure what's the standard deviation (magnitude) of the field. So, I suggest that before you jump into the priors, you talk about the fields and how they can vary. Could you show 3 GRF that vary in range and sd?**
 
-Next, with our mesh and covariates defined, we need to define our Gaussian random field model and priors. To do this, we use the function `inla.spde2.pcmatern` from the *INLA* package. Note that the arguments `prior.sigma` and `prior.range` define arguments for the penalized complexity (PC) prior of the random field developed by @Simpson2017 and @Fuglstad2019.
+Next, we need to define our Gaussian random field model and its priors. To do this, we use the function `inla.spde2.pcmatern` from the *INLA* package. Note that the arguments `prior.sigma` and `prior.range` define arguments for the penalized complexity (PC) prior of the random field developed by @Simpson2017 and @Fuglstad2019.
 
 We are required to define PC priors, on the spatial range $\rho$ (the wiggliness) and marginal standard deviation $\sigma$ (the magnitude) of the field. PC priors take the form of prior probabilistic statements on quantiles, providing a user-friendly way of defining sensible, interpretable priors. We are asked to define the following two probabilistic statements:
 
 $$P(\rho < \rho_0) = p_{\rho} \\ P(\sigma > \sigma_0) = p_{\sigma}.$$
-The goal is to specify the lower tail quantile $\rho_0$ and probability $p_{\rho}$ for the range parameter and the upper tail quantile $\sigma_0$ and probability $p_{\sigma}$ for the marginal standard deviation. We choose these 4 parameters to help ensure that the field does not become to 'complex'; specifically we want to avoid the field becoming too 'wiggly' or 'large'. The PC prior then shrinks the spatial field towards the base model of no spatial variance and variance zero, hence the name 'Penalized Complexity'.
+The goal is to specify the lower tail quantile $\rho_0$ and probability $p_{\rho}$ for the range parameter and the upper tail quantile $\sigma_0$ and probability $p_{\sigma}$ for the marginal standard deviation. We choose these 4 parameters to help ensure that the field does not become to 'complex'; specifically we want to avoid the field becoming too 'wiggly' or 'large'. The PC prior shrinks the spatial field towards the base model of no spatial variance and variance zero, hence the name 'Penalized Complexity'.
 
 We now define our model, with $\rho_0$, $p_{\rho}$, $\sigma_0$, and $p_{\sigma}$ fixed at 35km, 0.01, 2, and 0.01 respectively. 
 
-```{r}
+```{r 'spde', cache=TRUE}
 # First define the SPDE model
 matern_land <- inla.spde2.pcmatern(mesh_land, 
                               prior.sigma = c(2, 0.01), 
