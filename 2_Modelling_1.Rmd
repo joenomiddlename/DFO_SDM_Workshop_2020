@@ -139,29 +139,31 @@ Next, we need to redefine our covariates. Our covariates depth and slope were de
 
 **JOE: there is too much on this chunk of code. You'll see on Github that I've made a suggestion: just create the transformed variables in the previous tutorial (which we kind of do, 1_Exploratory_Analysis) and explain that this is what we will use throughout, and just add them to the data we here and focus on the domain part. Make sure they have the same name in all tutorial. I think right now they don't.**
 
-<div class="fold s o"> 
 ```{r `map-covariatesWithMesh`, cache=TRUE}
-# Create the log depth and log slope covariates
+# Create the log depth covariate as in Session 1
 log_Depth <- Bathym
 log_Depth$FIWH_MAR_Bathymetry[log_Depth$FIWH_MAR_Bathymetry >= 0] <- 0
 log_Depth$FIWH_MAR_Bathymetry <- log(1-log_Depth$FIWH_MAR_Bathymetry)
 names(log_Depth) <- 'log_Depth' 
-# Define a set of pixels across our buffered domain
+
+## Now to redefine the covariate across our modified domain
+# 1) Define a set of pixels across our modified domain
 pixels_Domain <- pixels( mesh_land,mask=gSimplify(gBuffer(Domain,width=19),tol=3),
                          nx=400,ny=400)
-# Extract values of the covariate at the new pixel locations
+# 2) Extract values of the covariate at the new pixel locations
 pixels_Domain$log_Depth <- over(pixels_Domain,log_Depth)$log_Depth
-# impute missing values with the nearest neighbour value
+# 3) impute missing values with the nearest neighbour value
 pixels_Domain$log_Depth[is.na(pixels_Domain$log_Depth)] <- 
   log_Depth$log_Depth[nncross(as(SpatialPoints(pixels_Domain@coords[which(is.na(pixels_Domain$log_Depth)),]),'ppp'),
                           as(SpatialPoints(log_Depth@coords),'ppp'),
                           what = 'which')]
 log_Depth <- pixels_Domain
-# Create a squared log depth covariate
+# 4) Create a squared log depth covariate (for later)
 log_Depth_sq <- log_Depth
 names(log_Depth_sq) <- 'log_Depth_sq'
 log_Depth_sq$log_Depth_sq <- log_Depth_sq$log_Depth_sq^2
-# Repeat for slope
+
+# Repeat the above for slope
 log_Slope <- Slope
 log_Slope$FIWH_MAR_Slope <- log(1+log_Slope$FIWH_MAR_Slope)
 names(log_Slope) <- 'log_Slope'
@@ -181,23 +183,26 @@ log_Slope_sq$log_Slope_sq <- log_Slope_sq$log_Slope_sq^2
 ggplot() + gg(log_Depth) + gg(mesh_land)
 ggplot() + gg(log_Slope) + gg(mesh_land)
 ```
-</div>
 
 ### Defining Gaussian random field and priors
-
-**JOE: this is quite dense. We will have to work on this part. For example, I'm not sure what's the standard deviation (magnitude) of the field. So, I suggest that before you jump into the priors, you talk about the fields and how they can vary. Could you show 3 GRF that vary in range and sd? You could do it in a way that they don't see the code, just the figures. (Code chunk argument echo=FALSE)**
 
 Next, we need to define our Gaussian random field model and its priors. To do this, we use the function `inla.spde2.pcmatern` from the *INLA* package. Note that the arguments `prior.sigma` and `prior.range` define arguments for the penalized complexity (PC) prior of the random field developed by @Simpson2017 and @Fuglstad2019.
 
 We are required to define PC priors, on the spatial range $\rho$ (the wiggliness) and marginal standard deviation $\sigma$ (the magnitude) of the field. PC priors take the form of prior probabilistic statements on quantiles, providing a user-friendly way of defining sensible, interpretable priors. 
 
-Before defining our priors, let's remind ourselves how the Gaussian random field is affected by the range and marginal standard deviation. Below is a chunk of code that simulates and plots a single Gaussian random field on the unit square. You are asked to specify the range and marginal standard deviation:
+Before defining our priors, let's remind ourselves how the Gaussian random field is affected by the range and marginal standard deviation. Below is a chunk of code defining a function (`GRF_sim()`) that that simulates and plots a single Gaussian random field on the unit square. You are asked to specify the range and marginal standard deviation:
 
-```{r, eval=F}
+```{r}
 # Specify spatial range and variance
 sim_range <- 0.1
 sim_sd <- 2
+```
 
+<div class="fold s o"> 
+```{r, eval=F}
+# Function for simulating and plotting a GRF on a unit square
+GRF_sim <- function()
+{
 # define inla mesh
 mesh <- inla.mesh.2d(loc.domain = cbind(c(0,1,1,0),c(0,0,1,1)),
                      min.angle = 21, max.edge = 0.04, cutoff = 0.02)
@@ -233,11 +238,19 @@ colsc <- function(...) {
 }
 
 ggplot() + gg(plot_pixels) + colsc(plot_pixels$field) +
-  ggtitle(paste0('SD = ',sd,'  Range = ',range))
+  ggtitle(paste0('SD = ',sd,'  Range = ',range))  
+}
+
+```
+</div>
+
+To simulate a field with the specified SD and range run
+
+```{r, eval=F}
+GRF_sim()
 ```
 
-
-We are asked to define the following two probabilistic statements:
+With the understanding of what the SD and range define, we are asked to define the following two probabilistic statements (remember we are working in units of km):
 
 $$P(\rho < \rho_0) = p_{\rho} \\ P(\sigma > \sigma_0) = p_{\sigma}.$$
 The goal is to specify the lower tail quantile $\rho_0$ and probability $p_{\rho}$ for the range parameter and the upper tail quantile $\sigma_0$ and probability $p_{\sigma}$ for the marginal standard deviation. We choose these 4 parameters to help ensure that the field does not become to 'complex'; specifically we want to avoid the field becoming too 'wiggly' or 'large'. The PC prior shrinks the spatial field towards the base model of no spatial variance and variance zero, hence the name 'Penalized Complexity'.
@@ -262,15 +275,13 @@ log_hn = function(distance, lsig){
 }
 ```
 
-**JOE: I moved this here from below, but I think this could go in the Exploratory analysis and here we could just load the final object. I also think we could have it in km from the get go, no? I think you can set gDistance so it's returns in km. We want to simplify the code as much as possible, especially in the model tutorial.**
-
 In addition, it is often advised in distance sampling applications to threshold our upper detection distances at a 'sensible' value. Let's plot our observed distances from the trackline.
 
 ```{r}
 hist(Sightings_survey$DISTANCE)
 ```
 
-It looks like 2km could be a reasonable threshold value to choose. Let's set all values above 2km equal to 2km and scale the distances onto the km units scale. **This rescaling to units of km is crucial for numerical stability.**
+It looks like 2km could be a reasonable threshold value to choose. Let's set all values above 2km equal to 2km and scale the distances onto the km units scale. **This rescaling to units of km is crucial for numerical stability.** We define a variable 'distance' that contains the rescaled distances. Note that a few distances are missing. We impute these with the mean distance.
 
 ```{r}
 Sightings_survey$DISTANCE[Sightings_survey$DISTANCE>2000 & !is.na(Sightings_survey$DISTANCE)] <- 
@@ -285,18 +296,25 @@ Sightings_survey$distance <- Sightings_survey$distance / 1000
 
 ## Combining the components of the log-Gaussian cox model
 
-**JOE: by model here, what do you mean? The full log-cox model? I'm assuming LGCM. Please check below. I had a really hard time understanding what was happening. I made many changes, but I'm not 100% sure that it's right or what it does exactly. Is this first one a formula also?**
+Next, we need to describe how inlabru should combine the components of the model: the Gaussian random field (GRF), the detection function parameter `lsig`, and the intercept. 
 
-Next, we need to describe how inlabru should combine the components of the model: the SPDE (**JOE: Replace SPDE by something else, maybe GRF?m since you kind of say that the SPDE is just a trick/apporximation and it's not a term we use after**), the detection function parameter `lsig`, and the intercept. mySpatial (**JOE: is that really a name or a function^**) will define our spatial field using the model object we defined earlier (`matern_land`) and will tell `inlabru` that the `coordinates` of the points are the locations at which we wish to evaluate the field at. **JOE: I don't understand the coordinates. It's not an object, is it an argument of the matern_land?** The scalar terms for the detection function `lsig` and the `Intercept` have the arguments `1` (specified for the argument `main`) tells inlabru to evaluate the two terms at every data point. **JOE: specified for main? But the 1 is for lsig and insterpcet. What do you mean, you mean a detection parameter and an intecept is estimated for each data points?**
+We will give the GRF the name 'mySpatial'. This name is arbitrary and can be changed. To define 'mySpatial' as a GRF, we will point it to the model object we defined earlier (`matern_land`) and will tell `inlabru` that the `coordinates` of the points are the locations at which we wish to evaluate the field at. `coordinates` is a special variable name reserved for the spatial coordinates of a `SpatialPointsDataFrame` object. The sightings data we will be using are all `SpatialPointsDataFrame` objects. 
+
+The scalar terms `Intercept` and the detection function parameter `lsig` are given the special arguments `1`. This tells *inlabru* to create a scalar random variable. These will be available for every data point. 
 
 ```{r 'mySpatial', cache=TRUE}
+# Define the components of the model
 cmp_land1 <- ~ mySpatial(main = coordinates, model = matern_land) + 
   lsig(1) + Intercept(1)
 ```
 
-**JOE: please check, again I find this a bit confusing, and I made some changes, but I'm not 100% sure I understand. Why is the distance the response? **
+Note that the components do not define the formula of the model. We must define the formula separately. The formula describes how these components are combined to form the linear predictor. For our log-Gaussian Cox process, the linear predictor will be the model for log $\lambda_{obs}$.
 
-Next, we define the formula. This formula describes how these components are combined to form the linear predictor. For example, the scalar parameter `lsig` is used in the linear predictor as an argument to the detection probability function `log_hn`. The `log_hn` function is evaluated at a variable `distance`, which also appears on the left hand side of the formula. This tells inlabru that, along with the `coordinates`, the variable `distance` (containing the distances of each sighting from the trackline) is also a response variable of interest. The offset of log(2) is required due to the unknown direction of the detections. For now, we ignore covariates.
+We now define the formula. On the left hand side of the formula are the response variables. We have **two** for a distance sampling dataset. The first, are the collections of locations $Y$. The second are the recorded perpendicular distances from the aircraft. 
+
+On the right hand side of the formula, we have the GRF `mySpatial`. Next, we include the scalar parameter `lsig`. Unlike `mySpatial`, we include `lsig` in the linear predictor as an argument to the detection probability function `log_hn`. Notice that the `log_hn` function is evaluated at the response variable `distance`. Finally, we also include the variable `Intercept`.
+
+Additionally, the offset of log(2) is required due to the unknown direction of the detections (detections can occur either side of the aircraft). For now, we ignore covariates.
 
 ```{r}
 formula_1 = coordinates + distance ~ mySpatial +
@@ -304,7 +322,20 @@ formula_1 = coordinates + distance ~ mySpatial +
   Intercept + log(2)
 ```
 
-Defining the components and the formula separately in two stages is what gives `inlabru` its generalisibility. Parameters can be included within a model non-linearly, unlike most other R packages! Behind the scenes, `inlabru` linearises the model via a Taylor series expansion.  Furthermore, components and formulae can be stacked together for datasets from differing sources, allowing for integrative joint models to be fit with relative ease!
+For clarity, the linear predictor defined in `formula_1` is:
+
+$$\textrm{log}(\lambda_{true}(s)) = \beta_0 + Z(s) \\
+\textrm{log}(p(d)) = \textrm{log}(2) + \frac{-d^2}{2\sigma^2}$$.
+
+Thus, the expected encounter rate of an animal at location $s$, a distance $d$ away from the aircraft is:
+
+$$\lambda_{obs}(s) = \lambda_{true}(s) p(d)$$.
+
+Note that $Z(s)$ is the value of the GRF `mySpatial` evaluated at position $s$, and $\sigma$ is the exponential of `lsig`.
+
+Defining the components and the formula separately in two stages is what gives `inlabru` its generalisibility. Parameters can be included within a model non-linearly, unlike most other R packages! For example, `lsig` was included nonlinearly through our custom function `log_hn`! Behind the scenes, for nonlinear models, `inlabru` linearises the model via a Taylor series expansion.  
+
+Furthermore, components and formulae can be stacked together for datasets from differing sources, allowing for integrative joint models to be fit with relative ease! For example, the same components can be shared across different model, but take different forms for each (e.g. Intercept in model 1, Intercept^2 in model 2, etc.,)!
 
 For detailed additional information on the types of model components allowed by `inlabru` and the linearisation procedure performed, call `?component` and [here](https://github.com/inlabru-org/inlabru/blob/devel/vignettes/method.Rmd).
 
@@ -335,7 +366,9 @@ We are ready! We fit our first log-Gaussian Cox process model in `inlabru`!
 
 We will fit the model using the `like` and `bru` approach because it allows to easily combine different data sources or data streams into an integrative joint models.
 
-First, we define our likelihood object using the function `like`. We specify that the SpatialPointsDataFrame `Sightings_survey` is our data. Next, we specify the domains for both our response variables `coordinates` and `distance`. We point `coordinates` to the spatial mesh `mesh_land` and point the `distance` variable to a 1D mesh that we define. Remember that we have set (**In previous tutorial, if you do the above (please do the above)**) the upper limit to the distance equal to 2km. **JOE: you use the term distance domain, try to keep domain to the survey are. Ecologists are not super used to the mathematical definition of domain.** Next, we point the likelihood to the formula object we created earlier that defines the linear predictor and specify that a Cox process model is being fitted by specifying `family='cp'`. Note that a HUGE library of likelihoods are available. Calling `inla.list.models()` provides a list of every possible model, prior and latent effect available. Finally, we provide a sensible (negative) initial value for `lsig`.
+First, we define our likelihood object using the function `like`. We specify that the SpatialPointsDataFrame `Sightings_survey` is our data. Remember - it is crucial that the data are of type SpatialPointsDataFrame for the special `coordinates` variable to work. Next, we specify the domains for both our response variables `coordinates` and `distance`. We point `coordinates` to the spatial mesh `mesh_land` and point the `distance` variable to a 1D mesh that we define. Remember that we have set the upper limit to the distance equal to 2km.
+
+Next, we point the likelihood to the formula object we created earlier that defines the linear predictor and specify that a Cox process model is being fitted by specifying `family='cp'`. Note that a HUGE library of likelihoods are available. Calling `inla.list.models()` provides a list of every possible model, prior and latent effect available. Finally, we provide a sensible (negative) initial value for `lsig`.
 
 ```{r 'like', warning=FALSE, cache=TRUE}
 fit = like(data = Sightings_survey,
@@ -389,6 +422,7 @@ As a first objective, let's plot the predicted whale intensity across the domain
 ```{r 'pixels', message=FALSE, cache=TRUE}
 # Define pixels for plotting
 plot_pixels <- pixels(mesh_land, mask = Domain)
+# mask = Domain ensures we do not predict in our 'buffered' regions, but only the original Domain
 ```
 
 * Next, we must predict a user-specified function of the random components across the SpatialPixels using the function `predict`. The package `inlabru` (and `INLA`) allows for approximate Monte Carlo samples of each random component to be generated from the posterior distributions of the model. The function `predict` then computes the user-specified function for each sample before taking the empirical mean, standard deviation, quantiles, etc., of these values. This approach allows the posterior distribution of arbitrarily complex nonlinear functions of parameters to be investigated.
@@ -422,13 +456,13 @@ ggplot() + gg(pred_int[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, col
   colsc(pred_int@data$sd)
 ```
 
-From these plots, we see 3 interesting features. First, a very low whale intensity is predicted in the regions frequently visited by the whale-watching companies. Second, hotspots are identified in the Western region that had lots of survey effort focused in it, and in the center of the study region. Finally, evidence of a strong boundary effect in the South Eastern corner is seen. A very large mean and standard deviation is seen, indicating that some numerical instability may have occurred in this region. This can occur when the mesh becomes 'ugly', with tight triangles trying to recreate a jagged boundary. Whilst the large standard deviation implies that this should not impact estimates of posterior mean population size, it may impact any future estimates of uncertainty. One future solution could be to improve the mesh in this corner.
+From these plots, we see 3 interesting features. First, a very low whale intensity is predicted in the regions frequently visited by the whale-watching companies. Second, hotspots are identified in the Western region that had lots of survey effort focused in it, and in the center of the study region. 
+
+Finally, evidence of a strong boundary effect in the South Eastern corner is seen. A very large mean and standard deviation is seen, indicating that some numerical instability may have occurred in this region. This can occur when the mesh becomes 'ugly', with tight triangles trying to recreate a jagged boundary. Whilst the large standard deviation implies that this should not impact estimates of posterior mean population size, it may impact any future estimates of uncertainty. One future solution could be to improve the mesh in this corner. An alternative conclusion could be that we are fitting a model that is too complicated given the (very) limited size of the dataset.
 
 ### Plotting the posterior distribution of parameters and ??
 
-**JOE: can you remind what the spatial range and marginal variance are? Parameters of the GRF?**
-
-Next, let's look at the posterior distributions of the spatial range and the marginal variance of the random field. For this, we use the functions `spde.posterior` and `plot`.
+Next, let's look at the posterior distributions of the spatial range and the marginal variance of the random field. Remember: the spatial range (in km) is estimating the 'approximate distance required between two points for the values of the intensity their to be approximately independent'. For this, we use the functions `spde.posterior` and `plot`.
 
 ```{r 'spdePosterior', cache=TRUE}
 spde.range <- spde.posterior(fit, "mySpatial", what = "range")
@@ -437,9 +471,7 @@ spde.var <- spde.posterior(fit, "mySpatial", what = "variance")
 plot(spde.var)
 ```
 
-We can see that the model is estimating a spatial field with a reasonably large spatial range and small variance. We are not concerned that the model is demonstrating severe overfitting.
-
-**JOE: how to we call this simply (see subtitle ? above)**
+We can see that the model is estimating a spatial field with a reasonably large spatial range and small variance. No evidence of severe overfitting is shown (a very large variance with a tiny spatial range can be suspicious).
 
 Next, we can plot the estimated detection probability function, with uncertainty intervals. For this, we use `predict` once again, with one slight modification. Instead of using `pixels` to define a set of SpatialPixels to plot over, we must manually specify a `data.frame` object with the desired values of `distance` to predict across. Then, we can use the function `plot` as before. Note: I have had some issues with using the `predict` function on non-spatial data.frames. If you get an error message, see [Additional tips]{#Ad2}.
 
@@ -476,14 +508,20 @@ This is huge!
 
 * We have not factored in the influence of group size on detection probability!
 
-Ignoring these issues for now, we predict the total population size falling within the Domain. To achieve this, we use the function `ipoints`. This function sets a series of integration points with weights (areas), to allow us to approximate the integral of the intensity surface across the domain with a Riemann sum approximation. Note that `ipoints` creates a SpatialPointsDataFrame object with a single named variable `weight` containing the area of each region corresponding to each integration point.
+* We are assuming sufficient mixing time allowed between encounters
+
+Ignoring these issues for now, we predict the total population size falling within the Domain. To achieve this, we use the function `ipoints`. This function sets a series of integration points with weights (areas), to allow us to approximate the integral of the intensity surface across the domain with a Riemann sum approximation. Basically, it approximates: $$\int_\Omega \mathbf{E}_Z \left( \mathbf{E}( \lambda_{true}(s) | Z) \right) ds$$
+
+with $$\sum_{A_i} \mathbf{E}_Z \left( \mathbf{E}( \hat{\bar{\lambda}}_{true}(s_i) | Z) |A_i| \right) ds$$
+
+Note that `ipoints` creates a SpatialPointsDataFrame object with a single named variable `weight` containing the area of each region corresponding to each integration point.
 
 ```{r 'ipoints', cache=TRUE}
 predpts <- ipoints(Domain, mesh_land)
 head(predpts$weight) # these are the areas of the regions corresponding each point.
 ```
 
-Then, we use `predict`, with the user-specified function equal to a weighted sum of intensity. 
+Then, we use `predict`, with the user-specified function equal to a weighted sum of the intensity. Notice that we have omitted the detection probability function `log_hn`. Thus, we are predicting across $\Omega$, assuming perfect detectability. 
 
 ```{r 'predictPopSize', cache=TRUE}
 # Define the weighted sum function
@@ -491,7 +529,7 @@ Lambda <- predict(fit, predpts, ~ sum(weight * exp(mySpatial + Intercept)), n.sa
 Lambda
 ```
 
-The population estimated is approximately `r round(Lambda$mean)` individuals with a large variance of approximately `r round(Lambda$var)`.
+The population estimated is approximately `r round(Lambda$mean)` individuals with a large variance of approximately `r signif(Lambda$var,2)`.
 
 There remains a potential problem with our inference. If we look back at the plot of our domain, we notice that it extends in the South-Western direction far beyond our survey tracklines. Thus, there is a risk of extrapolation error! Ideally, we should restrict our predictions to lie 'close' to our effort! 
 
@@ -547,11 +585,11 @@ Lambda_restricted
 ```
 </div>
 
-You should get a smaller population estimate of approximately `r round(Lambda_restricted$mean)` individuals and a smaller, but still large, variance of approximately `r round(Lambda_restricted$var)`.
+You should get a smaller population estimate of approximately `r signif(Lambda_restricted$mean,1)` individuals and a smaller, but still large, variance of approximately `r signif(Lambda_restricted$var,1)`. Don't worry if your answers are slightly different - we've only used 20 samples!
 
 ## Adding covariates to an `inlabru` model
 
-Adding environmental covariates to models is easy in `inlabru`. All that is required is that each covariate is converted to class SpatialPixelsDataFrame and that the covariate data are complete. By 'complete', we mean that a non-missing value is available at every point within the region defined by the mesh boundary.
+Adding environmental covariates to models is made easy in `inlabru`. All that is required is that each covariate is converted to class SpatialPixelsDataFrame and that the covariate data are complete. By 'complete', we mean that a non-missing value is available at every point within the region defined by the mesh boundary.
 
 Let's add the log_Depth covariate. To do this, we need to redefine the components and formula. First we define the updated components.
 
@@ -572,7 +610,16 @@ formula_2 = coordinates + distance ~ mySpatial +
   log(2)
 ```
 
-The only change here, is the addition of the linear effect log_Depth to the linear predictor.
+The only change here, is the addition of the linear effect log_Depth to the linear predictor. For clarity, the linear predictor defined in `formula_2` is:
+
+$$\textrm{log}(\lambda_{true}(s)) = \beta_0 + \beta_1 X(s) + Z(s) \\
+\textrm{log}(p(d)) = \textrm{log}(2) + \frac{-d^2}{2\sigma^2}$$.
+
+Thus, the expected encounter rate of an animal at location $s$, a distance $d$ away from the aircraft is:
+
+$$\lambda_{obs}(s) = \lambda_{true}(s) p(d)$$.
+
+Note that $X(s)$ is the value of `log_Depth` at position $s$, $Z(s)$ is the value of the GRF `mySpatial` evaluated at position $s$, and $\sigma$ is the exponential of `lsig`.
 
 Now we can fit the model using the `like`/`bru` approach:
 
@@ -704,7 +751,7 @@ If you're interested, try fitting a model with log_Depth, log_Slope and log_Dept
 
 ## Comparing the output from competing models
 
-So, we ultimately find that the model without covariates (`fit`) offers the best model fit to the survey dataset. The failure to detect a covariate effect should not come as a major surprise. The survey datasets are quite limited in size, with only 63 sightings in total! 
+So, we ultimately find that the model without covariates (`fit`) offers the best model fit to the survey dataset. The failure to detect a covariate effect should not come as a major surprise. The survey datasets are quite limited in size, with only 63 sightings in total! In fact, a LGCP model should be used with extreme caution with such a small dataset.
 
 That being said, the DIC values were almost equivalent for `fit` and `fit2` - the model which included log_Depth. Let's see how the predictions and parameter estimates change under the second model. Are the conclusions drawn from each model consistent? 
 
@@ -904,7 +951,7 @@ Coming up next, we will see how to incorporate presence-only datasets into our m
 
 ## Additional tips and code 
 
-### Problems with larger mesh {#Ad1}
+### Defining a mesh that ignores the coastline {#Ad1}
 
 An alternative 'solution' to the jagged mesh problem is to define the mesh within a much larger convex hull around the coastline. Unfortunately, this approach will not take into account the coastline and hence will measure spatial 'distance' as euclidean distance and not 'ocean-distance'. One such mesh is defined below:
 
