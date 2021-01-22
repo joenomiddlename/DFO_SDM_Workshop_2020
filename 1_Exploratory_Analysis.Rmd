@@ -298,7 +298,7 @@ Strictly speaking, for the desired point process models to be reasonable, it is 
 
 ### Is summer species density changing through time?
 
-As we discussed earlier, we are unable to model temporal changes in the species density due to the spatially non-overlapping survey efforts across the months and years. Thus any changes in the species density from June - August, or across the years 2007-2009 will be missed. Thus, we are forced to assume that the summer species density remains constant between 2007-2009. It is the summer species density that is our target for inference.
+As we discussed earlier, we are unable to model temporal changes in the species density due to the spatially non-overlapping survey efforts across the months and years. Thus any changes in the species intensity from June - August, or across the years 2007-2009 will be missed. Thus, we are forced to assume that the summer species density remains constant between 2007-2009. It is the summer species density that is our target for inference.
 
 <!-- Note that it may be tempting to use the superposition property of point processes to justify the modelling of an 'combined s' -->
 
@@ -414,7 +414,7 @@ table(Sightings_survey$YEAR)
 
 ```
 
-Next, we evaluate a crude estimate of the total amount of survey effort spent each year, as measured by the total trackline length. Using this, we then crudely estimate a 'catch per unit effort' (CPU) measure by year.
+Next, we evaluate a crude estimate of the total amount of survey effort spent each year, as measured by the total trackline length. Using this, we then crudely estimate a 'catch per unit effort' (CPUE) measure by year.
 
 ```{r}
 # How much survey effort (in trackline length) is there by year

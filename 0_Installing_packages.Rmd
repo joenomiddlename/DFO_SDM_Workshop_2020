@@ -48,8 +48,12 @@ sudo apt install build-essential
 
 
 ### Required GIS software
-The latest version of gdal and geos is **required**. The workshop material **will not work without these**.
+
+**The workshop is developed with latest version of gdal and geos. The workshop material will not work without them or if you are using outdated versions of these.** 
+
+If you do not have these software already installed, please install them (see below). **If you already have `rgdal` and gdal installed,  Verify that the version that's already installed is adequate. Load the `rgdal` package and use the function rgdal function `GDALis3ormore()` in R. It should return TRUE. We want gdal to use the appropriate PROJ transformation software ([proj.org/](https://proj.org/)), so in addition the rgdal function `PROJis6ormore()` should return TRUE. If either return FALSE, update your gdal.**
 *Note new version of some of these GIS software and packages (e.g., sp) have made significant changes and might affect other code.*
+
 
 On Mac, installing these is easiest done using homebrew. With homebrew installed, open terminal and run:
 
@@ -91,7 +95,7 @@ install.packages("INLA", repos=c(getOption("repos"), INLA="https://inla.r-inla-d
 For more details, see [www.r-inla.org/download-install](https://www.r-inla.org/download-install).
 
 
-### Packages that require a special version
+### Package that requires a special version
 
 inlabru is available on CRAN, but the version we need for this workshop is the new version **only available on GithHub**.
 
@@ -107,6 +111,7 @@ Next, we will install `inlabru`
 remotes::install_github("inlabru-org/inlabru", ref="stable")
 ```
 
+Note, if you have an error of the type *Error: (converted from warning) package X was built under R version #.#.#* that aborts the whole install. Run `Sys.setenv("R_REMOTES_NO_ERRORS_FROM_WARNINGS" = "true")`.
 
 ### Packages available on CRAN
 
