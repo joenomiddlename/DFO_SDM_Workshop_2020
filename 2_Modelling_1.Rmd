@@ -445,9 +445,9 @@ The population estimated is approximately `r round(Lambda$mean)` individuals wit
 
 There remains a potential problem with our inference. If we look back at the plot of our domain, we notice that it extends in the South-Western direction far beyond our survey tracklines. Thus, there is a risk of extrapolation error! Ideally, we should restrict our predictions to lie 'close' to our effort! 
 
-### Exercise {#Ex1}
+### Exercise 1 {#Ex1}
 
-Plot a map of the whale intensity, but colour grey all pixels that lie over 30km away from the nearest survey trackline. Next, estimate the total number of whales in the region lying within 30km of the nearest trackline.
+Part A. Plot a map of the whale intensity, but colour grey all pixels that lie over 30km away from the nearest survey trackline.
 
 Hint 1: To extract a subset of a SpatialPoints object `X` that lies within a 30km distance of another Spatial object `Y`, we run the following code:
 
@@ -455,7 +455,7 @@ Hint 1: To extract a subset of a SpatialPoints object `X` that lies within a 30k
 X_subset < X[which(apply(gWithinDistance(X,Y,dist = 30,byid = T),2,sum)>0),]
 ```
 
-Hint 2: To convert a SpatialPixels object `A` to a SpatialPoints object `B` run the following:
+Hint 2: We will need to convert the SpatialPixels intensity object into a SpatialPoints before subsetting. To convert a SpatialPixels object `A` to a SpatialPoints object `B` run the following:
 
 ```{r, eval=FALSE}
 B <- as(A, 'SpatialPointsDataFrame')
@@ -465,18 +465,34 @@ If you get really stuck, feel free to show the answer code!
 
 <div class="fold s o"> 
 ```{r `map-restrictedArea`, message=FALSE, cache=TRUE}
-# We need to convert the plot_pixels into a SpatialPoints object before subsetting!
+# Convert the SpatialPixels into a SpatialPoints object before subsetting
+pred_int_points <- as(pred_int,'SpatialPoints')
+# Subset to 30 km from Effort lines
 pred_int_restricted <- 
-  pred_int[which(apply(gWithinDistance(as(pred_int,'SpatialPoints'), Effort_survey,dist = 30,byid = T),2,sum)>0),]
+  pred_int[which(apply(gWithinDistance(pred_int_points, Effort_survey,dist = 30,byid = T),2,sum)>0),]
 
+# Plot the posterior mean
 ggplot() + gg(pred_int_restricted[1]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
   colsc(pred_int_restricted@data$mean)
+# Plot the standard deviation
 ggplot() + gg(pred_int_restricted[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
   colsc(pred_int_restricted@data$sd)
+```
+</div>
 
+Part B. Estimate the total number of whales in the region lying within 30km of the nearest trackline.
+
+If you get really stuck, feel free to show the answer code!
+
+<div class="fold s o"> 
+```{r `map-restrictedPopSize`, message=FALSE, cache=TRUE}
+# Subsetting the ipoints that contain the weights (area)
 predpts_restricted <- predpts[
   which(apply(gWithinDistance(predpts,Effort_survey,dist = 30,byid = T),2,sum)>0),]
+
+# Using predict to 
 Lambda_restricted <- predict(fit, predpts_restricted, ~ sum(weight * exp(mySpatial + Intercept)), n.samples = 20, seed=seed)
+
 Lambda_restricted
 ```
 </div>
@@ -485,7 +501,7 @@ You should get a smaller population estimate of approximately `r round(Lambda_re
 
 ## Adding covariates to an `inlabru` model
 
-Adding environmental covariates to models is made extremely easy in `inlabru`. All that is required is that each covariate is converted to class SpatialPixelsDataFrame and that the covariate data are complete. By 'complete', we mean that a non-missing value is available at every point within the region defined by the mesh boundary.
+Adding environmental covariates to models is easy in `inlabru`. All that is required is that each covariate is converted to class SpatialPixelsDataFrame and that the covariate data are complete. By 'complete', we mean that a non-missing value is available at every point within the region defined by the mesh boundary.
 
 Let's add the log_Depth covariate. To do this, we need to redefine the components and formula. First we define the updated components.
 
