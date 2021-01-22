@@ -266,7 +266,7 @@ Now we fit our first log-Gaussian Cox process model in `inlabru`. We will demons
 
 First, we define our likelihood object using the function `like`. We specify that the SpatialPointsDataFrame `Sightings_survey` is our data. Next, we specify the domains for both our response variables `coordinates` and `distance`. We point `coordinates` to the spatial mesh `mesh_land` and point the `distance` variable to a 1D mesh that we define. Note that we have set the upper limit to the distance domain equal to 2km. Next, we point the likelihood to the formula object we created earlier that defines the linear predictor and specify that a Cox process model is being fitted by specifying `family='cp'`. Note that a HUGE library of likelihoods are available. Calling `inla.list.models()` provides a list of every possible model, prior and latent effect available. Finally, we provide a sensible (negative) initial value for `lsig`.
 
-```{r, warning=F}
+```{r 'like', warning=FALSE, cache=TRUE}
 fit = like(data = Sightings_survey,
            samplers = Effort_survey,
            domain = list(
@@ -279,7 +279,7 @@ fit = like(data = Sightings_survey,
 
 Next, we call the function `bru`. This is the function that combines all the likelihood objects together with the specified components and performs model inference. Note that we only have a single likelihood object `fit`, with components `cmp_land1`. Fitting these models can take a while. For the purposes of this workshop, I have made all the pre-fitted model files available for use via the `readRDS` function.
 
-```{r, message=F}
+```{r 'bru', message=FALSE, cache=TRUE}
 #fit <- bru(fit, components = cmp_land1) # can be slow
 fit <- readRDS('./Model_Files/fit.rds') # read in the pre-compiled model
 ```
@@ -318,7 +318,7 @@ seed <- c(12345)
 ```
 
 
-```{r, message=F}
+```{r 'predict1', message=FALSE, cache=TRUE}
 # 1) Define pixels for plotting
 plot_pixels <- pixels(mesh_land, mask = Domain)
 # 2) Predict the intensity defined by the function exp(mySpatial + Intercept) across the pixels
@@ -342,7 +342,7 @@ Notice how lots of useful summary statistics are computed by default using the `
 
 Next, let's look at the posterior distributions of the spatial range and the marginal variance of the random field. For this, we use the functions `spde.posterior` and `plot`.
 
-```{r}
+```{r 'predict2', cache=TRUE}
 spde.range <- spde.posterior(fit, "mySpatial", what = "range")
 plot(spde.range)
 spde.var <- spde.posterior(fit, "mySpatial", what = "variance")
@@ -352,7 +352,7 @@ We can see that the model is estimating a spatial field with a reasonably small 
 
 Next, we can plot the estimated detection probability function, with uncertainty intervals. For this, we use `predict` once again, with one slight modification. Instead of using `pixels` to define a set of SpatialPixels to plot over, we must manually specify a `data.frame` object with the desired values of `distance` to predict across. Then, we can use the function `plot` as before. Note: I have had some issues with using the `predict` function on non-spatial data.frames. If you get an error message, try using the `generate` - `sapply` method shown in the comments below.
 
-```{r}
+```{r 'predict3', cache=TRUE}
 distdf <- data.frame(distance = seq(0, 2, length = 100))
 dfun <- predict(fit, distdf, ~ exp(log_hn(distance, lsig)), n.samples = 20, seed=seed)
 plot(dfun)
@@ -391,7 +391,7 @@ Crucially, `inlabru` provides user-friendly functions for predicting the populat
 
 Ignoring these issues for now, we predict the total population size falling within the Domain. To achieve this, we use the function `ipoints`. This sets up a series of integration points with weights (areas), to allow us to approximate the integral of the intensity surface across the domain with a Riemann sum approximation. Then, we use `predict`, with the user-specified function equal to a weighted sum of intensity. Note that `ipoints` creates a SpatialPointsDataFrame object with a single named variable `weight` containing the area of each region corresponding to each integration point.
 
-```{r}
+```{r 'predict4', cache=TRUE}
 predpts <- ipoints(Domain, mesh_land)
 head(predpts$weight) # these are the areas of the regions corresponding each point.
 # Define the weighted sum function
