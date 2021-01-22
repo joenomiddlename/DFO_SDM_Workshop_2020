@@ -1,7 +1,7 @@
 ---
 title: "Model Fitting"
 subtitle: "Fitting distance sampling log-Gaussian Cox process models using inlabru"
-author: "Joe Watson"
+author: "Joe Watson and Marie Auger-Méthé"
 date: "11/01/2021"
 bibliography: bibliography.bib
 output: 
@@ -48,10 +48,6 @@ Now we can load in the precompiled data and functions
 list2env(readRDS('./Data/Modelling_Data.rds'),globalenv())
 source('utility_functions.R')
 ```
-
-**JOE: I've remove it from Exp. An. and put it here. We may need to change it or just change the starting values.**
-
-In addition, to get access to the model results quickly, we need to download the pre-compiled modelling result files, which can be found [here](https://ubcca-my.sharepoint.com/:u:/g/personal/joewatto_student_ubc_ca/Ea8lRO_ESL5CgfFSWqOT0LUBzskEWVVA_v6N2B2RZhr67w?email=m.auger-methe%40oceans.ubc.ca&e=TvsrM1).
 
 Finally, let's turn off all warnings associated with coordinate reference systems. 
 ```{r}
@@ -216,6 +212,8 @@ log_hn = function(distance, lsig){
 }
 ```
 
+**JOE: I moved this here from below, but I think this could go in the Exploratory analysis and here we could just load the final object. I also think we could have it in km from the get go, no? I think you can set gDistance so it's returns in km. We want to simplify the code as much as possible, especially in the model tutorial.**
+
 In addition, it is often advised in distance sampling applications to threshold our upper detection distances at a 'sensible' value. Let's plot our observed distances from the trackline.
 
 ```{r}
@@ -256,7 +254,6 @@ formula_1 = coordinates + distance ~ mySpatial +
   Intercept + log(2)
 ```
 
-
 Defining the components and the formula separately in two stages is what gives `inlabru` its generalisibility. Parameters can be included within a model non-linearly, unlike most other R packages! Behind the scenes, `inlabru` linearises the model via a Taylor series expansion.  Furthermore, components and formulae can be stacked together for datasets from differing sources, allowing for integrative joint models to be fit with relative ease!
 
 For detailed additional information on the types of model components allowed by `inlabru` and the linearisation procedure performed, call `?component` and [here](https://github.com/inlabru-org/inlabru/blob/devel/vignettes/method.Rmd).
@@ -286,9 +283,9 @@ The number of threads (similar to cores) can be chosen. The higher the number, t
 
 We are ready! We fit our first log-Gaussian Cox process model in `inlabru`! 
 
-We will demonstrate how to use the `like` and `bru` approach to model fitting. This allows for integrative joint models from different data sources or data streams to be easily combined.
+We will fit the model using the `like` and `bru` approach because it allows to easily combine different data sources or data streams into an integrative joint models.
 
-First, we define our likelihood object using the function `like`. We specify that the SpatialPointsDataFrame `Sightings_survey` is our data. Next, we specify the domains for both our response variables `coordinates` and `distance`. We point `coordinates` to the spatial mesh `mesh_land` and point the `distance` variable to a 1D mesh that we define. Note that we have set the upper limit to the distance domain equal to 2km. Next, we point the likelihood to the formula object we created earlier that defines the linear predictor and specify that a Cox process model is being fitted by specifying `family='cp'`. Note that a HUGE library of likelihoods are available. Calling `inla.list.models()` provides a list of every possible model, prior and latent effect available. Finally, we provide a sensible (negative) initial value for `lsig`.
+First, we define our likelihood object using the function `like`. We specify that the SpatialPointsDataFrame `Sightings_survey` is our data. Next, we specify the domains for both our response variables `coordinates` and `distance`. We point `coordinates` to the spatial mesh `mesh_land` and point the `distance` variable to a 1D mesh that we define. Remember that we have set (**In previous tutorial, if you do the above (please do the above)**) the upper limit to the distance equal to 2km. **JOE: you use the term distance domain, try to keep domain to the survey are. Ecologists are not super used to the mathematical definition of domain.** Next, we point the likelihood to the formula object we created earlier that defines the linear predictor and specify that a Cox process model is being fitted by specifying `family='cp'`. Note that a HUGE library of likelihoods are available. Calling `inla.list.models()` provides a list of every possible model, prior and latent effect available. Finally, we provide a sensible (negative) initial value for `lsig`.
 
 ```{r 'like', warning=FALSE, cache=TRUE}
 fit = like(data = Sightings_survey,
@@ -301,11 +298,13 @@ fit = like(data = Sightings_survey,
            options = list(bru_initial = list(lsig = -1)))
 ```
 
-Next, we call the function `bru`. This is the function that combines all the likelihood objects together with the specified components and performs model inference. Note that we only have a single likelihood object `fit`, with components `cmp_land1`. Fitting these models can take a while. For the purposes of this workshop, I have made all the pre-fitted model files available for use via the `readRDS` function.
+Next, we call the function `bru`. This function combines all the likelihood objects together with the specified components and performs model inference. Note that we only have a single likelihood object `fit`, with components `cmp_land1`. 
+
+Running this function may take 
 
 ```{r 'bru', message=FALSE, cache=TRUE}
-#fit <- bru(fit, components = cmp_land1) # can be slow
-fit <- readRDS('./Model_Files/fit.rds') # read in the pre-compiled model
+# Warning: can be slow!
+fit <- bru(fit, components = cmp_land1)
 ```
 
 Is this a good fit? One simple way of gauging how well a model fits the data is to assess it's DIC value. DIC is similar to AIC/BIC in that it trades of goodness-of-fit with a penalty for the complexity of the model under the Occam's Razor principle of 'simple explanations trump complicated ones when both predict outcomes equally well'. Whilst a lone DIC value is somewhat meaningless, we can compare the DIC values of competing models **fit to the same data** for comparison. The lower the DIC score, the better the model fit.
@@ -488,7 +487,9 @@ The only change here, is the addition of the linear effect log_Depth to the line
 
 Now we can fit the model using the `like`/`bru` approach:
 
-```{r, warning=F}
+This will take 5 min to run.
+
+```{r 'bru2', warning=FALSE, cache=TRUE}
 fit2 = like(data = Sightings_survey,
             samplers = Effort_survey,
             domain = list(
@@ -497,18 +498,17 @@ fit2 = like(data = Sightings_survey,
             formula = formula_2,
             family = 'cp')
 # Slow to run bru, so we load the pre-compiled model instead 
-#fit2 <- bru(fit2, components = cmp_land2)
-fit2 <- readRDS('./Model_Files/fit2.rds')
+fit2 <- bru(fit2, components = cmp_land2)
 fit2$dic$dic # DIC is 840 again - no improvement
 summary(fit2)
 ```
 So, we find that adding log_Depth to the model fails to improve the model fit, as judged by DIC. Furthermore, inspecting the output from `summary()`, we see that the 95% credible intervals cover zero. Thus, we fail to detect a significant effect of log_Depth.
 
 ### Exercise {#Ex2} 
-Fit a model, with log_Slope included. Does this improve the model fit? Are either of the variables found to be significantly associated with the whale density? Note: Fitting the model is slow. Load the pre-fitted model by running `fit3 <- readRDS('./Model_Files/fit3.rds')` instead.
+Fit a model, with log_Slope included. Does this improve the model fit? Are either of the variables found to be significantly associated with the whale density?
 
 <div class="fold s o"> 
-```{r, warning=F}
+```{r 'bru3', warning=FALSE, cache=TRUE}
 cmp_land3 <- ~ mySpatial(main = coordinates, model = matern_land) + 
   Intercept(1) + log_Slope(main = log_Slope, model='linear') +
   lsig(1)
@@ -525,18 +525,17 @@ fit3 = like(data = Sightings_survey,
               distance = INLA::inla.mesh.1d(seq(0, 2, length.out = 30))),
             formula = formula_3,
             family = 'cp')
-#fit3 <- bru(fit3, components = cmp_land3)
-fit3 <- readRDS('./Model_Files/fit3.rds')
+fit3 <- bru(fit3, components = cmp_land3)
 fit3$dic$dic # DIC is 841.6 - no improvement
 summary(fit3)
 ```
 </div>
 
 ### Exercise {#Ex3} 
-Try adding both log_Slope and log_Depth variables. Does this improve the fit at all? Note: Fitting the model is slow. Load the pre-fitted model by running `fit4 <- readRDS('./Model_Files/fit4.rds')` instead.
+Try adding both log_Slope and log_Depth variables. Does this improve the fit at all
 
 <div class="fold s o"> 
-```{r, warning=F}
+```{r 'bru4', warning=FALSE, cache=TRUE}
 cmp_land4 <- ~ mySpatial(main = coordinates, model = matern_land) + 
   Intercept(1) + log_Depth(main = log_Depth, model='linear') +
   log_Slope(main = log_Slope, model = 'linear') + 
@@ -555,8 +554,7 @@ fit4 = like(data = Sightings_survey,
               distance = INLA::inla.mesh.1d(seq(0, 2, length.out = 30))),
             formula = formula_4,
             family = 'cp')
-#fit4 <- bru(fit4, components = cmp_land4)
-fit4 <- readRDS('./Model_Files/fit4.rds')
+fit4 <- bru(fit4, components = cmp_land4)
 fit4$dic$dic # DIC is 840 - no improvement
 summary(fit4)
 ```
@@ -597,7 +595,7 @@ multiplot(plot(spde.range2)+ylim(range(spde.range$pdf)),plot(spde.range)+xlim(ra
 ```
 
 Next, we use `predict` and `plot` to display the estimated effect of log_Depth on the intensity. Note that the effect is nonlinear on the intensity scale, as the covariate is specified to be linear on the log intensity scale.
-```{r}
+```{r 'predictFit2', cache=TRUE}
 # plot the covariate effects
 depthdf <- data.frame(log_Depth = seq(from=min(log_Depth@data$log_Depth),
                                       to=max(log_Depth@data$log_Depth),
@@ -657,7 +655,7 @@ We indeed see very similar estimates for the population size, with overlapping c
 
 
 ### (BONUS) Exercise {#Ex5}
-Try fitting a model with sea surface temperature (SST) included. If you are interested, below is the code used to download and reformat the SST data from the ERDDAP database. If not, skip ahead to read in the pre-compiled SST object from file. Note: Fitting the model is slow. Load the pre-fitted model by running `fitextra <- readRDS('./Model_Files/fitextra.rds')` instead.
+Try fitting a model with sea surface temperature (SST) included. If you are interested, below is the code used to download and reformat the SST data from the ERDDAP database. If not, skip ahead to read in the pre-compiled SST object from file.
 
 <div class="fold e">
 
@@ -720,7 +718,7 @@ SST_sp <- readRDS('./Data/Covariates/SST_layer.rds')
 So, with SST now loaded, do we find a significant association between whale intensity and SST? Does it improve the model fit? 
 
 <div class="fold s o"> 
-```{r, warning=F}
+```{r 'bruExtra', warning=FALSE, cache=TRUE}
 cmp_land_extra <- ~ mySpatial(main = coordinates, model = matern_land) + 
   Intercept(1) + SST(main = SST_sp, model='linear') +
   lsig(1)
@@ -737,8 +735,7 @@ fitextra = like(data = Sightings_survey,
               distance = INLA::inla.mesh.1d(seq(0, 2, length.out = 30))),
             formula = formula_extra,
             family = 'cp')
-#fitextra <- bru(fitextra, components = cmp_land_extra)
-fitextra <- readRDS('./Model_Files/fitextra.rds')
+fitextra <- bru(fitextra, components = cmp_land_extra)
 fitextra$dic$dic # DIC is 841.7 - no improvement
 summary(fitextra)
 ```
