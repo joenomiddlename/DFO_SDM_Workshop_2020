@@ -330,7 +330,7 @@ Now that we have fit our log-Gaussian Cox process model, what can we learn? What
 
 `inlabru` provides many user-friendly functions for answering these questions. Three such functions are `spde.posterior`, `predict` and `pixels`. Let's see them in action.
 
-### Plotting the predicted whale intensity
+### Mapping the predicted whale intensity
 
 As a first objective, let's plot the predicted whale intensity across the domain. This plot can help to visually assess where the model predicts 'hotspots' or areas of high whale activity exist. The following workflow can help to make professional plots easily:
 
@@ -350,9 +350,13 @@ For the purposes of this workshop, we are going to use only 20 Monte Carlo sampl
 seed <- c(12345)
 # Predict the intensity defined by the function exp(mySpatial + Intercept) across the pixels
 pred_int <- predict(fit, plot_pixels, ~ exp(mySpatial + Intercept), n.samples = 20, seed=seed)
+# What summary statistics have been computed for the intensity?
+names(pred_int)
 ```
 
-* Finally, we can plot these prediction objects using `gg`. We will plot both the posterior mean (representing the predicted whale intensity) and the posterior standard deviation (representing the uncertainty).
+Notice how lots of useful summary statistics are computed by default using the `predict` function!
+
+* Finally, we can plot these prediction objects using `gg`. We will plot both the posterior mean (representing the predicted whale intensity) and the posterior standard deviation (representing the uncertainty around the prediction).
 
 ```{r 'map-predict1', message=FALSE, cache=TRUE}
 # Define a 'pretty' colour palette
@@ -360,8 +364,6 @@ colsc <- function(...) {
   scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(11,"RdYlBu")),
                        limits = range(...))
 }
-# What summary statistics have been computed for the intensity?
-names(pred_int)
 # Plot the posterior mean intensity
 ggplot() + gg(pred_int[1]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
   colsc(pred_int@data$mean)
@@ -370,34 +372,31 @@ ggplot() + gg(pred_int[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, col
   colsc(pred_int@data$sd)
 ```
 
-Notice how lots of useful summary statistics are computed by default using the `predict` function! From these plots, we see 3 interesting features. First, a very low whale intensity is predicted in the regions frequently visited by the whale watching companies. Second, hotspots are identified in the Western region that had lots of survey effort focused in it, and in the center of the study region. Finally, evidence of a strong boundary effect in the South Eastern corner is seen. A very large mean and standard deviation is seen, indicating that some numerical instability may have occurred in this region. This can occur when the mesh becomes 'ugly', with tight triangles trying to recreate a jagged boundary. Whilst the large standard deviation implies that this should not impact estimates of posterior mean population size, it may impact any future estimates of uncertainty. One future solution could be to improve the mesh in this corner.
+From these plots, we see 3 interesting features. First, a very low whale intensity is predicted in the regions frequently visited by the whale-watching companies. Second, hotspots are identified in the Western region that had lots of survey effort focused in it, and in the center of the study region. Finally, evidence of a strong boundary effect in the South Eastern corner is seen. A very large mean and standard deviation is seen, indicating that some numerical instability may have occurred in this region. This can occur when the mesh becomes 'ugly', with tight triangles trying to recreate a jagged boundary. Whilst the large standard deviation implies that this should not impact estimates of posterior mean population size, it may impact any future estimates of uncertainty. One future solution could be to improve the mesh in this corner.
+
+### Plotting the posterior distribution of parameters and ??
+
+**JOE: can you remind what the spatial range and marginal variance are? Parameters of the GRF?**
 
 Next, let's look at the posterior distributions of the spatial range and the marginal variance of the random field. For this, we use the functions `spde.posterior` and `plot`.
 
-```{r 'predict2', cache=TRUE}
+```{r 'spdePosterior', cache=TRUE}
 spde.range <- spde.posterior(fit, "mySpatial", what = "range")
 plot(spde.range)
 spde.var <- spde.posterior(fit, "mySpatial", what = "variance")
 plot(spde.var)
 ```
-We can see that the model is estimating a spatial field with a reasonably small variance and large spatial range. We are not concerned that the model is demonstrating severe overfitting.
 
-Next, we can plot the estimated detection probability function, with uncertainty intervals. For this, we use `predict` once again, with one slight modification. Instead of using `pixels` to define a set of SpatialPixels to plot over, we must manually specify a `data.frame` object with the desired values of `distance` to predict across. Then, we can use the function `plot` as before. Note: I have had some issues with using the `predict` function on non-spatial data.frames. If you get an error message, try using the `generate` - `sapply` method shown in the comments below.
+We can see that the model is estimating a spatial field with a reasonably large spatial range and small variance. We are not concerned that the model is demonstrating severe overfitting.
 
-```{r 'predict3', cache=TRUE}
+**JOE: how to we call this simply (see subtitle ? above)**
+
+Next, we can plot the estimated detection probability function, with uncertainty intervals. For this, we use `predict` once again, with one slight modification. Instead of using `pixels` to define a set of SpatialPixels to plot over, we must manually specify a `data.frame` object with the desired values of `distance` to predict across. Then, we can use the function `plot` as before. Note: I have had some issues with using the `predict` function on non-spatial data.frames. If you get an error message, see [Additional tips]{#Ad2}.
+
+```{r 'predictDetection', cache=TRUE}
 distdf <- data.frame(distance = seq(0, 2, length = 100))
 dfun <- predict(fit, distdf, ~ exp(log_hn(distance, lsig)), n.samples = 20, seed=seed)
 plot(dfun)
-
-# Manually if predict does not work
-#samples <- generate(fit, n.samples = 20, seed=seed)
-# distpred <- sapply(samples,FUN = function(x){return(exp(log_hn(distdf$dist,x$lsig)))})
-# ggplot(data.frame(probability=apply(distpred,1, mean),
-#                   LCL=apply(distpred,1, quantile, probs=c(0.025)),
-#                   UCL=apply(distpred,1, quantile, probs=c(0.975)),
-#                   distance=distdf$distance),
-#        aes(y=probability,x=distance,ymax=UCL,ymin=LCL)) +
-#   geom_line() + geom_ribbon(alpha=0.4)
 ```
 
 This shows the probability of detecting a whale (given that it is at the 'surface'), as a function of distance from the vessel. The posterior mean and 95% credible intervals are shown. Note that for a publication, `n.samples` may need to be much higher. To estimate the Monte Carlo standard error at a distance 1, we can do the following:
@@ -415,22 +414,34 @@ dfun$sd[50]/sqrt(20) #sqrt(20) by central limit theorem
 
 This is huge!
 
-Crucially, `inlabru` provides user-friendly functions for predicting the population size! That is, we can investigate the posterior distribution for the expected number of whales with the following caveats:
+### Predicting the population size
+
+`inlabru` provides functions for predicting the population size! That is, we can investigate the posterior distribution for the expected number of whales with the following caveats:
+
 * We are assuming that **every encounter made was with a single individual**
+
 * We are assuming that all individuals can be spotted at distance 0m!
+
 * We have not factored in availability bias (perhaps whales are diving and missed)
+
 * We have not factored in the influence of group size on detection probability!
 
-Ignoring these issues for now, we predict the total population size falling within the Domain. To achieve this, we use the function `ipoints`. This sets up a series of integration points with weights (areas), to allow us to approximate the integral of the intensity surface across the domain with a Riemann sum approximation. Then, we use `predict`, with the user-specified function equal to a weighted sum of intensity. Note that `ipoints` creates a SpatialPointsDataFrame object with a single named variable `weight` containing the area of each region corresponding to each integration point.
+Ignoring these issues for now, we predict the total population size falling within the Domain. To achieve this, we use the function `ipoints`. This function sets a series of integration points with weights (areas), to allow us to approximate the integral of the intensity surface across the domain with a Riemann sum approximation. Note that `ipoints` creates a SpatialPointsDataFrame object with a single named variable `weight` containing the area of each region corresponding to each integration point.
 
-```{r 'predict4', cache=TRUE}
+```{r 'ipoints', cache=TRUE}
 predpts <- ipoints(Domain, mesh_land)
 head(predpts$weight) # these are the areas of the regions corresponding each point.
+```
+
+Then, we use `predict`, with the user-specified function equal to a weighted sum of intensity. 
+
+```{r 'predictPopSize', cache=TRUE}
 # Define the weighted sum function
 Lambda <- predict(fit, predpts, ~ sum(weight * exp(mySpatial + Intercept)), n.samples = 20, seed=seed)
 Lambda
-#around ~650 individuals with a large variance.
 ```
+
+The population estimated is approximately `r round(Lambda$mean)` individuals with a large variance of `r round(Lambda$var)`.
 
 There remains a potential problem with our inference. If we look back at the plot of our domain, we notice that it extends in the South-Western direction far beyond our survey tracklines. Thus, there is a risk of extrapolation error! Ideally, we should restrict our predictions to lie 'close' to our effort! 
 
@@ -781,5 +792,21 @@ plot(mesh_noland)
 mesh_noland$n
 ```
 We ignore this mesh for the remainder of this session, since it fails to account for land as a barrier.
+
+### Problems with using `predict` on non-spatial data.frames {#Ad2}
+
+
+I have had some issues with using the `predict` function on non-spatial data.frames. If you get an error message, try using the `generate` - `sapply` method shown below.
+
+```{r 'ad3G', cache=TRUE}
+samples <- generate(fit, n.samples = 20, seed=seed)
+distpred <- sapply(samples,FUN = function(x){return(exp(log_hn(distdf$dist,x$lsig)))})
+ggplot(data.frame(probability=apply(distpred,1, mean),
+                   LCL=apply(distpred,1, quantile, probs=c(0.025)),
+                   UCL=apply(distpred,1, quantile, probs=c(0.975)),
+                   distance=distdf$distance),
+        aes(y=probability,x=distance,ymax=UCL,ymin=LCL)) +
+   geom_line() + geom_ribbon(alpha=0.4)
+```
 
 # References
