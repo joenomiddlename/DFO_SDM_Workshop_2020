@@ -588,9 +588,6 @@ fit3 = like(data = Sightings_survey,
               distance = INLA::inla.mesh.1d(seq(0, 2, length.out = 30))),
             formula = formula_3,
             family = 'cp')
-fit3 <- bru(fit3, components = cmp_land3)
-fit3$dic$dic # DIC is 841.6 - no improvement
-summary(fit3)
 ```
 </div>
 
@@ -604,11 +601,14 @@ summary(fit3)
 ```
 </div>
 
-### Exercise 3 {#Ex3} 
-Try adding both log_Slope and log_Depth variables. Does this improve the fit at all
+### Exercise 3 {#Ex3}
+
+Try adding both log_Slope and log_Depth variables. Does this improve the fit?
+
+**Part A.** Define the model.
 
 <div class="fold s o"> 
-```{r 'bru4', warning=FALSE, cache=TRUE}
+```{r 'cmp_land4', warning=FALSE, cache=TRUE}
 cmp_land4 <- ~ mySpatial(main = coordinates, model = matern_land) + 
   Intercept(1) + log_Depth(main = log_Depth, model='linear') +
   log_Slope(main = log_Slope, model = 'linear') + 
@@ -619,7 +619,13 @@ formula_4 = coordinates + distance ~ mySpatial +
   log_Slope + 
   log_hn(distance, lsig) + 
   log(2)
+```
+</div>
 
+**Part B.** Define the likelihood with `like`.
+
+<div class="fold s o"> 
+```{r 'like4', warning=FALSE, cache=TRUE}
 fit4 = like(data = Sightings_survey,
             samplers = Effort_survey,
             domain = list(
@@ -627,11 +633,20 @@ fit4 = like(data = Sightings_survey,
               distance = INLA::inla.mesh.1d(seq(0, 2, length.out = 30))),
             formula = formula_4,
             family = 'cp')
+```
+</div>
+
+**Part C.** Fit the model with `bru`.
+
+<div class="fold s o"> 
+```{r 'bru4', warning=FALSE, cache=TRUE}
 fit4 <- bru(fit4, components = cmp_land4)
 fit4$dic$dic # DIC is 840 - no improvement
 summary(fit4)
 ```
 </div>
+
+The DIC results indicate that there is no improvement, suggesting that depth and slope are not important covariates.
 
 ### (Bonus) Exercise {#Ex4}
 
@@ -643,7 +658,7 @@ So, we ultimately find that the model without covariates (`fit`) offers the best
 
 That being said, the DIC values were almost equivalent for `fit` and `fit2` - the model which included log_Depth. Let's see how the predictions and parameter estimates change under the second model. Are the conclusions drawn from each model consistent? 
 
-```{r, message=F, warning=F}
+```{r `map-extra`, message=FALSE, warning=FALSE, cache=TRUE}
 plot_pixels2 <- pixels(mesh_land, mask = Domain)
 
 pred_int2 <- predict(fit2, plot_pixels2, 
@@ -668,7 +683,7 @@ multiplot(plot(spde.range2)+ylim(range(spde.range$pdf)),plot(spde.range)+xlim(ra
 ```
 
 Next, we use `predict` and `plot` to display the estimated effect of log_Depth on the intensity. Note that the effect is nonlinear on the intensity scale, as the covariate is specified to be linear on the log intensity scale.
-```{r 'predictFit2', cache=TRUE}
+```{r 'predictFitExtra', cache=TRUE}
 # plot the covariate effects
 depthdf <- data.frame(log_Depth = seq(from=min(log_Depth@data$log_Depth),
                                       to=max(log_Depth@data$log_Depth),
@@ -691,7 +706,8 @@ plot(depthpred)
 Note that the credible intervals cover a huge range of effect sizes! We really fail to detect an effect of log_Depth from the survey data alone, and including it as a covariate may lead to predictions and inference with lower precision!
 
 Finally, we plot the estimated population size across both the entire domain and the restricted domain (restricted to points lying within 30km of the nearest survey trackline). We then plot the estimated detection function. Notice that the `predict` function fails to work for the variable `distance`! This is a bug in `inlabru` that will hopefully be corrected for soon. In the meantime, we manually extract the results by sampling all the components using the function `generate` and then manually combining them using `sapply`. Note that the variables `LCL` and `UCL` define a symmetric 95% credible interval.
-```{r}
+
+```{r 'dectFxExtra', cache=TRUE}
 # Plot detection probability function
 distdf <- data.frame(distance = seq(0, 2, length = 100))
 #dfun2 <- predict(fit2, distdf, ~exp(log_hn(distance,lsig)),n.samples = 20)
@@ -791,7 +807,7 @@ SST_sp <- readRDS('./Data/Covariates/SST_layer.rds')
 So, with SST now loaded, do we find a significant association between whale intensity and SST? Does it improve the model fit? 
 
 <div class="fold s o"> 
-```{r 'bruExtra', warning=FALSE, cache=TRUE}
+```{r 'cmp_land_extra', warning=FALSE, cache=TRUE}
 cmp_land_extra <- ~ mySpatial(main = coordinates, model = matern_land) + 
   Intercept(1) + SST(main = SST_sp, model='linear') +
   lsig(1)
@@ -800,7 +816,11 @@ formula_extra = coordinates + distance ~ mySpatial +
   Intercept + SST +
   log_hn(distance, lsig) + 
   log(2)
+```
+</div>
 
+<div class="fold s o"> 
+```{r 'likeExtra', warning=FALSE, cache=TRUE}
 fitextra = like(data = Sightings_survey,
             samplers = Effort_survey,
             domain = list(
@@ -808,6 +828,11 @@ fitextra = like(data = Sightings_survey,
               distance = INLA::inla.mesh.1d(seq(0, 2, length.out = 30))),
             formula = formula_extra,
             family = 'cp')
+```
+</div>
+
+<div class="fold s o"> 
+```{r 'bruExtra', warning=FALSE, cache=TRUE}
 fitextra <- bru(fitextra, components = cmp_land_extra)
 fitextra$dic$dic # DIC is 841.7 - no improvement
 summary(fitextra)
