@@ -6,7 +6,7 @@ $(document).ready(function() {
 
     // add button to source code chunks
     if ( $(this).hasClass('s') ) {
-      $('pre.r', this).prepend("<div class=\"showopt\">Show Answer Code</div><br style=\"line-height:22px;\"/>");
+      $('pre.r', this).prepend("<div class=\"showopt\">Show Code</div><br style=\"line-height:22px;\"/>");
       $('pre.r', this).children('code').attr('class', 'folded');
     }
 
@@ -18,12 +18,12 @@ $(document).ready(function() {
 
     // add button to output chunks
     if ( $(this).hasClass('o') ) {
-      $('pre:not(.r)', this).has('code').prepend("<div class=\"showopt\">Show Answer Output</div><br style=\"line-height:22px;\"/>");
+      $('pre:not(.r)', this).has('code').prepend("<div class=\"showopt\">Show Output</div><br style=\"line-height:22px;\"/>");
       $('pre:not(.r)', this).children('code:not(r)').addClass('folded');
 
       // add button to plots
       $(this).find('img').wrap('<pre class=\"plot\"></pre>');
-      $('pre.plot', this).prepend("<div class=\"showopt\">Show Answer Plot</div><br style=\"line-height:22px;\"/>");
+      $('pre.plot', this).prepend("<div class=\"showopt\">Show Plot</div><br style=\"line-height:22px;\"/>");
       $('pre.plot', this).children('img').addClass('folded');
 
     }
