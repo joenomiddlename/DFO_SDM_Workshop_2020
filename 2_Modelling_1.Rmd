@@ -185,7 +185,7 @@ ggplot() + gg(log_Slope) + gg(mesh_land)
 
 ## Defining Gaussian random field and priors
 
-**JOE: this is quite dense. We will have to work on this part. For example, I'm not sure what's the standard deviation (magnitude) of the field. So, I suggest that before you jump into the priors, you talk about the fields and how they can vary. Could you show 3 GRF that vary in range and sd?**
+**JOE: this is quite dense. We will have to work on this part. For example, I'm not sure what's the standard deviation (magnitude) of the field. So, I suggest that before you jump into the priors, you talk about the fields and how they can vary. Could you show 3 GRF that vary in range and sd? You could do it in a way that they don't see the code, just the figures. (Code chunk argument echo=FALSE)**
 
 Next, we need to define our Gaussian random field model and its priors. To do this, we use the function `inla.spde2.pcmatern` from the *INLA* package. Note that the arguments `prior.sigma` and `prior.range` define arguments for the penalized complexity (PC) prior of the random field developed by @Simpson2017 and @Fuglstad2019.
 
@@ -203,7 +203,9 @@ matern_land <- inla.spde2.pcmatern(mesh_land,
                               prior.range = c(35, 0.01))
 ```
 
-Next, with the mesh, covariates, and spatial model defined, we must now define our detection probability function. First, we define a half-normal detection probability function. This object will take the form of a base R function.
+### Detection probability function
+
+Next, we must now define our detection probability function. First, we define a half-normal detection probability function. This object will take the form of a base R function.
 
 ```{r}
 # Define a half-normal detection probability function (code from inlabru tutorials)
@@ -212,7 +214,9 @@ log_hn = function(distance, lsig){
 }
 ```
 
-Next, we need to separately define the components of the model: the SPDE, the intercept, and the detection function parameter `lsig`. We let `inlabru` know the type of object each component is. For example, we define our spatial field and give it the name mySpatial. We tell `inlabru` that the coordinates of the points are the locations at which we wish to evaluate the field at. Finally, we point `inlabru` to the model object we defined earlier (`matern_land`).  
+**JOE: by model here, what do you mean? The GRF?**
+
+Next, we need to combined the components of the model: the SPDE, the intercept, and the detection function parameter `lsig`. We let `inlabru` know the type of object each component is. For example, we define our spatial field and give it the name mySpatial. We tell `inlabru` that the coordinates of the points are the locations at which we wish to evaluate the field at. Finally, we point `inlabru` to the model object we defined earlier (`matern_land`).  
 
 We repeat the process, defining the additional scalar terms `lsig` and `Intercept`. The arguments `1` (specified for the argument `main`) tells inlabru to evaluate the two terms at every data point.
 
