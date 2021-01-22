@@ -447,7 +447,7 @@ There remains a potential problem with our inference. If we look back at the plo
 
 ### Exercise 1 {#Ex1}
 
-Part A. Plot a map of the whale intensity, but colour grey all pixels that lie over 30km away from the nearest survey trackline.
+**Part A.** Plot a map of the whale intensity, but colour grey all pixels that lie over 30km away from the nearest survey trackline.
 
 Hint 1: To extract a subset of a SpatialPoints object `X` that lies within a 30km distance of another Spatial object `Y`, we run the following code:
 
@@ -480,12 +480,12 @@ ggplot() + gg(pred_int_restricted[2]) + gg(Domain) + gg.spatiallines_mod(Effort_
 ```
 </div>
 
-Part B. Estimate the total number of whales in the region lying within 30km of the nearest trackline.
+**Part B.** Estimate the total number of whales in the region lying within 30km of the nearest trackline.
 
 If you get really stuck, feel free to show the answer code!
 
 <div class="fold s o"> 
-```{r `map-restrictedPopSize`, message=FALSE, cache=TRUE}
+```{r `restrictedPopSize`, message=FALSE, cache=TRUE}
 # Subsetting the ipoints that contain the weights (area)
 predpts_restricted <- predpts[
   which(apply(gWithinDistance(predpts,Effort_survey,dist = 30,byid = T),2,sum)>0),]
@@ -505,7 +505,7 @@ Adding environmental covariates to models is easy in `inlabru`. All that is requ
 
 Let's add the log_Depth covariate. To do this, we need to redefine the components and formula. First we define the updated components.
 
-```{r}
+```{r `cmp_land2`, cache=TRUE}
 cmp_land2 <- ~ mySpatial(main = coordinates, model = matern_land) + 
   Intercept(1) + log_Depth(main = log_Depth, model='linear') +
   lsig(1)
@@ -515,7 +515,7 @@ Notice that we have defined a new variable called `log_Depth`. Using the argumen
 
 Next, we redefine our new formula object:
 
-```{r}
+```{r `formula_2`, cache=TRUE}
 formula_2 = coordinates + distance ~ mySpatial +
   Intercept + log_Depth +
   log_hn(distance, lsig) + 
@@ -526,9 +526,9 @@ The only change here, is the addition of the linear effect log_Depth to the line
 
 Now we can fit the model using the `like`/`bru` approach:
 
-This will take 5 min to run.
+Step 1, define the likelihood 
 
-```{r 'bru2', warning=FALSE, cache=TRUE}
+```{r 'like2', warning=FALSE, cache=TRUE}
 fit2 = like(data = Sightings_survey,
             samplers = Effort_survey,
             domain = list(
@@ -536,18 +536,36 @@ fit2 = like(data = Sightings_survey,
               distance = INLA::inla.mesh.1d(seq(0, 2, length.out = 30))),
             formula = formula_2,
             family = 'cp')
-# Slow to run bru, so we load the pre-compiled model instead 
+```
+
+Step 2, fit the model with `bru`.
+
+This will take 2-5 min to run.
+
+```{r 'bru2', warning=FALSE, cache=TRUE}
+# Slow to run bru
 fit2 <- bru(fit2, components = cmp_land2)
+```
+
+We can then explore the results.
+
+```{r 'fit2', warning=FALSE, cache=TRUE}
 fit2$dic$dic # DIC is 840 again - no improvement
 summary(fit2)
 ```
+
 So, we find that adding log_Depth to the model fails to improve the model fit, as judged by DIC. Furthermore, inspecting the output from `summary()`, we see that the 95% credible intervals cover zero. Thus, we fail to detect a significant effect of log_Depth.
 
-### Exercise {#Ex2} 
+### Exercise 2 {#Ex2} 
+
 Fit a model, with log_Slope included. Does this improve the model fit? Are either of the variables found to be significantly associated with the whale density?
 
+Hint: Remember that there are multiple steps.
+
+**Part A.** Define the model.
+
 <div class="fold s o"> 
-```{r 'bru3', warning=FALSE, cache=TRUE}
+```{r 'cmp_land3', warning=FALSE, cache=TRUE}
 cmp_land3 <- ~ mySpatial(main = coordinates, model = matern_land) + 
   Intercept(1) + log_Slope(main = log_Slope, model='linear') +
   lsig(1)
@@ -556,7 +574,13 @@ formula_3 = coordinates + distance ~ mySpatial +
   Intercept + log_Slope +
   log_hn(distance, lsig) + 
   log(2)
+```
+</div>
 
+**Part B.** Define the likelihood with `like`.
+
+<div class="fold s o"> 
+```{r 'like3', warning=FALSE, cache=TRUE}
 fit3 = like(data = Sightings_survey,
             samplers = Effort_survey,
             domain = list(
@@ -570,7 +594,17 @@ summary(fit3)
 ```
 </div>
 
-### Exercise {#Ex3} 
+**Part C.** Fit the model with `bru`.
+
+<div class="fold s o"> 
+```{r 'bru3', warning=FALSE, cache=TRUE}
+fit3 <- bru(fit3, components = cmp_land3)
+fit3$dic$dic # DIC is 841.6 - no improvement
+summary(fit3)
+```
+</div>
+
+### Exercise 3 {#Ex3} 
 Try adding both log_Slope and log_Depth variables. Does this improve the fit at all
 
 <div class="fold s o"> 
