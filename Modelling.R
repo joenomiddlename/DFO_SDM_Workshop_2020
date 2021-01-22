@@ -236,6 +236,9 @@ dfun <- predict(fit, distdf, ~ exp(log_hn(distance, lsig)), n.samples = 20)
 plot(dfun)
 
 # We can look at the posterior for expected number of whales:
+# Note that we are assuming that all individuals can be spotted at distance 0m!
+# Not factored in availability bias (perhaps whales are diving and missed)
+# Not factored in the influence of group size on detection probability!
 predpts <- ipoints(Domain, mesh_land)
 Lambda <- predict(fit, predpts, ~ sum(weight * exp(mySpatial + Intercept)), n.samples = 20)
 Lambda
