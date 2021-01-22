@@ -326,26 +326,35 @@ bru_options_set(
 
 ## Exploring the conclusions from the `inlabru` model.
 
-Now that we have fit our log-Gaussian Cox process model in `inlabru`, what can we learn? What can we say about the whale density? Helpfully, `inlabru` provides many user-friendly functions for answering these questions. Three such functions are `spde.posterior`, `predict` and `pixels`. Let's see them in action.
+Now that we have fit our log-Gaussian Cox process model, what can we learn? What can we say about the whale density? 
+
+`inlabru` provides many user-friendly functions for answering these questions. Three such functions are `spde.posterior`, `predict` and `pixels`. Let's see them in action.
+
+### Plotting the predicted whale intensity
 
 As a first objective, let's plot the predicted whale intensity across the domain. This plot can help to visually assess where the model predicts 'hotspots' or areas of high whale activity exist. The following workflow can help to make professional plots easily:
 
-- First, we must define SpatialPixels across our domain using the helper function `pixels`.
-- Next, we must predict a user-specified function of the random components across the SpatialPixels using the funtion `predict`. The package `inlabru` (and `INLA`) allows for approximate Monte Carlo samples of each random component to be generated from the posterior distributions of the model. The function `predict` then computes the user-specified function for each sample before taking the empirical mean, standard deviation, quantiles, etc., of these values. This approach allows the posterior distribution of arbitrarily complex nonlinear functions of parameters to be investigated. 
-- Finally, we can plot these prediction objects using `gg`. 
+* First, we must define SpatialPixels across our domain using the helper function `pixels`.
 
-Let's see it in action! Note that for the purposes of this workshop, we are going to use only 20 Monte Carlo samples. In practice, to reduce Monte Carlo error, this number may need to be >1000. The Monte Carlo standard error should always be reported.
-
-```{r}
-seed <- c(12345)
+```{r 'pixels', message=FALSE, cache=TRUE}
+# Define pixels for plotting
+plot_pixels <- pixels(mesh_land, mask = Domain)
 ```
 
+* Next, we must predict a user-specified function of the random components across the SpatialPixels using the function `predict`. The package `inlabru` (and `INLA`) allows for approximate Monte Carlo samples of each random component to be generated from the posterior distributions of the model. The function `predict` then computes the user-specified function for each sample before taking the empirical mean, standard deviation, quantiles, etc., of these values. This approach allows the posterior distribution of arbitrarily complex nonlinear functions of parameters to be investigated.
+
+For the purposes of this workshop, we are going to use only 20 Monte Carlo samples. In practice, to reduce Monte Carlo error, this number may need to be >1000. The Monte Carlo standard error should always be reported. We set the seed so that the results are reproducible.
 
 ```{r 'predict1', message=FALSE, cache=TRUE}
-# 1) Define pixels for plotting
-plot_pixels <- pixels(mesh_land, mask = Domain)
-# 2) Predict the intensity defined by the function exp(mySpatial + Intercept) across the pixels
+# Set random seed
+seed <- c(12345)
+# Predict the intensity defined by the function exp(mySpatial + Intercept) across the pixels
 pred_int <- predict(fit, plot_pixels, ~ exp(mySpatial + Intercept), n.samples = 20, seed=seed)
+```
+
+* Finally, we can plot these prediction objects using `gg`. We will plot both the posterior mean (representing the predicted whale intensity) and the posterior standard deviation (representing the uncertainty).
+
+```{r 'map-predict1', message=FALSE, cache=TRUE}
 # Define a 'pretty' colour palette
 colsc <- function(...) {
   scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(11,"RdYlBu")),
@@ -353,10 +362,10 @@ colsc <- function(...) {
 }
 # What summary statistics have been computed for the intensity?
 names(pred_int)
-# 3) Plot the posterior mean intensity
+# Plot the posterior mean intensity
 ggplot() + gg(pred_int[1]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
   colsc(pred_int@data$mean)
-# 4) Plot the posterior SD (note the index [2])
+# Plot the posterior SD (note the index [2])
 ggplot() + gg(pred_int[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
   colsc(pred_int@data$sd)
 ```
