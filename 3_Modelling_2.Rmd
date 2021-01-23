@@ -1,5 +1,5 @@
 ---
-title: "Model Fitting"
+title: "Model Fitting 2"
 subtitle: "Fitting distance sampling log-Gaussian Cox process models using inlabru"
 author: "Joe Watson"
 date: "11/01/2021"
@@ -15,7 +15,11 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Modelling 2: Combining opportunistic sightings with survey data using inlabru
+## Introduction
+
+In this final tutorial, we will learn how to jointly model presence-only opportunistic sightings with survey data within the `inlabru` package. We will demonstrate how to fit the models and predict both the spatial whale intensity and population size.
+
+### Load packages
 
 ```{r warning=FALSE, message=FALSE, error=FALSE}
 library(rgeos)
@@ -32,12 +36,9 @@ library(ggmap)
 library(raster)
 ```
 
-Next, lets check our current working directory! 
-```{r}
-getwd()
-```
+### File set up
 
-We should be inside the folder titled: 'DFO_SDM_Workshop_2020'. If not, change this by navigating to the correct folder in the bottom right panel (folder view), opening it, and then clicking "Set as Working Directory" under the tab 'More'.
+Use `getwd()` to verify that you are inside the folder titled: 'DFO_SDM_Workshop_2020'. If not, change this by navigating to the correct folder in the bottom right panel (folder view), opening it, and then clicking "Set as Working Directory" under the tab 'More'.
 
 **JOE: Taken from other tutorial, in case we need here**
 *Fitting these models can take a while. For the purposes of this workshop, I have made all the pre-fitted model files available for use via the `readRDS` function.*
@@ -62,31 +63,61 @@ options("rgdal_show_exportToProj4_warnings"="none")
 
 ## Incorporating the presence-only whale watch sightings into our models
 
-In this final session, we will learn how to jointly model presence-only opportunistic sightings with survey data within the `inlabru` package. We will demonstrate how to fit the models and predict both the spatial whale intensity and population size.
+### Accounting for the un-measured whale-watch effort
 
-For the whale watch data, we have little knowledge on the activities of the whale watch vessels and no GPS data is available. Throughout the remainder of this section, we will assume that the efforts from the two whale watch companies, as captured in the two whale watch effort surfaces $\lambda_{eff}$, will be a function of the distance from the two ports. Crucially, we will assume that the effort decreases as a function of distance from the port.
+We have little knowledge on the activities of the whale-watching vessels and no GPS data is available. Thus unlike the survey data we do not have reliable effort data.
 
-Two pieces of knowledge available to us, are the number of daily whale watch trips that operate from each port and the average trip length from each port. These can be found from the websites of the two whale watch operators. These two pieces of information can help us to sensibly constrain the model, hopefully giving us more realistic predictions and inference. We will compare the effects of including and excluding this additional knowledge.
+Throughout this tutorial, we will assume that the efforts from the two whale-watching companies, as captured in the two whale-watching effort surfaces $\lambda_{eff}$, will be a function of the distance from the two ports. Crucially, we will assume that the effort decreases as a function of distance from the port.
 
-First, we buffer and rescale the two SpatialPixelsDataFrames `Dist_Brier` and `Dist_Quoddy`. These contain the distances from the Brier and Quoddy ports respectively. Unlike with previous covariates, however, we will fix all bufffered values on land equal to a large constant. This will help to ensure that negligible effort is recorded from the whale watch vessels on land through $\lambda_{eff}$.
+Two important pieces of knowledge are available to us:
 
-```{r, message=F}
+* number of daily whale-watch trips that operate from each port
+
+* average trip length from each port
+
+These can be found from the websites of the two whale-watch operators. These two pieces of information can help us to sensibly constrain the model, hopefully giving us more realistic predictions and inference. We will compare the effects of including and excluding this additional information.
+
+### Rescale and buffer the objects with distances to ports 
+
+We have two SpatialPixelsDataFrames `Dist_Brier` and `Dist_Quoddy` that contain the distances from the Brier and Quoddy ports, respectively.
+
+```{r 'map-distPortO', message=FALSE, cache=TRUE}
 ggplot() + gg(Dist_Brier) + gg(mesh_land)
+ggplot() + gg(Dist_Quoddy) + gg(mesh_land)
+```
+
+As we did with depth and slope in the previous tutorial, we need to buffer and rescale these covariates.  Unlike with previous covariates, however, we will fix all bufffered values on land equal to a large constant. This will help to ensure that negligible effort is recorded from the whale watch vessels on land through $\lambda_{eff}$.
+
+We show how to do it with the disatnce to Brier.
+
+**JOE: please add more comments in the code. I have already forgotten the details ;).**
+
+```{r 'map-distBrierRescaled', message=FALSE, cache=TRUE}
 # Buffer
-pixels_Domain <- pixels( mesh_land,mask=gSimplify(gBuffer(Domain,width=19),tol=3),
+pixels_Domain <- pixels(mesh_land,mask=gSimplify(gBuffer(Domain, width=19),tol=3),
                          nx=400,ny=400)
 pixels_Domain$Dist_Brier <- over(pixels_Domain,Dist_Brier)$Dist_Brier
 pixels_Domain$Dist_Brier[is.na(pixels_Domain$Dist_Brier)] <- 1e3
 
 Dist_Brier <- pixels_Domain
 ggplot() + gg(Dist_Brier) + gg(mesh_land)
+
 # There is an infinity value at the port. Change to 0
 Dist_Brier$Dist_Brier[is.infinite(Dist_Brier$Dist_Brier)] <- 0
 max(Dist_Brier$Dist_Brier)
+
 # Let's scale the Dist covariates closer to the (0,1) scale
 Dist_Brier$Dist_Brier <- Dist_Brier$Dist_Brier / 980.7996
-# repeat for distance from Quoddy port
-pixels_Domain <- pixels( mesh_land,mask=gSimplify(gBuffer(Domain,width=19),tol=3),
+```
+
+### Exercise {#ExNew}
+**JOE: I have created a exercise for Quoddy, we may need to add below and renumber things**
+
+Now, please rescale and buffer the distance to Quoddy object.
+
+<div class="fold s o">
+```{r 'map-distQuoddyRescaled', message=FALSE, cache=TRUE}
+pixels_Domain <- pixels(mesh_land,mask=gSimplify(gBuffer(Domain,width=19),tol=3),
                          nx=400,ny=400)
 pixels_Domain$Dist_Quoddy <- over(pixels_Domain,Dist_Quoddy)$Dist_Quoddy
 pixels_Domain$Dist_Quoddy[is.na(pixels_Domain$Dist_Quoddy)] <- 1e3
@@ -98,32 +129,42 @@ Dist_Quoddy$Dist_Quoddy[is.infinite(Dist_Quoddy$Dist_Quoddy)] <- 0
 Dist_Quoddy$Dist_Quoddy <- Dist_Quoddy$Dist_Quoddy / 980.7996
 ggplot() + gg(Dist_Quoddy) + gg(mesh_land)
 ```
+</div>
+
+### Functional form of the distance to port covariate
 
 Now, we investigate a potential functional form for the distance from port covariate. To do this, we plot a histogram of the distances from port at each of the whale watch sighting locations.
 
-```{r}
+```{r 'plot-funcFormDist', cache=TRUE}
 # Plot the sightings with distance from the port
 hist(over(Sightings_Brier_nodup,Dist_Brier)$Dist_Brier, main='Histogram of the distance from port of the Brier sightings', xlab = 'Distance from port')
 
 hist(over(Sightings_Quoddy_nodup,Dist_Quoddy)$Dist_Quoddy,breaks=20, main='Histogram of the distance from port of the Quoddy sightings', xlab = 'Distance from port')
 ```
-For both ports, we detect a decreasing frequency of sightings made as the distance from port increases. This relationship is clearer for Brier sightings than for Quoddy sightings. Furthermore, the functional form of the effect does not appear to be an exponential decay. Based on the histograms, we choose to model the functional form as a half-normal function once again. Note that more complicated functional forms (e.g. weibull or hazard functions) could be fit.
+
+For both ports, we detect a decreasing frequency of sightings made as the distance from port increases. This relationship is clearer for Brier sightings than for Quoddy sightings. Furthermore, the functional form of the effect does not appear to be an exponential decay. Based on the histograms, we choose to model the functional form as a half-normal function. More complicated functional forms (e.g. weibull or hazard functions) could be used.
 
 On the log scale, this covariate can be estimated as a linear effect on the squared distance from port. Thus, we create SpatialPixelsDataFrame objects which store the squared distances from port.
 
+**JOE: did you do this in the exploratory analysis? Both choosing half-norm and using the sq? I think so. If so, I would changes things around. And just make it clear in the first tutorial why you are doing this and that you'll be using it in the model. Then, here in this tutorial just remind the participants that you chose the half-normal and that thus you need the sq and refer back to first tutorial. Just load directly the squared objects and use this from the get go. This model 2 tutorial is essential and is much much longer than exploratory stuff. So we want to focus on the model and remove when we can unecessary code (here code that has been run before). You coudl add non-echoed code chunks that show the historgrams again, if you worry that they will forget.**
+
 ```{r}
-Dist_Quoddy_sq <- pixels( mesh_land,mask=gSimplify(gBuffer(Domain,width=19),tol=3),
+Dist_Quoddy_sq <- pixels(mesh_land,mask=gSimplify(gBuffer(Domain,width=19),tol=3),
                           nx=400,ny=400)
 Dist_Brier_sq <- Dist_Quoddy_sq
 Dist_Quoddy_sq$Dist_Quoddy_sq <- Dist_Quoddy$Dist_Quoddy^2
 Dist_Brier_sq$Dist_Brier_sq <- Dist_Brier$Dist_Brier^2
 ```
 
-With the covariates all created, we can now define our components and formulae. Unlike before, this time, we need to define a single components object that contains **all** the required components for both the whale watch **and** survey sightings. 
+With the covariates all created, we can now define our components and formulae. Unlike before, we need to define a single components object that contains **all** the required components for both the whale watch **and** survey sightings. 
 
-For our first model, we will ignore all available information provided about the daily activities of the whale watch vessels. Instead, we will 'let the data speak for themselves' and inform the most suitable effort surfaces $\lambda_{eff}$. We will use the data to inform both the shapes and relative magnitudes of $\lambda_{eff}$ from each port. Let's define the neccessary components and formulae now.
+### Define and fit the model
 
-```{r}
+For our first model, we will ignore all available information provided about the daily activities of the whale-watch vessels. Instead, we will 'let the data speak for themselves' and inform the most suitable effort surfaces $\lambda_{eff}$. We will use the data to inform both the shapes and relative magnitudes of $\lambda_{eff}$ from each port. 
+
+Let's define the necessary components.
+
+```{r 'cmp_WW_combined1', cache=TRUE}
 cmp_WW_Combined1 <- ~ 
   mySpatial(main = coordinates, model = matern_land) + 
   mySpatial_Brier(main = coordinates, copy='mySpatial', fixed=T) + 
@@ -135,7 +176,13 @@ cmp_WW_Combined1 <- ~
   Intercept(1) +
   lsig(1) +
   log_Depth(main = log_Depth, model='linear')
+```
 
+There are a lot of new additions to the components. First, we see the addition of `mySpatial_Brier` and `mySpatial_Quoddy`. These define copies of the original spatial field `mySpatial`. To tell `inlabru` that we want to copy the original model, we use the argument `copy = mySpatial`. The argument `fixed = T` tells `inlabru` that we do not want to scale the field by an estimated scalar parameter. Next, are the additions of `Dist_Quoddy_sq` and `Dist_Brier_sq`. These define linear covariates on the respective SpatialPixelsDataFrame objects (i.e. they define the half-normal functions) and hence describe the shape and range of the effort surfaces. Next, we include the scalar parameters `Intercept_WW_Q` and `Diff_WW_Q_B`. These will define the intercept for the Quoddy whale watch port and the relative log intensity of the Brier whale watch port compared with Quoddy. These will help to define the relative total efforts from the two ports. Note that we also include log_Depth - it will become clear why later.
+
+Let's define the two formulae.
+
+```{r 'formulae_combined1', cache=TRUE}
 formula_WW_B1 = coordinates ~ mySpatial_Brier +
   Dist_Brier_sq + 
   Intercept_WW_Q +
@@ -148,13 +195,11 @@ formula_WW_Q1 = coordinates ~ mySpatial_Quoddy +
   log_Depth
 ```
 
-There are a lot of new additions to the components. First, we see the addition of `mySpatial_Brier` and `mySpatial_Quoddy`. These define copies of the original spatial field `mySpatial`. To tell `inlabru` that we want to copy the original model, we use the argument `copy = mySpatial`. The argument `fixed = T` tells `inlabru` that we do not want to scale the field by an estimated scalar parameter. Next, are the additions of `Dist_Quoddy_sq` and `Dist_Brier_sq`. These define linear covariates on the respective SpatialPixelsDataFrame objects (i.e. they define the half-normal functions) and hence describe the shape and range of the effort surfaces. Next, we include the scalar parameters `Intercept_WW_Q` and `Diff_WW_Q_B`. These will define the intercept for the Quoddy whale watch port and the relative log intensity of the Brier whale watch port compared with Quoddy. These will help to define the relative total efforts from the two ports. Note that we also include log_Depth - it will become clear why later.
-
 For the formula objects, we include the port-specific spatial field and the port-specific intercept(s). Note that we do not need to update the formula for the survey data.
 
 Now, we use the `like`/`bru` approach to combine all three likelihood objects (from the survey and two ports)! We must define the three likelihood objects using the joint set of components defined above.
 
-```{r, warning=F}
+```{r 'likeWW1', warning=FALSE, cache=TRUE}
 # from the survey model earlier
 fit2_like = like(data = Sightings_survey,
             samplers = Effort_survey,
@@ -175,34 +220,68 @@ fit_WW_Q1 = like(data = Sightings_Quoddy_nodup,
                    coordinates = mesh_land),
                  formula = formula_WW_Q1,
                  family = 'cp')
+```
 
+Notice the lack of `samplers` used in defining the likelihoods for the whale watch data. This is because we are assuming that the whole domain can be sampled, but with the actual sampling intensity governed by the half-norm function of distance from port. Alternatively, we could specify `samplers = Domain`. This would automatically exclude any values that lie on land. We choose not to do this as we have manually fixed a large value of distance here, achieving the same effect.
+
+We can now fit the model using `bru`.
+
+```{r 'bruWW1', warning=FALSE, cache=TRUE}
 # Slow to fit, so we load a pre-compiled file instead
 #fit_combined1 <- bru(fit2_like, fit_WW_B1, fit_WW_Q1, components = cmp_WW_Combined1)
 fit_combined1 <- readRDS('./Model_Files/fit_combined1.rds')
+```
+
+Let's look at the results.
+
+```{r 'bruResultsWW1', warning=FALSE, cache=TRUE}
 fit_combined1$dic$dic #DIC is 2259 - new benchmark can't compare with previous models
 summary(fit_combined1)
 ```
 
-Notice the lack of `samplers` used in defining the likelihoods for the whale watch data. This is because we are assuming that the whole domain can be sampled, but with the actual sampling intensity governed by the half-norm function of distance from port. Alternatively, we could specify `samplers = Domain`. This would automatically exclude any values that lie on land. We choose not to do this as we have manually fixed a large value of distance here, achieving the same effect. 
+**JOE: be more specific here, what are you looking at to say that we detect a large negative value**
 
-The output from `summary` shows some interesting findings! First, we detect a large negative effect of the scaled squared distance from port. This is expected, indicating a decreased effort intensity as the distance from the port increases.
+The output from `summary` shows some interesting findings! 
 
-Finally, and most interestingly, we detect a large significant effect of log_Depth on the whale intensity. This is in agreement with the earlier exploratory analysis. Thus, it appears that we may have gained a substantial amount of precision by incorporating the whale watch data into our model! This should help to improve the spatial predictions of the whale intensity too.
+We detect a large negative effect of the scaled squared distance from port. This is expected, indicating a decreased effort intensity as the distance from the port increases.
+
+Most interestingly, we detect a large significant effect of log_Depth on the whale intensity. This is in agreement with the earlier exploratory analysis. Thus, it appears that we may have gained a substantial amount of precision by incorporating the whale-watch data into our model! This should help to improve the spatial predictions of the whale intensity too. **JOE: are you using some specific values to say that we have gained substanrial precision? Worth being specific, and maybe even reminding them of the results from the previous tutorial.**
+
+### Investigating the estimated effort layer
 
 Next, we will investigate the estimated effort surface $\lambda_{eff}$ from each port.
 
-```{r, message=F}
+For Brier we do:
+
+**JOE: please comment the code a bit more here**
+
+```{r 'map-effotWW1Brier', message=FALSE, cache=TRUE}
 Dist_Brier_sq_plot <- pixels(mesh=mesh_land,mask=Domain)
-Dist_Brier_sq_plot <- predict(fit_combined1,Dist_Brier_sq_plot,~exp(Dist_Brier_sq + Intercept_WW_Q + Diff_WW_Q_B),n.samples = 20, seed=seed)
+Dist_Brier_sq_plot <- predict(fit_combined1,Dist_Brier_sq_plot,~exp(Dist_Brier_sq + Intercept_WW_Q + Diff_WW_Q_B), n.samples = 20, seed=seed)
+
+ggplot() + gg(Dist_Brier_sq_plot[1]) + gg(Domain) +        colsc(c(Dist_Brier_sq_plot$mean,Dist_Quoddy_sq_plot$mean)) +
+    ggtitle('Effort surface for Brier')
+
+```
+
+### Exercise ?? {#ExNew2}
+**JOE: I have created a exercise for Quoddy, we may need to add below and renumber things**
+
+<div class="fold s o">
+```{r 'map-effotWW1Quoddy', message=FALSE, cache=TRUE}
 Dist_Quoddy_sq_plot <- pixels(mesh=mesh_land,mask=Domain)
 Dist_Quoddy_sq_plot <- predict(fit_combined1,Dist_Quoddy_sq_plot,~exp(Dist_Quoddy_sq + Intercept_WW_Q),n.samples = 20, seed=seed)
-multiplot(
-  ggplot() + gg(Dist_Brier_sq_plot[1]) + gg(Domain) +        colsc(c(Dist_Brier_sq_plot$mean,Dist_Quoddy_sq_plot$mean)) +
-    ggtitle('Effort surface for Brier'),
-  ggplot() + gg(Dist_Quoddy_sq_plot[1]) + gg(Domain) +        colsc(c(Dist_Brier_sq_plot$mean,Dist_Quoddy_sq_plot$mean)) +
+
+ggplot() + gg(Dist_Quoddy_sq_plot[1]) + gg(Domain) +        colsc(c(Dist_Brier_sq_plot$mean,Dist_Quoddy_sq_plot$mean)) +
     ggtitle('Effort surface for Quoddy')
-  )
-# What is the estimated relative total effort from the two companies Brier/Quoddy?
+
+```
+</div>
+
+We see that the vessels from Brier are estimated to travel further from port compared with those from Quoddy which are estimated to stay very close to port. Furthermore, we estimate that in total, the effort from the Brier port is around ~1.5 times greater than that from the Quoddy port. This finding will be called into question later. **JOE: is that just from the plots?**
+
+We can also look at the estimated relative total effort from the two companies Brier/Quoddy
+```{r 'map-effotWW1Quoddy', message=FALSE, cache=TRUE}
 Rel_Effort <-  
   predict(fit_combined1, predpts, 
           ~ sum(weight * exp(Dist_Brier_sq + Intercept_WW_Q + Diff_WW_Q_B)) / 
@@ -211,7 +290,7 @@ Rel_Effort <-
 Rel_Effort
 ```
 
-We see that the vessels from Brier are estimated to travel further from port compared with those from Quoddy which are estimated to stay very close to port. Furthermore, we estimate that in total, the effort from the Brier port is around ~1.5 times greater than that from the Quoddy port. This finding will be called into question later.   
+**JOE: can you interpret that result, in particular can you say what mean Rel_Effort (with units).**   
 
 Now, we plot the estimated intensity from the joint model and estimate the whale population size.
 
