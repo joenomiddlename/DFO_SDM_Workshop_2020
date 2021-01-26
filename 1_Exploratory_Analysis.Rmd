@@ -563,6 +563,8 @@ ggplot(Sightings_survey@data, aes(x=DISTANCE)) + geom_histogram()
 
 The histogram perhaps shows an initial steady decline in sightings with distance, before decaying more quickly as distance increases. Again, we need to remember that this plot is showing associations between distance $d$ and $\lambda_{obs}$ and **not** with $p(d)$.  To capture this shape, we will use a half-norm detection function in the Poisson point process model: $$p(d) = exp\left(\frac{-1}{2\sigma^2} d^2\right)$$ This requires us to square the values of distance from the trackline.
 
+<!-- WE NEED TO MAKE HISTOGRAM PLOTS FOR DISTANCE FROM PORTS HERE. TAKE FROM 3_Modelling -->
+
 We assume the same functional relationship between each whale watch effort intensity $\lambda_{eff, i}$ and distance from their port location $s_i^*$. Here $i$ indicates the port and $s_i^*$ denotes the $i^{th}$ port location. We scale the half-norm functions by a unique constant $\lambda_i$, to capture the different number of vessels across the two ports: $$\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-1}{2\sigma_i^2} ||s-s_i^*||^2\right)$$.
 
 ```{r 'halfnorm', warning=FALSE, message=FALSE, cache=TRUE}

@@ -238,7 +238,7 @@ colsc <- function(...) {
 }
 
 ggplot() + gg(plot_pixels) + colsc(plot_pixels$field) +
-  ggtitle(paste0('SD = ',sd,'  Range = ',range))  
+  ggtitle(paste0('SD = ',sim_sd,'  Range = ',sim_range))  
 }
 
 ```
@@ -599,7 +599,7 @@ cmp_land2 <- ~ mySpatial(main = coordinates, model = matern_land) +
   lsig(1)
 ```
 
-Notice that we have defined a new variable called `log_Depth`. Using the argument `main`, we point the variable to the SpatialPixelsDataFrame object log_Depth. Finally, we tell `inlabru` that we are fitting a linear effect.
+Notice that we have defined a new variable called `log_Depth`. Using the argument `main`, we point the variable to the SpatialPixelsDataFrame object log_Depth. `log_Depth` defines the product of a parameter (e.g. $\beta_{SST}$) and the value of the covariate log Depth evaluated at the correct spatial location (e.g. $X(s)$). Finally, we tell `inlabru` that we are fitting a linear effect.
 
 Next, we redefine our new formula object:
 
@@ -619,7 +619,7 @@ Thus, the expected encounter rate of an animal at location $s$, a distance $d$ a
 
 $$\lambda_{obs}(s) = \lambda_{true}(s) p(d)$$.
 
-Note that $X(s)$ is the value of `log_Depth` at position $s$, $Z(s)$ is the value of the GRF `mySpatial` evaluated at position $s$, and $\sigma$ is the exponential of `lsig`.
+Note that $\beta X(s)$ is the value of `log_Depth` at position $s$, $Z(s)$ is the value of the GRF `mySpatial` evaluated at position $s$, and $\sigma$ is the exponential of `lsig`.
 
 Now we can fit the model using the `like`/`bru` approach:
 
