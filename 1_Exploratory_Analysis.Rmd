@@ -55,9 +55,13 @@ list2env(readRDS('./Data/Compiled_Data_new.rds'), globalenv())
 
 Throughout this workshop, we use data collected on fin whales in June, July, and August across the years 2007-2009 and for 2011. There are two main types of data:
 
-* sightings from systematic aerial surveys. These aerial surveys were conducted by both NOAA and DFO. Aerial survey sightings are accompanied with the aerial tracklines. Three surveys were combined: NOAA NARW Surveys (Cole, NOAA), 2007 T-NASS Aerial Survey (Lawson et al. 2009), and NOAA Cetacean Surveys (Cole et al., NOAA). 
+* Sightings from systematic aerial surveys, found in `Sightings_survey`. The sightings information contain counts of fin whales, although for this tutorial we simplify the analysis and only model presence/absence. These systematic survey also contain information such as the distance of the sightings from the plane. Aerial survey sightings are accompanied with the aerial tracklines, found in `Effort_survey`. In these data objects, we combined three surveys conducted by both DFO and NOAA: 2007 T-NASS Aerial Survey (Lawson et al. 2009), NOAA NARW Surveys (Cole, NOAA), and NOAA Cetacean Surveys (Cole et al., NOAA). 
 
-* opportunistic sightings from two whale-watching operators. These sightings are maintained in the DFO Maritimes Region Whale Sightings Database (MacDonald et. al. 2017). 
+* Opportunistic fin whale sightings from two whale-watching operators, found in `Sightings_DRWW_sp`. This dataset is not accompanied by tracklines. Again, these datasets contains whale counts, but for simplicity we will analyze them as presence/absence data in these tutorials. These sightings are maintained in the DFO Maritimes Region Whale Sightings Database (MacDonald et. al. 2017). 
+
+* **JOE: add info on Dist_Brier and Dist_Quody** 
+
+* Ocean depth data, found in `Bathym`. Bathymetry data will be our main covariate in our analysis and we will explore whether the distribution of fin whales is linked to bathymetry.
 
 ### Coordinate reference system
 
