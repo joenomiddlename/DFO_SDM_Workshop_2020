@@ -48,7 +48,7 @@ We should be inside the folder titled: 'DFO_SDM_Workshop_2020', you can verify t
 
 Now we can load in the precompiled data
 ```{r message=FALSE}
-list2env(readRDS('./Data/Compiled_Data.rds'), globalenv())
+list2env(readRDS('./Data/Compiled_Data_new.rds'), globalenv())
 ```
 
 ### Fin whale data
@@ -73,7 +73,6 @@ Sightings_survey@proj4string
 Effort_survey@proj4string 
 Domain@proj4string 
 Bathym@proj4string
-Slope@proj4string
 WW_ports@proj4string
 Dist_Brier@proj4string
 Dist_Quoddy@proj4string
@@ -190,37 +189,28 @@ Sightings_DRWW_sp@proj4string
 Notice the changed output from calling `@proj4string`. We repeat this for all the spatial objects that are points or lines.
 <div class="fold s o"> 
 ```{r, warning=F}
-Sightings_Opp_sp <- spTransform(Sightings_Opp_sp, Can_proj)
 Sightings_survey <- spTransform(Sightings_survey, Can_proj)
 Effort_survey <- spTransform(Effort_survey, Can_proj)
 WW_ports <- spTransform(WW_ports, Can_proj)
 ```
 </div>
 
-Transforming the 'raster'-like SpatialPixelsDataFrame objects (`Slope`, `Bathym`, `Dist_Brier`, and `Dist_Quoddy`) using `spTransform` would be inappropriate here. The projection leads to a curvature of the pixels. A more appropriate approach here is to use bilinear interpolation. The `projectRaster()` function from the *raster* package works great for this. This requires converting the `SpatialPixelsDataFrame` object into an object of type `raster`. This is made easy with the function `raster()`. Finally, to convert the `raster` object back into a `SpatialPixelsDataFrame`, we can use the `as()` function from the *maptools* package. This function is extremely useful for converting spatial objects between the popular packages: *sp*, *spatstat*, and *sf*. We use this function substantially throughout the workshop.
+Transforming the 'raster'-like SpatialPixelsDataFrame objects (`Bathym`, `Dist_Brier`, and `Dist_Quoddy`) using `spTransform` would be inappropriate here. The projection leads to a curvature of the pixels. A more appropriate approach here is to use bilinear interpolation. The `projectRaster()` function from the *raster* package works great for this. This requires converting the `SpatialPixelsDataFrame` object into an object of type `raster`. This is made easy with the function `raster()`. Finally, to convert the `raster` object back into a `SpatialPixelsDataFrame`, we can use the `as()` function from the *maptools* package. This function is extremely useful for converting spatial objects between the popular packages: *sp*, *spatstat*, and *sf*. We use this function substantially throughout the workshop.
 
 ```{r, warning=F}
-Slope <- raster(Slope)
-Slope <- projectRaster(Slope, crs=Can_proj)
-Slope <- as(Slope, 'SpatialPixelsDataFrame') # Note the specification of class
-# repeat for Bathym, combining into one single function call
 Bathym <- as(projectRaster(raster(Bathym), crs=Can_proj), 'SpatialPixelsDataFrame')
 Domain <- spTransform(Domain, Can_proj)
 Dist_Brier <- as(projectRaster(raster(Dist_Brier), crs=Can_proj), 'SpatialPixelsDataFrame')
 Dist_Quoddy <- as(projectRaster(raster(Dist_Quoddy), crs=Can_proj), 'SpatialPixelsDataFrame')
 ```
 
-Plot the (transformed) Bathymetry, Slope, and Distance from Port spatial objects. We are going to combine these into a single plot using the `multiplot()` function from the *inlabru* package. This function takes as input ggplot objects and an argument `layout`, specifying how the plots should be arranged (see [Additional tips](#Ad2) for ways to change the layout).
+Plot the (transformed) Bathymetry and Distance from Port spatial objects. We are going to combine these into a single plot using the `multiplot()` function from the *inlabru* package. This function takes as input ggplot objects and an argument `layout`, specifying how the plots should be arranged (see [Additional tips](#Ad2) for ways to change the layout).
 
 ```{r 'map-multiplot', message=FALSE, cache=TRUE}
 multiplot(ggplot() +
   gg(Domain) +
   gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') + 
     coord_fixed(ratio = 1),
-ggplot() +
-  gg(Domain) +
-  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope') + 
-  coord_fixed(ratio = 1),
 ggplot() +
   gg(Domain) +
   gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)') + 
@@ -233,6 +223,150 @@ layout=matrix(1:4, nrow=2, ncol=2, byrow = TRUE))
 ```
 
 Don't like the colour scheme? See [Additional tips](#Ad3) to learn how to define your own manually.
+
+## Reducing the size of the domain to lie 'close' to the survey tracklines
+
+In it's current form, the domain is too large for the application. The domain extends far beyond the survey tracklines and the whale watch ports. To combat this, we will create a new domain that is restricted to lie within 30km of the nearest trackline.
+
+```{r, cache=T, message=F}
+# Create a set of SpatialPixels across the domain
+pixels <- SpatialPoints(makegrid(Domain, n=5000),proj4string = Domain@proj4string)
+# Convert the SpatialPixels into a SpatialPoints object before subsetting
+#pred_int_points <- as(pred_int,'SpatialPoints')
+# Subset to 30 km from Effort lines - can be slow
+pixels_restricted <- 
+  pixels[which(apply(gWithinDistance(pixels, Effort_survey,dist = 30,byid = T),2,sum)>0),]
+# Select only the points that lie within the Domain
+pixels_restricted <- pixels_restricted[Domain,]
+# Convert to SpatialPolygons via SpatialPixels
+pixels_restricted <- as(as(pixels_restricted,'SpatialPixels'),'SpatialPolygons')
+# Merge the SpatialPolygons into a single Domain polygon using gUnionCascaded
+pixels_restricted <- gUnionCascaded(pixels_restricted)
+# Plot to check the new domain
+ggplot() +
+  gg(Bathym) + 
+  gg(pixels_restricted) +
+  xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') + 
+  coord_fixed(ratio = 1)
+# Smooth the Domain using gSimplify
+Domain_restricted <- gSimplify(pixels_restricted,tol=20)
+# Plot
+ggplot() +
+  gg(Domain_restricted) +
+  gg(Domain, color='red') +
+  gg.spatiallines_mod(Effort_survey, colour='blue')
+```
+Whilst the new SpatialPolygons object `Domain_restricted` no longer extrapolates far beyond the survey tracklines, the smoothing achieved by the function `gSimplify()` has caused the new Domain to no longer contain all the tracklines. To counter this, we will buffer the study region prior to simplifying using `gBuffer`.
+
+```{r}
+Domain_restricted <- gSimplify(gBuffer(pixels_restricted,width=15),tol=20)
+# Plot
+ggplot() +
+  gg(Domain_restricted) +
+  gg(Domain, color='red') +
+  gg.spatiallines_mod(Effort_survey, color='blue')
+# Does the new domain contain all the survey tracklines?
+gContains(Domain_restricted,Effort_survey)
+
+# Create a new domain that is slightly larger - for defining covariates later
+Domain_restricted2 <- gSimplify(gBuffer(pixels_restricted,width=40),tol=20)
+# Plot
+ggplot() +
+  gg(Domain_restricted) +
+  gg(Domain_restricted2, color='green') +
+  gg(Domain, color='red')
+# Does it contain the old 
+gContains(Domain_restricted2,Domain_restricted)
+```
+Great! We have defined a new buffered and smoothed domain that will no longer extrapolate far beyond our survey tracklines. To restore the original coastline definition we can use the function `gIntersection()`. We now update the SpatialPolygons object `Domain` using `gIntersection()`:
+
+```{r}
+Domain <- gIntersection(Domain_restricted,Domain)
+ggplot() + gg(Domain) + gg.spatiallines_mod(Effort_survey)
+```
+
+
+Note that we will need to use `Domain_restricted` for defining our computational mesh and `Domain_restricted2` for defining our covariates later in the workshop! The smoothing of the coastline will help us to define a computational mesh that has fewer numerical issues. More on that later!
+
+## Extending the covariates to match the new domain
+
+We will need to use `Domain_restricted2` for defining our computational mesh later in the workshop! The package `inlabru` requires that our covariates are also defined at every point in the new domain. This will require extending our covariates to take 'sensible' values at points beyond our original domain (`Domain`). We will see that these imputed values will not affect the model estimates. 
+
+Our covariate depth is well-defined on the original (un-buffered) domain as defined by the SpatialPolygons `Domain`. At values outside this, we choose to 'fill-in' these points with nearest neighbour imputations. The code below does this for depth.
+
+```{r `map-covariatesWithMesh`, cache=TRUE}
+## Redefine log_Depth across our modified domain
+# Create the log depth and log slope covariates
+log_Depth <- Bathym
+log_Depth$FIWH_MAR_Bathymetry[log_Depth$FIWH_MAR_Bathymetry >= 0] <- 0
+log_Depth$FIWH_MAR_Bathymetry <- log(1-log_Depth$FIWH_MAR_Bathymetry)
+names(log_Depth) <- 'log_Depth' 
+
+# 1) Define a set of pixels across our modified domain
+pixels_Domain <- as(SpatialPoints(makegrid(Domain_restricted2, n=100000),proj4string = Domain@proj4string),'SpatialPixels')[Domain_restricted2,]
+
+# 2) Extract values of the covariate at the new pixel locations
+pixels_Domain$log_Depth <- over(pixels_Domain,log_Depth)$log_Depth
+# 3) impute missing values with the nearest neighbour value
+pixels_Domain$log_Depth[is.na(pixels_Domain$log_Depth)] <- 
+  log_Depth$log_Depth[nncross(as(SpatialPoints(pixels_Domain@coords[which(is.na(pixels_Domain$log_Depth)),]),'ppp'),
+                          as(SpatialPoints(log_Depth@coords),'ppp'),
+                          what = 'which')]
+log_Depth <- pixels_Domain
+# 4) Create a squared log depth covariate (for later)
+log_Depth_sq <- log_Depth
+names(log_Depth_sq) <- 'log_Depth_sq'
+log_Depth_sq$log_Depth_sq <- log_Depth_sq$log_Depth_sq^2
+
+# Plot the covariates with Domain_restricted overlayed
+ggplot() + gg(log_Depth) + gg(Domain_restricted)
+```
+
+We also need to buffer and rescale the distance from port covariates `Dist_Brier` and `Dist_Quoddy`.  Unlike with previous covariates, however, we will fix all buffered values on land equal to a large constant. This will help to ensure that negligible effort is recorded from the whale watch vessels on land through $\lambda_{eff}$.
+
+We show how to do it with the distance to Brier.
+
+```{r 'map-distBrierRescaled', message=FALSE, cache=TRUE}
+# 1) Define a set of pixels across our modified domain
+pixels_Domain <- as(SpatialPoints(makegrid(Domain_restricted2, n=100000),proj4string = Domain@proj4string),'SpatialPixels')[Domain_restricted2,]
+
+# Extract the average value of distance at the newly created pixel locations
+pixels_Domain$Dist_Brier <- over(pixels_Domain,Dist_Brier)$Dist_Brier
+# There are some missing values due to newly created pixels being on land
+# Fill in missing values with a very large value (1000km).
+# This will make the effect of these regions negligible on inference as lambda_eff will be small
+pixels_Domain$Dist_Brier[is.na(pixels_Domain$Dist_Brier)] <- 1e3
+
+Dist_Brier <- pixels_Domain
+ggplot() + gg(Dist_Brier) + gg(Domain)
+
+# There is an infinity value at the port. Change to 0
+Dist_Brier$Dist_Brier[is.infinite(Dist_Brier$Dist_Brier)] <- 0
+max(Dist_Brier$Dist_Brier)
+
+# Let's scale the Dist covariates closer to the (0,1) scale
+Dist_Brier$Dist_Brier <- Dist_Brier$Dist_Brier / 980.7996
+```
+
+### Exercise {#ExNew}
+
+Now, please rescale and buffer the distance to Quoddy object.
+
+<div class="fold s o">
+```{r 'map-distQuoddyRescaled', message=FALSE, cache=TRUE}
+pixels_Domain <- as(SpatialPoints(makegrid(Domain_restricted2, n=100000),proj4string = Domain@proj4string),'SpatialPixels')[Domain_restricted2,]
+
+pixels_Domain$Dist_Quoddy <- over(pixels_Domain,Dist_Quoddy)$Dist_Quoddy
+pixels_Domain$Dist_Quoddy[is.na(pixels_Domain$Dist_Quoddy)] <- 1e3
+
+Dist_Quoddy <- pixels_Domain
+# There is an infinity value at the port. Change to 0
+Dist_Quoddy$Dist_Quoddy[is.infinite(Dist_Quoddy$Dist_Quoddy)] <- 0
+# Let's scale the Dist covariates closer to the (0,1) scale
+Dist_Quoddy$Dist_Quoddy <- Dist_Quoddy$Dist_Quoddy / 980.7996
+ggplot() + gg(Dist_Quoddy) + gg(Domain)
+```
+</div>
 
 ## Testing model assumptions and investigating trends
 
@@ -436,7 +570,7 @@ As we will see in the next tutorial, by taking a model-based approach to inferen
 
 ## Investigating trends between the environmental covariates and whale density
 
-We will investigate trends between the whale density and the covariates bathymetry and slope. We use only the training data.
+We will investigate trends between the whale density and the covariate bathymetry. We use only the training data.
 
 A quick first step is to evaluate whether the empirical densities of each covariate at the encounter locations (representing habitat used by the whale) differ from the empirical density across the domain (representing available habitat values). Such difference may indicate that the whales associated with a subset of the available habitat (or indicate differences in observer coverage).  
 
@@ -444,7 +578,6 @@ To extract the covariate values at each location, we will convert the SpatialPix
 
 ```{r 'extract-slopeAndBathy', message=FALSE, warning=FALSE, cache=TRUE}
 # Convert covariates to im class
-Slope_im <- as(as(Slope, 'SpatialGridDataFrame'),'im')
 Bathym_im <- as(as(Bathym, 'SpatialGridDataFrame'),'im')
 # Convert Observation locations to ppp object
 All_obs_ppp <- ppp(x=c(Sightings_survey@coords[,1],
@@ -458,37 +591,11 @@ All_obs_ppp <- ppp(x=c(Sightings_survey@coords[,1],
                                  rep('Brier',dim(Sightings_Brier_nodup@coords)[1]),
                                  rep('Quoddy',dim(Sightings_Quoddy_nodup@coords)[1]))),
                    window = as(Domain, 'owin'))
-# Notice how easy it is to extract the values of slope and bathymetry at these locations!
-Slope_obs <- Slope_im[All_obs_ppp]
+# Notice how easy it is to extract the values of bathymetry at these locations!
 Bathym_obs <- Bathym_im[All_obs_ppp]
 ```
 
-First, we plot the empirical densities of the slope at the sightings locations at throughout the domain (study area). 
-
-```{r 'map-slope', message=FALSE, warning=FALSE, cache=TRUE}
-ggplot(data=data.frame(Slope_obs = Slope_obs),
-       aes(x=Slope_obs, colour='Sightings')) +
-  geom_density() +
-  geom_density(data=data.frame(Slope_dom = as.numeric(Slope_im$v)),
-            aes(x=Slope_dom, colour='Domain')) + xlab('Slope') +
-  scale_color_manual(name = "Density", values = c('Sightings' = 'black', 'Domain' = 'red'))
-
-```
-
-The empirical slope distrbutions are very right skew. This can lead to wild predictions of intensity being made at the boundaries of the covariate space. We take a log transform to make the covariate more 'normal'.
-
-```{r 'map-slopeLog', message=FALSE, warning=FALSE, cache=TRUE}
-ggplot(data=data.frame(Slope_obs = log(Slope_obs)),
-       aes(x=Slope_obs, colour='Sightings')) +
-  geom_density() +
-  geom_density(data=data.frame(Slope_dom = log(as.numeric(Slope_im$v))),
-               aes(x=Slope_dom, colour='Domain')) + xlab('log Slope') +
-  scale_color_manual(name = "Density", values = c('Sightings' = 'black', 'Domain' = 'red'))
-```
-
-There's nothing obvious here...
-
-We can do the same with bathymetry, but let's only consider values in water (max bathym is 313, so restrict to < 0).
+First, we plot the empirical densities of the Bathymetry at the sightings locations at throughout the domain (study area). Let's only consider values in water (max bathym is 313, so restrict to < 0).
 
 ```{r 'map-bathy', message=FALSE, warning=FALSE, cache=TRUE}
 ggplot(data=data.frame(Bathym_obs = Bathym_obs),
@@ -500,7 +607,7 @@ ggplot(data=data.frame(Bathym_obs = Bathym_obs),
 ```
 
 
-Again, a log transform is desired. We also flip the sign to make it interpretable as log depth (larger is deeper).
+We see a very skew distribution of Bathymetry with a huge range of values. Leaving the covariate in this form risks wild predictions of intensity being made! A log transform is desired. We also flip the sign to make it interpretable as log depth (larger is deeper).
 
 ```{r 'map-bathyLog', message=FALSE, warning=FALSE, cache=TRUE}
 ggplot(data=data.frame(Bathym_obs = log(1-Bathym_obs)),
@@ -514,7 +621,7 @@ ggplot(data=data.frame(Bathym_obs = log(1-Bathym_obs)),
 
 Perhaps there is evidence of whales preferring areas of shallower waters? 
 
-These plots may suggest that sightings locations are associated with regions with flatter slopes and shallower waters compared what is available in the study area. However, these results are really investigating the associations between $lambda_{obs}$ and the covariates and **not** the desired associations between $lambda_{true}$ and the covariates. The associations may simply reflect the types of regions preferentially visited by observers! Remember - most encounters are made by the whale watch vessels close to port!
+These plots may suggest that sightings locations are associated with regions with shallower waters compared what is available in the study area. However, these results are really investigating the associations between $lambda_{obs}$ and the covariates and **not** the desired associations between $lambda_{true}$ and the covariates. The associations may simply reflect the types of regions preferentially visited by observers! Remember - most encounters are made by the whale watch vessels close to port!
 
 In lecture 1, we introduced the simplest distributional assumption on the counts. We assumed that the distribution of the number of encounters within any region $A$ was Poisson distributed, with mean equal to the integrated intensity surface: $$N(Y \cap A) \backsim Poisson(\int \lambda_{obs}(s) ds)$$.
 
@@ -523,21 +630,19 @@ We will see in lecture 2, that if we define a set of regions $A_i$ to be a grid 
 So, to investigate trends between the species intensity and the covariates, we fit Poisson point process models to the sightings data using the `ppm()` function from the **spatstat** package. These are similar to Maxent models. Ignoring effort for the time being, what does a Poisson point process model tell us?
 
 ```{r 'ppm', message=FALSE, cache=TRUE}
-# Transforming the covariates
-log_Slope_im <- Slope_im
-log_Slope_im$v <- log(log_Slope_im$v)
+# Transforming the covariate
 log_Bathym_im <- Bathym_im
 log_Bathym_im[log_Bathym_im >= 0] <- -1
 log_Bathym_im$v <- log(1-log_Bathym_im$v)
 # Fitting the Poisson point process model
-Ppm_1 <- ppm(All_obs_ppp~log_Slope_im + log_Bathym_im,
-                  data=list(log_Slope_im=log_Slope_im, log_Bathym_im=log_Bathym_im,
+Ppm_1 <- ppm(All_obs_ppp~log_Bathym_im,
+                  data=list(log_Bathym_im=log_Bathym_im,
                             Domain=as(Domain, 'owin')),
                   subset = Domain)
 summary(Ppm_1)
 ```
 
-Looking at the table of coefficients and Ztest symbols, we find some evidence that the whales may be found more often in regions of higher slope and shallower waters. Ignoring effort, we find significant associations (p < 0.05 indicated by at least one star in the Ztest column) between $\lambda_{obs}$ and log slope and log depth.
+Looking at the table of coefficients and Ztest symbols, we find some evidence that the whales may be found more often in regions with shallower waters. Ignoring effort, we find a significant association (p < 0.05 indicated by at least one star in the Ztest column) between $\lambda_{obs}$ and log depth.
 
 Next, we can attempt to make a crude adjustment for effort and see if these estimates change. We have already created a SpatialPixelsDataFrame object containing distance from the two whale-watch ports. Next, we can create a SpatialPixelsDataFrame containing the perpendicular distances to the nearest trackline. This fails to account for overlap in survey tracklines, but offers a reasonable first approach to crudely control for effort for the purposes of exploratory analysis.
 
@@ -561,11 +666,47 @@ ggplot() + gg(Domain) + gg(Dist_Surveylines) + colsc(Dist_Surveylines@data[,1])
 ggplot(Sightings_survey@data, aes(x=DISTANCE)) + geom_histogram()
 ```
 
-The histogram perhaps shows an initial steady decline in sightings with distance, before decaying more quickly as distance increases. Again, we need to remember that this plot is showing associations between distance $d$ and $\lambda_{obs}$ and **not** with $p(d)$.  To capture this shape, we will use a half-norm detection function in the Poisson point process model: $$p(d) = exp\left(\frac{-1}{2\sigma^2} d^2\right)$$ This requires us to square the values of distance from the trackline.
+The histogram of the perpendicular distances from the aircraft shows an apparent maximum detection probability at a value of distance above 0! This is common for aerial surveys. Given the limit size of the survey data chosen for the workshop, and the potential numerical issues we may face fitting a complex detection probability function, we will fix all values less than 250m equal to 250m. This crude approach will help to make the histogram appear as a monotonically decreasing function of distance, satisfying the simplest class of detection probability functions. This shouldn't be done in practice! A 2-parameter detection probability function could instead be fit.
 
-<!-- WE NEED TO MAKE HISTOGRAM PLOTS FOR DISTANCE FROM PORTS HERE. TAKE FROM 3_Modelling -->
+In addition, it is often advised in distance sampling applications to threshold our upper detection distances at a 'sensible' value. Let's plot our observed distances from the trackline. It looks like 2km could be a reasonable threshold value to choose. Let's set all values above 2km equal to 2km and scale the distances onto the km units scale. **This rescaling to units of km is crucial for numerical stability.** We define a variable 'distance' that contains the rescaled distances. Note that a few distances are missing. We impute these with the mean distance.
 
-We assume the same functional relationship between each whale watch effort intensity $\lambda_{eff, i}$ and distance from their port location $s_i^*$. Here $i$ indicates the port and $s_i^*$ denotes the $i^{th}$ port location. We scale the half-norm functions by a unique constant $\lambda_i$, to capture the different number of vessels across the two ports: $$\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-1}{2\sigma_i^2} ||s-s_i^*||^2\right)$$.
+```{r, cache=T}
+Sightings_survey@data$DISTANCE <- ifelse(Sightings_survey@data$DISTANCE>250,Sightings_survey@data$DISTANCE,250)
+
+Sightings_survey@data$DISTANCE <- 
+  ifelse(Sightings_survey$DISTANCE>2000 & !is.na(Sightings_survey$DISTANCE),
+         2000,Sightings_survey$DISTANCE)
+
+# needs renaming to match the formula argument
+Sightings_survey$distance <- Sightings_survey$DISTANCE
+# There are a couple of missing distances. Impute these with the mean
+Sightings_survey$distance[is.na(Sightings_survey$distance)] <- mean(Sightings_survey$distance,na.rm=T)
+Sightings_survey <- Sightings_survey[,-c(8)]
+Sightings_survey$distance <- Sightings_survey$distance / 1000
+
+ggplot(Sightings_survey@data, aes(x=distance)) + geom_histogram()
+
+```
+
+
+The histogram perhaps shows an initial steady decline in sightings with distance, before decaying more quickly as distance increases. Again, we need to remember that this plot is showing associations between distance $d$ and $\lambda_{obs}$ and **not** with $p(d)$.  To capture this shape, we will use a half-norm detection function in the Poisson point process model: $$p(d) = exp\left(\frac{-d^2}{2\sigma^2}\right)$$ This requires us to square the values of distance from the trackline.
+
+Now, we investigate a potential functional form for the distance from port covariate. To do this, we plot a histogram of the distances from port at each of the whale watch sighting locations.
+
+```{r 'plot-funcFormDist', cache=TRUE}
+# Plot the sightings with distance from the port
+hist(over(Sightings_Brier_nodup,Dist_Brier)$Dist_Brier, main='Histogram of the distance from port of the Brier sightings', xlab = 'Distance from port')
+
+hist(over(Sightings_Quoddy_nodup,Dist_Quoddy)$Dist_Quoddy,breaks=20, main='Histogram of the distance from port of the Quoddy sightings', xlab = 'Distance from port')
+```
+
+For both ports, we detect a decreasing frequency of sightings made as the distance from port increases. This relationship is clearer for Brier sightings than for Quoddy sightings. Furthermore, the functional form of the effect does not appear to be an exponential decay. Based on the histograms, we choose to model the functional form as a half-normal function. More complicated functional forms (e.g. weibull or hazard functions) could be used.
+
+On the log scale, this covariate can be estimated as a linear effect on the squared distance from port. Thus, we create SpatialPixelsDataFrame objects which store the squared distances from port.
+
+## THE ABOVE HISTOGRAM SECTION WILL BE MOVED TO EXPLORATORY ANALYSIS
+
+We assume the same functional relationship between each whale watch effort intensity $\lambda_{eff, i}$ and distance from their port location $s_i^*$. Here $i$ indicates the port and $s_i^*$ denotes the $i^{th}$ port location. We scale the half-norm functions by a unique constant $\lambda_i$, to capture the different number of vessels across the two ports: $$\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right)$$.
 
 ```{r 'halfnorm', warning=FALSE, message=FALSE, cache=TRUE}
 Dist_Surveylines$Dist_surveylines <- scale(Dist_Surveylines$Dist_surveylines^2)
@@ -585,13 +726,12 @@ We must also inform spatstat about the source of each sighting, by fixing the va
 #             rep('Brier',dim(Sightings_Brier_nodup@coords)[1]),
 #             rep('Quoddy',dim(Sightings_Quoddy_nodup@coords)[1])))
 
-Ppm_2 <- ppm(All_obs_ppp~log_Slope_im+log_Bathym_im +
+Ppm_2 <- ppm(All_obs_ppp~log_Bathym_im +
                     I(ifelse(marks=='Brier',1,0)):Dist_Brier_im +
                     I(ifelse(marks=='Quoddy',1,0)):Dist_Quoddy_im +
                     I(ifelse(marks=='survey',1,0)):Dist_Survey_im +
                     marks,
-                  data=list(log_Slope_im=log_Slope_im, 
-                            log_Bathym_im=log_Bathym_im,
+                  data=list(log_Bathym_im=log_Bathym_im,
                             Dist_Brier_im = as(as(Dist_Brier_sq,'SpatialGridDataFrame'),'im'),
                             Dist_Quoddy_im = as(as(Dist_Quoddy_sq,'SpatialGridDataFrame'),'im'),
                             Dist_Survey_im = as(as(Dist_Surveylines,'SpatialGridDataFrame'),'im'),
@@ -600,14 +740,14 @@ Ppm_2 <- ppm(All_obs_ppp~log_Slope_im+log_Bathym_im +
 coef(summary(Ppm_2))
 ```
 
-With this rough attempt at controlling for heterogeneous effort, we see that both log slope and log depth are found to be significantly associated with the whale density, with positive coefficients for both. The negative effects of all three complicated expressions imply that a negative association between 'distance' and observed intensity is witnessed (agreeing with common sense).
+With this rough attempt at controlling for heterogeneous effort, we see that log depth is found to be significantly associated with the whale density, with a positive coefficient. The negative effects of all three complicated expressions imply that a negative association between 'distance' and observed intensity is witnessed (agreeing with common sense).
 
 We can plot the estimated 'true' whale intensity $\hat{\lambda}_{true}(s)$ predicted from this model:
 
 ```{r 'fig-ppm', cache=TRUE}
 # remove the effects of observers for plotting
 pred_coef <- coef(Ppm_2)
-pred_coef[c(1,4,5,6,7,8)] <- 0
+pred_coef[c(1,3,4,5,6,7)] <- 0
 plot(predict.ppm(Ppm_2, ngrid=c(300,300),
              new.coef=pred_coef)[[1]],superimpose=F,
      hcl.colors(60, "YlOrRd", rev = TRUE))
@@ -627,7 +767,7 @@ plot(log(predict(Ppm_2, ngrid=c(300,300),
      hcl.colors(60, "YlOrRd", rev = TRUE))
 ```
 
-We see that the observed intensity, $\lambda_{obs}$ is dominated by the effort $\lambda_{eff}$. Despite this, we still detect significant effects of both log depth and log slope.
+We see that the observed intensity, $\lambda_{obs}$ is dominated by the effort $\lambda_{eff}$. Despite this, we still detect significant effects of both log depth.
 
 This exploratory analysis is useful at informing us about possible species-environment relationships to investigate in our futurer models. By playing around with different covariates and functional forms (e.g. quadratic effects), we can develop an understanding of which models to formally compare in the modelling stage.
 
@@ -637,19 +777,19 @@ Note that the above effort-correction approach is **not** the same as the one pe
 
 Unfortunately, by being in the inhomogeneous Poisson process class of point processes, the above models lack one crucial feature. They are unable to account for any additional spatial correlations/clustering that are frequently caused by unmeasured environmental covariates and biological processes acting behind the scenes. 
 
-We can actually investigate the suitability of this inhomogeneous Poisson process assumption by plotting the (estimated) inhomogeneous K functions. Loosely speaking, the K function evaluated at a distance r defines a (scalar multiple of) the expected number of extra events that occur within a distance $r$ of a randomly chosen point (event). 
+<!-- We can actually investigate the suitability of this inhomogeneous Poisson process assumption by plotting the (estimated) inhomogeneous K functions. Loosely speaking, the K function evaluated at a distance r defines a (scalar multiple of) the expected number of extra events that occur within a distance $r$ of a randomly chosen point (event).  -->
 
-The K function for a fitted inhomogeneous Poisson processes can be approximated^[for homogeneous Poisson processes it takes the form $K(r) = \pi r^2$]. To do this, a weighted empirical K function is computed from the data. The weights help to rescale the function such that we would expect to see the relationship $K(r) = \pi r^2$ if the model fit (and assumptions) were good. The empirical K function counts the observed number of inter-point distances (in the observed data) that fall within a sequence of distances $r_1, r_2 ,..., r_m$. Plotting the (weighted) empirical and expected (true) K functions together allows for model assumptions to be assessed.
+<!-- The K function for a fitted inhomogeneous Poisson processes can be approximated^[for homogeneous Poisson processes it takes the form $K(r) = \pi r^2$]. To do this, a weighted empirical K function is computed from the data. The weights help to rescale the function such that we would expect to see the relationship $K(r) = \pi r^2$ if the model fit (and assumptions) were good. The empirical K function counts the observed number of inter-point distances (in the observed data) that fall within a sequence of distances $r_1, r_2 ,..., r_m$. Plotting the (weighted) empirical and expected (true) K functions together allows for model assumptions to be assessed. -->
 
-If the empirical K function falls 'significantly' above the expected curve at a distance $r$, then additional clustering has been detected in the data that cannot be explained by the inhomogeneous model alone. Conversely, if the empirical K function falls 'significantly' below the expected curve at a distance $r$, then additional repulsion or regularity has been detected in the data that cannot be explained by the inhomogeneous Poisson model alone. This clustering or repulsion may be caused by covariates or biological processes that have been missed! Alternatively, it may be caused by additional clustering due to animal peristence. Let's plot these two curves now!
+<!-- If the empirical K function falls 'significantly' above the expected curve at a distance $r$, then additional clustering has been detected in the data that cannot be explained by the inhomogeneous model alone. Conversely, if the empirical K function falls 'significantly' below the expected curve at a distance $r$, then additional repulsion or regularity has been detected in the data that cannot be explained by the inhomogeneous Poisson model alone. This clustering or repulsion may be caused by covariates or biological processes that have been missed! Alternatively, it may be caused by additional clustering due to animal peristence. Let's plot these two curves now! -->
 
-```{r 'fig-kFunctions', warning=FALSE, cache=TRUE}
-plot(Kinhom(All_obs_ppp,lambda=Ppm_2,correction = 'best',normpower = 1))
-```
+<!-- ```{r 'fig-kFunctions', warning=FALSE, cache=TRUE} -->
+<!-- plot(Kinhom(All_obs_ppp,lambda=Ppm_2,correction = 'best',normpower = 1)) -->
+<!-- ``` -->
 
-We see a large discrepancy between the true curve (in red) and the empirical curve in black. This is evidence to suggest the fitted model in its current form is inadequate.
+<!-- We see a large discrepancy between the true curve (in red) and the empirical curve in black. This is evidence to suggest the fitted model in its current form is inadequate. -->
 
-This is why we turn to log-Gaussian Cox processes in the next tutorial. By assuming the intensity surface to be a realisation from a spatially-smooth (log-Gaussian) random field, we are able to adjust our inference to take into account any additional spatial correlations and/or unmeasured covariates! By doing this, both parameter estimates and measures of uncertainty should be better adjusted to account for these autocorrelations.
+This is why we turn to log-Gaussian Cox processes in the next tutorial. By assuming the intensity surface to be a realisation from a spatially-smooth (log-Gaussian) random field, we will be able to adjust our inference to take into account any additional spatial correlations and/or unmeasured covariates! By doing this, both parameter estimates and measures of uncertainty should be better adjusted to account for these autocorrelations. We will describe log-Gaussian Cox processes in depth in the next lecture.
 
 
 ## Exercises
@@ -694,9 +834,6 @@ multiplot(ggplot() +
   gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
 ggplot() +
   gg(Domain) +
-  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope'),
-ggplot() +
-  gg(Domain) +
   gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)'),
 ggplot() +
   gg(Domain) +
@@ -712,14 +849,11 @@ multiplot(ggplot() +
   gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry'),
 ggplot() +
   gg(Domain) +
-  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope'),
-ggplot() +
-  gg(Domain) +
   gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)'),
 ggplot() +
   gg(Domain) +
   gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)'),
-layout=matrix(c(1,1,2,3,4,4), nrow=3, ncol=2, byrow = TRUE))
+layout=matrix(c(1,1,2,3), nrow=2, ncol=2, byrow = TRUE))
 ```
 
 As you can see plots of different size stretches the maps, to keep the set projection we can use 
@@ -732,17 +866,13 @@ multiplot(ggplot() +
     coord_fixed(ratio = 1),
 ggplot() +
   gg(Domain) +
-  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope') +
-  coord_fixed(ratio = 1),
-ggplot() +
-  gg(Domain) +
   gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)') + 
   coord_fixed(ratio = 1),
 ggplot() +
   gg(Domain) +
   gg(Dist_Quoddy) + xlab('East(km)') + ylab('North(km)') + 
   coord_fixed(ratio = 1),
-layout=matrix(c(1,1,2,3,4,4), nrow=3, ncol=2, byrow = TRUE))
+layout=matrix(c(1,1,2,3), nrow=2, ncol=2, byrow = TRUE))
 ```
 
 ### Define your own colour palette {#Ad3}
@@ -763,10 +893,6 @@ multiplot(ggplot() +
   gg(Domain) +
   gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') +
   colsc(Bathym@data[,1]),
-ggplot() +
-  gg(Domain) +
-  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope') +
-  colsc(Slope@data[,1]),
 ggplot() +
   gg(Domain) +
   gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)') +
@@ -790,10 +916,6 @@ multiplot(ggplot() +
   gg(Domain) +
   gg(Bathym) + xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') +
   colsc2(Bathym@data[,1]),
-ggplot() +
-  gg(Domain) +
-  gg(Slope) + xlab('East(km)') + ylab('North(km)') + labs(fill='Slope') +
-  colsc2(Slope@data[,1]),
 ggplot() +
   gg(Domain) +
   gg(Dist_Brier) + xlab('East(km)') + ylab('North(km)') +
