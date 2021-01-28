@@ -65,14 +65,10 @@ Throughout this workshop, we use data collected on fin whales in June, July, and
 
 ### Coordinate reference system
 
-These data are spatially-referenced data. The first thing we must always do is check for consistency between the coordinate reference systems (CRS) of each spatial object in use! To print the CRS of an *sp* object, simply add `@proj4string` to the name of the spatial object and run. For example, to check the CRS of the WW sightings we run:
+These data are spatially-referenced data. The first thing we must always do is check for consistency between the coordinate reference systems (CRS) of each spatial object in use! To print the CRS of an *sp* object, simply add `@proj4string` to the name of the spatial object and run. 
+
 ```{r}
 Sightings_DRWW_sp@proj4string 
-```
-
-We check the CRS of the other objects, but omit the code for brevity.
-<div class="fold s o">
-```{r, echo=FALSE, message=FALSE}
 Sightings_survey@proj4string 
 Effort_survey@proj4string 
 Domain@proj4string 
@@ -81,7 +77,6 @@ WW_ports@proj4string
 Dist_Brier@proj4string
 Dist_Quoddy@proj4string
 ```
-</div>
 
 All of the spatial objects are in lat/lon - good! For future analysis we will be projecting the data into a different coordinate reference system to better preserve euclidean distance. 
 
