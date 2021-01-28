@@ -77,60 +77,15 @@ Two important pieces of knowledge are available to us:
 
 These can be found from the websites of the two whale-watch operators. These two pieces of information can help us to sensibly constrain the model, hopefully giving us more realistic predictions and inference. We will compare the effects of including and excluding this additional information.
 
-### Rescale and buffer the objects with distances to ports 
+<!-- ### Rescale and buffer the objects with distances to ports  -->
 
-We have two SpatialPixelsDataFrames `Dist_Brier` and `Dist_Quoddy` that contain the distances from the Brier and Quoddy ports, respectively.
+<!-- We have two SpatialPixelsDataFrames `Dist_Brier` and `Dist_Quoddy` that contain the distances from the Brier and Quoddy ports, respectively. -->
 
-```{r 'map-distPortO', message=FALSE, cache=TRUE}
-ggplot() + gg(Dist_Brier) + gg(mesh_land)
-ggplot() + gg(Dist_Quoddy) + gg(mesh_land)
-```
+<!-- ```{r 'map-distPortO', message=FALSE, cache=TRUE} -->
+<!-- ggplot() + gg(Dist_Brier) + gg(mesh_land) -->
+<!-- ggplot() + gg(Dist_Quoddy) + gg(mesh_land) -->
+<!-- ``` -->
 
-As we did with depth in the previous tutorial, we need to buffer and rescale these covariates.  Unlike with previous covariates, however, we will fix all buffered values on land equal to a large constant. This will help to ensure that negligible effort is recorded from the whale watch vessels on land through $\lambda_{eff}$.
-
-We show how to do it with the distance to Brier.
-
-```{r 'map-distBrierRescaled', message=FALSE, cache=TRUE}
-# 1) Define a set of pixels across our modified domain
-pixels_Domain <- as(SpatialPoints(makegrid(Domain_restricted, n=100000),proj4string = Domain@proj4string),'SpatialPixels')
-
-# Extract the average value of distance at the newly created pixel locations
-pixels_Domain$Dist_Brier <- over(pixels_Domain,Dist_Brier)$Dist_Brier
-# There are some missing values due to newly created pixels being on land
-# Fill in missing values with a very large value (1000km).
-# This will make the effect of these regions negligible on inference as lambda_eff will be small
-pixels_Domain$Dist_Brier[is.na(pixels_Domain$Dist_Brier)] <- 1e3
-
-Dist_Brier <- pixels_Domain
-ggplot() + gg(Dist_Brier) + gg(mesh_land)
-
-# There is an infinity value at the port. Change to 0
-Dist_Brier$Dist_Brier[is.infinite(Dist_Brier$Dist_Brier)] <- 0
-max(Dist_Brier$Dist_Brier)
-
-# Let's scale the Dist covariates closer to the (0,1) scale
-Dist_Brier$Dist_Brier <- Dist_Brier$Dist_Brier / 980.7996
-```
-
-### Exercise {#ExNew}
-
-Now, please rescale and buffer the distance to Quoddy object.
-
-<div class="fold s o">
-```{r 'map-distQuoddyRescaled', message=FALSE, cache=TRUE}
-pixels_Domain <- as(SpatialPoints(makegrid(Domain_restricted, n=100000),proj4string = Domain@proj4string),'SpatialPixels')
-
-pixels_Domain$Dist_Quoddy <- over(pixels_Domain,Dist_Quoddy)$Dist_Quoddy
-pixels_Domain$Dist_Quoddy[is.na(pixels_Domain$Dist_Quoddy)] <- 1e3
-
-Dist_Quoddy <- pixels_Domain
-# There is an infinity value at the port. Change to 0
-Dist_Quoddy$Dist_Quoddy[is.infinite(Dist_Quoddy$Dist_Quoddy)] <- 0
-# Let's scale the Dist covariates closer to the (0,1) scale
-Dist_Quoddy$Dist_Quoddy <- Dist_Quoddy$Dist_Quoddy / 980.7996
-ggplot() + gg(Dist_Quoddy) + gg(mesh_land)
-```
-</div>
 
 ### Reminder about distance from port functional form (new chapter after removing above)
 
@@ -138,15 +93,7 @@ In the first workshop, we plotted a histogram of the distance from port at the e
 
 The simplest way to incorporate this into our model, is to define squared distance variables for each port and let the model estimate both $\alpha_{i,0}$ and $\alpha_{i,1}$. Doing this allows `inlabru` to estimate these as linear effects without requiring the use of Taylor linearisation.
 
-```{r, cache=T}
-Dist_Quoddy_sq <- as(SpatialPoints(makegrid(Domain_restricted, n=100000),proj4string = Domain@proj4string),'SpatialPixels')
-
-Dist_Brier_sq <- Dist_Quoddy_sq
-Dist_Quoddy_sq$Dist_Quoddy_sq <- Dist_Quoddy$Dist_Quoddy^2
-Dist_Brier_sq$Dist_Brier_sq <- Dist_Brier$Dist_Brier^2
-```
-
-With the covariates all created, we can now define our components and formulae. Unlike before, we need to define a single components object that contains **all** the required components for both the whale watch **and** survey sightings. 
+We already created these covariates in the first workshop (`Dist_Quoddy_sq`, `Dist_Brier_sq`). We can now define our components and formulae. Unlike before, we need to define a single components object that contains **all** the required components for both the whale watch **and** survey sightings. 
 
 ### Define and fit the model
 
@@ -215,12 +162,14 @@ fit2_like = like(data = Sightings_survey,
             family = 'cp')
 
 fit_WW_B1 = like(data = Sightings_Brier_nodup,
+                 samplers=Domain,
            domain = list(
              coordinates = mesh_land),
            formula = formula_WW_B1,
            family = 'cp')
 
 fit_WW_Q1 = like(data = Sightings_Quoddy_nodup,
+                 samplers=Domain,
                  domain = list(
                    coordinates = mesh_land),
                  formula = formula_WW_Q1,

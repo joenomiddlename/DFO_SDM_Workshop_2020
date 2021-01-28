@@ -264,9 +264,19 @@ Domain_restricted <- gSimplify(gBuffer(pixels_restricted,width=15),tol=20)
 ggplot() +
   gg(Domain_restricted) +
   gg(Domain, color='red') +
-  gg.spatiallines_mod(Effort_survey, colour='blue')
+  gg.spatiallines_mod(Effort_survey, color='blue')
 # Does the new domain contain all the survey tracklines?
 gContains(Domain_restricted,Effort_survey)
+
+# Create a new domain that is slightly larger - for defining covariates later
+Domain_restricted2 <- gSimplify(gBuffer(pixels_restricted,width=40),tol=20)
+# Plot
+ggplot() +
+  gg(Domain_restricted) +
+  gg(Domain_restricted2, color='green') +
+  gg(Domain, color='red')
+# Does it contain the old 
+gContains(Domain_restricted2,Domain_restricted)
 ```
 Great! We have defined a new buffered and smoothed domain that will no longer extrapolate far beyond our survey tracklines. To restore the original coastline definition we can use the function `gIntersection()`. We now update the SpatialPolygons object `Domain` using `gIntersection()`:
 
@@ -276,11 +286,11 @@ ggplot() + gg(Domain) + gg.spatiallines_mod(Effort_survey)
 ```
 
 
-Note that we will need to use `Domain_restricted` for defining our computational mesh later in the workshop! The smoothing of the coastline will help us to define a computational mesh that has fewer numerical issues. More on that later!
+Note that we will need to use `Domain_restricted` for defining our computational mesh and `Domain_restricted2` for defining our covariates later in the workshop! The smoothing of the coastline will help us to define a computational mesh that has fewer numerical issues. More on that later!
 
 ## Extending the covariates to match the new domain
 
-We will need to use `Domain_restricted` for defining our computational mesh later in the workshop! The package `inlabru` requires that our covariates are also defined at every point in the new domain. This will require extending our covariates to take 'sensible' values at points beyond our original domain (`Domain`). We will see that these imputed values will not affect the model estimates. 
+We will need to use `Domain_restricted2` for defining our computational mesh later in the workshop! The package `inlabru` requires that our covariates are also defined at every point in the new domain. This will require extending our covariates to take 'sensible' values at points beyond our original domain (`Domain`). We will see that these imputed values will not affect the model estimates. 
 
 Our covariate depth is well-defined on the original (un-buffered) domain as defined by the SpatialPolygons `Domain`. At values outside this, we choose to 'fill-in' these points with nearest neighbour imputations. The code below does this for depth.
 
@@ -293,7 +303,7 @@ log_Depth$FIWH_MAR_Bathymetry <- log(1-log_Depth$FIWH_MAR_Bathymetry)
 names(log_Depth) <- 'log_Depth' 
 
 # 1) Define a set of pixels across our modified domain
-pixels_Domain <- as(SpatialPoints(makegrid(Domain_restricted, n=100000),proj4string = Domain@proj4string),'SpatialPixels')
+pixels_Domain <- as(SpatialPoints(makegrid(Domain_restricted2, n=100000),proj4string = Domain@proj4string),'SpatialPixels')[Domain_restricted2,]
 
 # 2) Extract values of the covariate at the new pixel locations
 pixels_Domain$log_Depth <- over(pixels_Domain,log_Depth)$log_Depth
@@ -311,6 +321,52 @@ log_Depth_sq$log_Depth_sq <- log_Depth_sq$log_Depth_sq^2
 # Plot the covariates with Domain_restricted overlayed
 ggplot() + gg(log_Depth) + gg(Domain_restricted)
 ```
+
+We also need to buffer and rescale the distance from port covariates `Dist_Brier` and `Dist_Quoddy`.  Unlike with previous covariates, however, we will fix all buffered values on land equal to a large constant. This will help to ensure that negligible effort is recorded from the whale watch vessels on land through $\lambda_{eff}$.
+
+We show how to do it with the distance to Brier.
+
+```{r 'map-distBrierRescaled', message=FALSE, cache=TRUE}
+# 1) Define a set of pixels across our modified domain
+pixels_Domain <- as(SpatialPoints(makegrid(Domain_restricted2, n=100000),proj4string = Domain@proj4string),'SpatialPixels')[Domain_restricted2,]
+
+# Extract the average value of distance at the newly created pixel locations
+pixels_Domain$Dist_Brier <- over(pixels_Domain,Dist_Brier)$Dist_Brier
+# There are some missing values due to newly created pixels being on land
+# Fill in missing values with a very large value (1000km).
+# This will make the effect of these regions negligible on inference as lambda_eff will be small
+pixels_Domain$Dist_Brier[is.na(pixels_Domain$Dist_Brier)] <- 1e3
+
+Dist_Brier <- pixels_Domain
+ggplot() + gg(Dist_Brier) + gg(Domain)
+
+# There is an infinity value at the port. Change to 0
+Dist_Brier$Dist_Brier[is.infinite(Dist_Brier$Dist_Brier)] <- 0
+max(Dist_Brier$Dist_Brier)
+
+# Let's scale the Dist covariates closer to the (0,1) scale
+Dist_Brier$Dist_Brier <- Dist_Brier$Dist_Brier / 980.7996
+```
+
+### Exercise {#ExNew}
+
+Now, please rescale and buffer the distance to Quoddy object.
+
+<div class="fold s o">
+```{r 'map-distQuoddyRescaled', message=FALSE, cache=TRUE}
+pixels_Domain <- as(SpatialPoints(makegrid(Domain_restricted2, n=100000),proj4string = Domain@proj4string),'SpatialPixels')[Domain_restricted2,]
+
+pixels_Domain$Dist_Quoddy <- over(pixels_Domain,Dist_Quoddy)$Dist_Quoddy
+pixels_Domain$Dist_Quoddy[is.na(pixels_Domain$Dist_Quoddy)] <- 1e3
+
+Dist_Quoddy <- pixels_Domain
+# There is an infinity value at the port. Change to 0
+Dist_Quoddy$Dist_Quoddy[is.infinite(Dist_Quoddy$Dist_Quoddy)] <- 0
+# Let's scale the Dist covariates closer to the (0,1) scale
+Dist_Quoddy$Dist_Quoddy <- Dist_Quoddy$Dist_Quoddy / 980.7996
+ggplot() + gg(Dist_Quoddy) + gg(Domain)
+```
+</div>
 
 ## Testing model assumptions and investigating trends
 
