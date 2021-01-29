@@ -637,13 +637,24 @@ ggplot(data=data.frame(Bathym_obs = Bathym_obs),
   scale_color_manual(name = "Density", values = c('Sightings' = 'black', 'Domain' = 'red'))
 ```
 
-We see a very skew distribution of Bathymetry with a huge range of values. Leaving the covariate in this form risks wild predictions of intensity being made! A log transform is desired. We also flip the sign to make it interpretable as log depth (larger is deeper).
+**JOE: this presentation of log(1-bathy) here is great and specify that this is done for the Poisson point process, but also for all of the models explored afterward. Then save the log_bathym objects in Modelling_Data.rds (and maybe Modelling_Data2_New .rds?) so that they can be loaded in the next tutorials without going through these steps. I'm not sure whether you need to do the transformation for the obs also, here it's just the domain.**
+
+We see a very skewed distribution of Bathymetry with a huge range of values. Leaving the covariate in this form risks wild predictions of intensity being made! A log transform is desired. We also flip the sign to make it interpretable as log depth (larger is deeper).
+
+```{r 'log-bathym', cache=TRUE}
+# Transforming the covariate
+log_Bathym_im <- Bathym_im
+log_Bathym_im[log_Bathym_im >= 0] <- -1
+log_Bathym_im$v <- log(1-log_Bathym_im$v)
+```
+
+Let's plot the transformed data.
 
 ```{r 'map-bathyLog', message=FALSE, warning=FALSE, cache=TRUE}
 ggplot(data=data.frame(Bathym_obs = log(1-Bathym_obs)),
        aes(x=Bathym_obs, colour="Sightings")) +
   geom_density() +
-  geom_density(data=data.frame(Bathym_dom = log(as.numeric(1-Bathym_im$v[Bathym_im$v<0]))),
+  geom_density(data=data.frame(Bathym_dom = as.numeric(log_Bathym_im$v)),
                aes(x=Bathym_dom, colour="Domain")) +
   geom_vline(xintercept = 0, colour='blue') + xlab('log Depth') +
   scale_color_manual(name = "Density", values = c('Sightings' = 'black', 'Domain' = 'red'))
@@ -659,13 +670,7 @@ We will see in lecture 2, that if we define a set of regions $A_i$ to be a grid 
 
 So, to investigate trends between the species intensity and the covariates, we fit Poisson point process models to the sightings data using the `ppm()` function from the **spatstat** package. These are similar to Maxent models. Ignoring effort for the time being, what does a Poisson point process model tell us?
 
-**JOE: so I think I would present the of log(1-bathy) in here and specify that this is done for the Poisson point process, but also for all of the models explored afterward. Then save the log_bathym objects in Modelling_Data.rds (and maybe Modelling_Data2_New .rds?) so that they can be loaded in the next tutorials without going through these steps.**
-
 ```{r 'ppm', message=FALSE, cache=TRUE}
-# Transforming the covariate
-log_Bathym_im <- Bathym_im
-log_Bathym_im[log_Bathym_im >= 0] <- -1
-log_Bathym_im$v <- log(1-log_Bathym_im$v)
 # Fitting the Poisson point process model
 Ppm_1 <- ppm(All_obs_ppp~log_Bathym_im,
                   data=list(log_Bathym_im=log_Bathym_im,
