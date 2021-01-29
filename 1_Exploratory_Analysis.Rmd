@@ -232,7 +232,7 @@ Don't like the colour scheme? See [Additional tips](#Ad3) to learn how to define
 
 ## Reducing the size of the domain (study area)
 
-** JOE: as we talked about, this is too much detail for here. What I would prefer is that the domain saved in the data file (Compiled_Data_new.rds) and loaded at the top is the domain that looks like the intersect of the original domain and the restricted domain. And that you explain in detail how to change the domain for the creating the mesh and the covariates. I understand that this is annoying because the model fitting is hard, so if we can't get that, then fine. But we need to simplify this in some way without hiding the important parts. What I am asking is that if you change something else that would affect the model fit and will have to redo model fitting anyway, please do my suggestion. If not then, find a compromise solution. Talk to me about your solution first, so we decide together what's the best course of action before you do a lot of work. **
+**JOE: as we talked about, this is too much detail for here. What I would prefer is that the domain saved in the data file (Compiled_Data_new.rds) and loaded at the top is the domain that looks like the intersect of the original domain and the restricted domain. And that you explain in detail how to change the domain for the creating the mesh and the covariates. I understand that this is annoying because the model fitting is hard, so if we can't get that, then fine. But we need to simplify this in some way without hiding the important parts. What I am asking is that if you change something else that would affect the model fit and will have to redo model fitting anyway, please do my suggestion. If not then, find a compromise solution. Talk to me about your solution first, so we decide together what's the best course of action before you do a lot of work.**
 
 In its current form, the domain is too large for the application. The domain extends far beyond the survey tracklines and the whale-watch ports. To combat this, we will create a new domain that is restricted to lie within 30km of the nearest trackline.
 
@@ -264,6 +264,7 @@ ggplot() +
   gg(Domain, color='red') +
   gg.spatiallines_mod(Effort_survey, colour='blue')
 ```
+
 Whilst the new SpatialPolygons object `Domain_restricted` no longer extrapolates far beyond the survey tracklines, the smoothing achieved by the function `gSimplify()` has caused the new Domain to no longer contain all the tracklines. To counter this, we will buffer the study region prior to simplifying using `gBuffer`.
 
 ```{r}
@@ -286,6 +287,7 @@ ggplot() +
 # Does it contain the old 
 gContains(Domain_restricted2,Domain_restricted)
 ```
+
 Great! We have defined a new buffered and smoothed domain that will no longer extrapolate far beyond our survey tracklines. To restore the original coastline definition we can use the function `gIntersection()`. We now update the SpatialPolygons object `Domain` using `gIntersection()`:
 
 ```{r}
@@ -380,11 +382,17 @@ ggplot() + gg(Dist_Quoddy) + gg(Domain)
 
 In the first lecture, we defined the species' intensity surface $\lambda_{true}(s)$. We interpreted this as an 'expected encounter rate per unit effort around s'. We then attempt to estimate/approximate an effort surface $\lambda_{eff}(s)$. Both of these surfaces are linked to a set of covariates (and later we'll even include random fields). 
 
-For well-designed surveys, e.g. distance-sampling surveys, we have additional data available on the perpendicular distance of the encountered animal to the observer. We saw that we can use this to jointly model a detection probability function $p(d)$. *inlabru*, the package we will use in the later workshops, handles all of the neccessary integrations required to jointly model the encounter locations with the encounter distances. 
+For well-designed surveys, e.g. distance-sampling surveys, we have additional data available on the perpendicular distance of the encountered animal to the observer. We saw that we can use this to jointly model a detection probability function $p(d)$. *inlabru*, the package we will use in the later workshops, handles all of the necessary integrations required to jointly model the encounter locations with the encounter distances. 
 
-Finally, we defined the observed intensity of the encounters $\lambda_{obs}(s)$ as 'the expected density of encounters per unit area around point s'. If our approximation of effort ($\lambda_{eff}(s)$), and the detection probability function $p(d)$ is good, then we hope to see: $$\lambda_{obs}(s) \approx \lambda_{true}(s) \lambda_{eff}(s)$$
+Finally, we defined the observed intensity of the encounters $\lambda_{obs}(s)$ as 'the expected density of encounters per unit area around point s'. If our approximation of effort ($\lambda_{eff}(s)$), and the detection probability function $p(d)$ is good, then we hope to see: 
+
+**JOE: the two definitions are not the most intuitive. Can you dumb them down? Or at least emphasize the differences. Something like lambda_obs is how many sightings (or the probablity of a sighting?) we expect given the amount of effort in that area? And something like $\lambda_{true}(s)$ is the probability of a sighting at point s if it is searched. I'm sure some of this is not correct, but hopefully you get the idea.**
+
+$$\lambda_{obs}(s) \approx \lambda_{true}(s) \lambda_{eff}(s)$$
 
 or, for a **single** survey trackline: $$\lambda_{obs}(s) \approx \lambda_{true}(s) \lambda_{eff}(s) p(d(s))$$
+
+**JOE: I'm not sure I understand why the p(d(s)) is only for a single trackline. Does it has to do with the single survey trackline? Or are you just introducing that p(d(s)) should be included sometimes? **
 
 Later, we will be fitting spatial point process models to the encounters. A requirement for using these models is that, conditional on $\lambda_{eff}(s)$, each encounter with the animal is an **independent snapshot** from its true intensity $\lambda_{true}(\textbf{s})$.
 
