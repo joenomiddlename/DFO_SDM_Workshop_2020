@@ -696,7 +696,7 @@ Dist_Surveylines$Dist_surveylines <- as.numeric(apply(gDistance(Dist_Surveylines
 Dist_Surveylines <- as(Dist_Surveylines,'SpatialPixelsDataFrame')
 ```
 
-We can then map the distance to the nearest trackline and plot the histogram of nearest distances. 
+We can then map the distance to the nearest trackline. **JOE: my understanding from teh description in the previous paragraph, though I find the code above a bit confusing, is that it is combining the distance to port to the survey line distance. I'm confused why the below only shows the distance to trackline.**
 
 ```{r 'map-dectectionDistance', warning=FALSE, message=FALSE, cache=TRUE}
 colsc <- function(...) {
@@ -705,34 +705,44 @@ colsc <- function(...) {
 }
 # Map the distance through space
 ggplot() + gg(Domain) + gg(Dist_Surveylines) + colsc(Dist_Surveylines@data[,1])
+```
+
+**JOE: is was a bit confusing when lumped with the above, at first sight it felt like the historgram was for the nearest distance you calculated in the above. I think the detection function stuff could likely have it own section further above.**
+
+To explore which detection function should be used, we now plot the histogram of measures distances in the survey data (i.e. the observed distances of sightings from the trackline).
+
+```{r 'dectectionDistance-hist', warning=FALSE, message=FALSE, cache=TRUE}
 # What is the maximum detection distance?
 ggplot(Sightings_survey@data, aes(x=DISTANCE)) + geom_histogram()
 ```
 
-The histogram of the perpendicular distances from the aircraft shows an apparent maximum detection probability at a value of distance above 0! This is common for aerial surveys. Given the limit size of the survey data chosen for the workshop, and the potential numerical issues we may face fitting a complex detection probability function, we will fix all values less than 250m equal to 250m. This crude approach will help to make the histogram appear as a monotonically decreasing function of distance, satisfying the simplest class of detection probability functions. This shouldn't be done in practice! A 2-parameter detection probability function could instead be fit.
+The histogram of the perpendicular distances from the aircraft shows an apparent maximum detection probability at a value of distance above 0! Low detection probability close to 0 is common for aerial surveys since it is harder to see below the plane. Given the limited size of the survey data and the potential numerical issues we may face fitting a complex detection probability function, we will fix all values less than 250m equal to 250m. This crude approach will help to make the histogram appear as a monotonically decreasing function of distance, satisfying the simplest class of detection probability functions. While we will use this modified distance data throughout the tutorials, it should not be done in practice. When you have enough data, a 2-parameter detection probability function should be used instead.
 
-In addition, it is often advised in distance sampling applications to threshold our upper detection distances at a 'sensible' value. Let's plot our observed distances from the trackline. It looks like 2km could be a reasonable threshold value to choose. Let's set all values above 2km equal to 2km and scale the distances onto the km units scale. **This rescaling to units of km is crucial for numerical stability.** We define a variable 'distance' that contains the rescaled distances. Note that a few distances are missing. We impute these with the mean distance.
+In addition, it is often advised in distance sampling applications to threshold our upper detection distances at a 'sensible' value. For the histogram above, it looks like 2km could be a reasonable threshold value to choose. Let's set all values above 2km equal to 2km and scale the distances onto the km units scale. *This rescaling to units of km is crucial for numerical stability.* We define a variable 'distance' that contains the rescaled distances. Note that a few distances are missing. We impute these with the mean distance.
 
-```{r, cache=T}
+```{r 'distance-modified', cache=TRUE}
+# Setting the distances <250 to 250
 Sightings_survey@data$DISTANCE <- ifelse(Sightings_survey@data$DISTANCE>250,Sightings_survey@data$DISTANCE,250)
 
+# Setting the distances >2000 to 2000
 Sightings_survey@data$DISTANCE <- 
   ifelse(Sightings_survey$DISTANCE>2000 & !is.na(Sightings_survey$DISTANCE),
          2000,Sightings_survey$DISTANCE)
 
-# needs renaming to match the formula argument
+# Needs renaming to match the formula argument
 Sightings_survey$distance <- Sightings_survey$DISTANCE
-# There are a couple of missing distances. Impute these with the mean
+# Impute missing distances with the mean
 Sightings_survey$distance[is.na(Sightings_survey$distance)] <- mean(Sightings_survey$distance,na.rm=T)
+# Remove the old DISTANCE column
 Sightings_survey <- Sightings_survey[,-c(8)]
+# Rescaling to km
 Sightings_survey$distance <- Sightings_survey$distance / 1000
 
+# Plot the modified distances
 ggplot(Sightings_survey@data, aes(x=distance)) + geom_histogram()
-
 ```
 
-
-The histogram perhaps shows an initial steady decline in sightings with distance, before decaying more quickly as distance increases. Again, we need to remember that this plot is showing associations between distance $d$ and $\lambda_{obs}$ and **not** with $p(d)$.  To capture this shape, we will use a half-norm detection function in the Poisson point process model: $$p(d) = exp\left(\frac{-d^2}{2\sigma^2}\right)$$ This requires us to square the values of distance from the trackline.
+The histogram perhaps shows an initial steady decline in sightings with distance, before decaying more quickly as distance increases. Again, we need to remember that this plot is showing associations between distance $d$ and $\lambda_{obs}$ and **not** with $p(d)$. **JOE:you need to explain this, I don't understand why it's not something close to $p(d)$. I'm not sure when you mentioned this (the 'again' above implies that we have talked about this before)? In the lecture? **To capture this shape, we will use a half-norm detection function in the Poisson point process model: $$p(d) = exp\left(\frac{-d^2}{2\sigma^2}\right)$$ This requires us to square the values of distance from the trackline.
 
 Now, we investigate a potential functional form for the distance from port covariate. To do this, we plot a histogram of the distances from port at each of the whale watch sighting locations.
 
