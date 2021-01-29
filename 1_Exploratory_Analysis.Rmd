@@ -378,25 +378,29 @@ ggplot() + gg(Dist_Quoddy) + gg(Domain)
 
 ## Testing model assumptions and investigating trends
 
-In the first lecture, we defined the species' intensity surface $\lambda_{true}(s)$. We interpreted this as an 'expected encounter rate per unit effort around s'. We then attempt to estimate/approximate an effort surface $\lambda_{eff}(s)$. Both of these surfaces are linked to a set of covariates (and later we'll even include random fields). 
+In the first lecture, we defined the species' intensity surface $\lambda_{true}(s)$. We interpreted this as an 'expected encounter rate per unit effort around s'. This is proportional to the true species space use as it is proportional to the species' utilisation distribution $\pi(s)$. $\lambda_{true}(s)$ is the target quantity we wish to estimate! 
 
-For well-designed surveys, e.g. distance-sampling surveys, we have additional data available on the perpendicular distance of the encountered animal to the observer. We saw that we can use this to jointly model a detection probability function $p(d)$. *inlabru*, the package we will use in the later workshops, handles all of the necessary integrations required to jointly model the encounter locations with the encounter distances. 
+However, we believe that the effort from our observers is heterogeneous across our domain $\Omega$. To control for effort, we attempt to estimate/approximate an effort surface $\lambda_{eff}(s)$. Both of these surfaces will be linked to a set of covariates (and later we'll even include random fields). 
 
-Finally, we defined the observed intensity of the encounters $\lambda_{obs}(s)$ as 'the expected density of encounters per unit area around point s'. If our approximation of effort ($\lambda_{eff}(s)$), and the detection probability function $p(d)$ is good, then we hope to see: 
+For well-designed surveys, e.g. distance-sampling surveys, we have additional data available on the perpendicular distance of the encountered animal to the observer. We saw that we can use this to jointly model a detection probability function $p(d)$. This models the 'probability that an individual of the species is detected by an observer, given it is a distance $d$ away'. *inlabru*, the package we will use in the later workshops, handles all of the necessary integrations required to jointly model the encounter locations with the encounter distances. The integration are performed on each survey trackline segment. 
+
+Finally, we defined the observed intensity of the encounters $\lambda_{obs}(s)$ as 'the expected density of encounters per unit area around point s'. This quantity is **not** the target of our inference as it is confounded by effort. If our approximation of the effort ($\lambda_{eff}(s)$), and the fitted detection probability function $p(d)$ is good, then we hope to see: 
 
 **JOE: the two definitions are not the most intuitive. Can you dumb them down and emphasize the differences? Something like lambda_obs is how many sightings (or the probability of a sighting?) we expect given the amount of effort in that area? And something like $\lambda_{true}(s)$ is the probability of a sighting at point s if it is searched. I'm sure some of this is not correct, but hopefully you get the idea.**
 
 $$\lambda_{obs}(s) \approx \lambda_{true}(s) \lambda_{eff}(s)$$
 
-or, for a **single** survey trackline: $$\lambda_{obs}(s) \approx \lambda_{true}(s) \lambda_{eff}(s) p(d(s))$$
+or, for a **single** survey trackline segment: $$\lambda_{obs}(s) \approx \lambda_{true}(s) \lambda_{eff}(s) p(d(s))$$.
 
 **JOE: I'm not sure I understand why the p(d(s)) is only for a single trackline. Does it has to do with the single survey trackline? Or are you just introducing that p(d(s)) should be included sometimes? **
+
+Note that $p(d(s))$ above defines the perpendicular distance of the point $s \in \Omega$ from the chosen trackline segment. The above product decomposition reads loosely as "the expected number encounters around a point s equals the amount of effort spent looking there multiplied by the expected rate the species is actually present there". 
 
 Later, we will be fitting spatial point process models to the encounters. A requirement for using these models is that, conditional on $\lambda_{eff}(s)$, each encounter with the animal is an **independent snapshot** from its true intensity $\lambda_{true}(\textbf{s})$.
 
 Planned surveys can be designed to (approximately) satisfy the independence assumption. The boat speed can be fixed at a high value relative to the individuals' speeds (no double-counting) and a narrow perpendicular field-of-view can be enforced. Then, assuming that the individuals of the target species are in equilibrium with respect to their stationary distribution $\lambda_{true}(\textbf{s})$ (i.e. the species' density) and locally mixing faster than the time between revisits by observers, the independence assumption may reasonably hold.
 
-Conversely, no such assumptions can be made regarding the whale-watch sightings. The unknown positions of the whale-watching boats **JOE: when they are not with whales? we have the location with whales, no?**, the 360 degree fields-of-view on-board, the variable boat speed, and the repeated sightings of the same individuals throughout each day can all invalidate the independence assumption required to fit the desired models.
+Conversely, no such assumptions can be made regarding the whale-watch sightings. The unknown positions of the whale-watching boats when they are not with whales, the 360 degree fields-of-view on-board, the variable boat speed, and the repeated sightings of the same individuals throughout each day can all invalidate the independence assumption required to fit the desired models.
 
 In our workshop, we will see some potential solutions to address this issue of independence. In this session, we will perform some exploratory analyses to investigate the suitability of the independence assumption, and to investigate possible ways of estimating observer effort. 
 
