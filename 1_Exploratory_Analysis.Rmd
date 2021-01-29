@@ -597,11 +597,11 @@ The 'CPUE' values are highly variable! The wild differences could be due to the 
 
 As we will see in the next tutorial, by taking a model-based approach to inference, we will be able to combine the data from all three surveys to estimate the whale density across space. Unfortunately, due to the lack of spatial overlap between the surveys' efforts (tracklines), we are unable to account for any differences between the survey protocols within a model without strong prior information available. For example, an intercept added to the model for each survey would be confounded by the spatial field. From now on, we assume that each survey is equivalent.
 
-## Identifying a good detection function
+## Exploring detection function and effort layers of survey data
 
 **JOE: this was below in the ppm stuff and it was a bit confusing when lumped with the survey distance trackline, at first sight it felt like the histogram was for the nearest distance you calculated withthe trackline. Since in lecture 1 you talk about detection function in general, it makes sense to look at it in a seperate section.**
 
-To explore which detection function that should be used with the survey data, we now plot the histogram of measured distances from the plane (i.e. the observed distances of sightings from the trackline).
+To explore which detection function ($p(d)$) that should be used with the survey data, we will first plot the histogram of measured distances from the plane (i.e. the observed distances of sightings from the trackline).
 
 ```{r 'dectectionDistance-hist', warning=FALSE, message=FALSE, cache=TRUE}
 # What is the maximum detection distance?
@@ -634,13 +634,62 @@ Sightings_survey$distance <- Sightings_survey$distance / 1000
 ggplot(Sightings_survey@data, aes(x=distance)) + geom_histogram()
 ```
 
-The histogram perhaps shows an initial steady decline in sightings with distance, before decaying more quickly as distance increases. Again, we need to remember that this plot is showing associations between distance $d$ and $\lambda_{obs}$ and **not** with $p(d)$. **JOE: you need to explain this, I don't understand why it's not something close to $p(d)$. I'm not sure when you mentioned this (the 'again' above implies that we have talked about this before)? In the lecture? ** To capture this shape, we will use a half-norm detection function: 
+The histogram perhaps shows an initial steady decline in sightings with distance, before decaying more quickly as distance increases. Again, we need to remember that this plot is showing associations between distance $d$ and $\lambda_{obs}$ and **not** with $p(d)$. **JOE: you need to explain this, I don't understand why it's not something close to $p(d)$ and don't fully understand how it links to the half-norm below. Is it because the p(d) is on the effort? I made some changes below assuming that this was the reason. I'm not sure when you mentioned this (the 'again' above implies that we have talked about this before)? In the lecture? ** To capture this shape, we will use a half-norm detection function: 
 
 $$p(d) = exp\left(\frac{-d^2}{2\sigma^2}\right)$$ 
-This requires us to square the values of distance from the trackline.
+
+This requires us to square the values of distance from the trackline. To do so, we need to first calculate the distance for the trackline, which will be our effort layer.
+
+We can create a SpatialPixelsDataFrame containing the perpendicular distances to the nearest trackline. This fails to account for overlap in survey tracklines, but offers a reasonable first approach to crudely control for effort for the purposes of exploratory analysis.
+
+```{r 'tracklinDistance', warning=FALSE, message=FALSE, cache=TRUE}
+Dist_Surveylines <- as(Dist_Brier,'SpatialPoints')
+Dist_Surveylines$Dist_surveylines <- as.numeric(apply(gDistance(Dist_Surveylines, 
+                                                                Effort_survey,byid = T),2,min))
+Dist_Surveylines <- as(Dist_Surveylines,'SpatialPixelsDataFrame')
+```
+
+We can then map the distance to the nearest trackline. **JOE: my understanding from the description in the previous paragraph, though I find the code above a bit confusing, is that it is combining the distance to port to the survey line distance. I'm confused why the below only shows the distance to trackline. Is the first line of code above just setting the format?**
+
+```{r 'map-dectectionDistance', warning=FALSE, message=FALSE, cache=TRUE}
+colsc <- function(...) {
+  scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(11,"RdYlBu")),
+                       limits = range(...))
+}
+# Map the distance through space
+ggplot() + gg(Domain) + gg(Dist_Surveylines) + colsc(Dist_Surveylines@data[,1])
+```
+
+We can now scale and square the survey line distance to work with the half-norm detection function.
 
 ```{r 'Surbeylines-halfnorm', cache=TRUE}
 Dist_Surveylines$Dist_surveylines <- scale(Dist_Surveylines$Dist_surveylines^2)
+```
+
+## Exploring covariates for effort in whale-watch data
+
+**JOE: again this in the ppm section. But this is general info that is usful for your own models. I would make a different section for this too before the ppm stuff. And here for distance to port I would say, remember from lecture 1, when we don't have effort data we can model it with covariates. Here we will use for whale-watch data, distance from port. I would push all of the ppm stuff further below after having talked about the main parts described in lecture 1 and that will be used in your models in the next.**
+
+Now, we investigate a potential functional form for the distance from port covariate. To do this, we plot a histogram of the distances from port at each of the whale watch sighting locations.
+
+```{r 'plot-funcFormDist', cache=TRUE}
+# Plot the sightings with distance from the port
+hist(over(Sightings_Brier_nodup,Dist_Brier)$Dist_Brier, main='Histogram of the distance from port of the Brier sightings', xlab = 'Distance from port')
+
+hist(over(Sightings_Quoddy_nodup,Dist_Quoddy)$Dist_Quoddy,breaks=20, main='Histogram of the distance from port of the Quoddy sightings', xlab = 'Distance from port')
+```
+
+For both ports, we detect a decreasing frequency of sightings made as the distance from port increases. This relationship is clearer for Brier sightings than for Quoddy sightings. Furthermore, the functional form of the effect does not appear to be an exponential decay. Based on the histograms, we choose to model the functional form as a half-normal function. More complicated functional forms (e.g. weibull or hazard functions) could be used.
+
+More specifically, we assume throughout the same functional relationship between each whale-watch effort intensity $\lambda_{eff, i}$ and distance from their port location $s_i^*$. Here $i$ indicates the port and $s_i^*$ denotes the $i^{th}$ port location. We scale the half-norm functions by a unique constant $\lambda_i$, to capture the different number of vessels across the two ports: $$\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right)$$.
+
+On the log scale, this covariate can be estimated as a linear effect on the squared distance from port. Thus, we create SpatialPixelsDataFrame objects which store the squared distances from port.
+
+```{r 'halfnorm', warning=FALSE, message=FALSE, cache=TRUE}
+Dist_Brier_sq <- as(Dist_Brier,'SpatialPixels')
+Dist_Brier_sq$Dist_Brier_sq <- scale(Dist_Brier$Dist_Brier^2)
+Dist_Quoddy_sq <- as(Dist_Quoddy,'SpatialPixels')
+Dist_Quoddy_sq$Dist_Quoddy_sq <- scale(Dist_Quoddy$Dist_Quoddy^2)
 ```
 
 
@@ -734,52 +783,8 @@ summary(Ppm_1)
 
 Looking at the Ztest symbols (p < 0.05 indicated by at least one *) and estimates in the table of fitted trend coefficients, we find a significant association between $\lambda_{obs}$ and log depth and thus some evidence that the whales may be found more often in regions with shallower waters (negative estimate).
 
-Next, we can attempt to make a crude adjustment for effort and see if these estimates change. We have already created a SpatialPixelsDataFrame object containing distance from the two whale-watch ports. Next, we can create a SpatialPixelsDataFrame containing the perpendicular distances to the nearest trackline. This fails to account for overlap in survey tracklines, but offers a reasonable first approach to crudely control for effort for the purposes of exploratory analysis.
-
-```{r 'tracklinDistance', warning=FALSE, message=FALSE, cache=TRUE}
-Dist_Surveylines <- as(Dist_Brier,'SpatialPoints')
-Dist_Surveylines$Dist_surveylines <- as.numeric(apply(gDistance(Dist_Surveylines, 
-                                                                Effort_survey,byid = T),2,min))
-Dist_Surveylines <- as(Dist_Surveylines,'SpatialPixelsDataFrame')
-```
-
-We can then map the distance to the nearest trackline. **JOE: my understanding from the description in the previous paragraph, though I find the code above a bit confusing, is that it is combining the distance to port to the survey line distance. I'm confused why the below only shows the distance to trackline.**
-
-```{r 'map-dectectionDistance', warning=FALSE, message=FALSE, cache=TRUE}
-colsc <- function(...) {
-  scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(11,"RdYlBu")),
-                       limits = range(...))
-}
-# Map the distance through space
-ggplot() + gg(Domain) + gg(Dist_Surveylines) + colsc(Dist_Surveylines@data[,1])
-```
-
-
-**JOE: I would make a different section for this too before the ppm stuff. I would present both as, remember we are interested in p(d) and so we look into it. And here for distance to port I would say, remember from lecture 1, when we don't have effort data we can model it with covariates. Here we will use for whale-watch data, distance from port. I would push all of the ppm stuff further below after having talked about the main parts described in lecture 1 and that will be used in your models in the next.**
-
-Now, we investigate a potential functional form for the distance from port covariate. To do this, we plot a histogram of the distances from port at each of the whale watch sighting locations.
-
-```{r 'plot-funcFormDist', cache=TRUE}
-# Plot the sightings with distance from the port
-hist(over(Sightings_Brier_nodup,Dist_Brier)$Dist_Brier, main='Histogram of the distance from port of the Brier sightings', xlab = 'Distance from port')
-
-hist(over(Sightings_Quoddy_nodup,Dist_Quoddy)$Dist_Quoddy,breaks=20, main='Histogram of the distance from port of the Quoddy sightings', xlab = 'Distance from port')
-```
-
-For both ports, we detect a decreasing frequency of sightings made as the distance from port increases. This relationship is clearer for Brier sightings than for Quoddy sightings. Furthermore, the functional form of the effect does not appear to be an exponential decay. Based on the histograms, we choose to model the functional form as a half-normal function. More complicated functional forms (e.g. weibull or hazard functions) could be used.
-
-More specifically, we assume throughout the same functional relationship between each whale-watch effort intensity $\lambda_{eff, i}$ and distance from their port location $s_i^*$. Here $i$ indicates the port and $s_i^*$ denotes the $i^{th}$ port location. We scale the half-norm functions by a unique constant $\lambda_i$, to capture the different number of vessels across the two ports: $$\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right)$$.
-
-On the log scale, this covariate can be estimated as a linear effect on the squared distance from port. Thus, we create SpatialPixelsDataFrame objects which store the squared distances from port.
-
-```{r 'halfnorm', warning=FALSE, message=FALSE, cache=TRUE}
-Dist_Brier_sq <- as(Dist_Brier,'SpatialPixels')
-Dist_Brier_sq$Dist_Brier_sq <- scale(Dist_Brier$Dist_Brier^2)
-Dist_Quoddy_sq <- as(Dist_Quoddy,'SpatialPixels')
-Dist_Quoddy_sq$Dist_Quoddy_sq <- scale(Dist_Quoddy$Dist_Quoddy^2)
-```
-
-Now we fit a Inhomogeneous Poisson point process model. As we are specifying the model on the log intensity, we need to include unique intercept parameters $\alpha_{0,i} : i \in \{1,2\}$ for the two whale watch port intensities ($\alpha_{0,i} = log \lambda_i$) and three unique parameters $\alpha_1$ and $\alpha_{1,i} : i \in \{1,2\}$ defining the shapes of the three half norm functions ($\alpha_{1,i} = \frac{-1}{2\sigma_i^2}$ and $\alpha_1 = \frac{-1}{2\sigma^2}$).
+Next, we can attempt to make a crude adjustment for effort and see if these estimates change.
+Now we fit a Inhomogeneous Poisson point process model. As we are specifying the model on the log intensity, we need to include unique intercept parameters $\alpha_{0,i} : i \in \{1,2\}$ for the two whale-watch port intensities ($\alpha_{0,i} = log \lambda_i$) and three unique parameters $\alpha_1$ and $\alpha_{1,i} : i \in \{1,2\}$ defining the shapes of the three half norm functions ($\alpha_{1,i} = \frac{-1}{2\sigma_i^2}$ and $\alpha_1 = \frac{-1}{2\sigma^2}$).
 
 We must also inform spatstat about the source of each sighting, by fixing the value of its mark.
 
