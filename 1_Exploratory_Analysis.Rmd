@@ -90,9 +90,9 @@ options("rgdal_show_exportToProj4_warnings"="none")
 
 ## Plotting the data
 
-Our first goal is generally to plot the data on a map. The `gg()` and `gmap()` functions from the *inlabru* package will prove extremely useful at plotting spatial data! The class of spatial objects we will use are from the *sp* package. The classes of these objects begin with 'Spatial'. For example **Spatial**PointsDataFrame.
+Our first goal is generally to plot the data on a map. The `gg()` and `gmap()` functions from the *inlabru* package is extremely useful at plotting spatial data! The class of spatial objects we will use are from the *sp* package. The classes of these objects begin with 'Spatial'. For example **Spatial**PointsDataFrame.
 
-We have written a bespoke function `gg.spatiallines_mod()` to easily add SpatialLinesDatFrame objects to the plots too. This will prove useful for plotting transect lines. We load the bespoke functions to the working environment now.
+We have written a bespoke function `gg.spatiallines_mod()` to easily add SpatialLinesDataFrame objects to the plots too. This will prove useful for plotting transect lines. We load the bespoke functions to the working environment now.
 
 ```{r}
 source('utility_functions.R')
@@ -100,7 +100,7 @@ source('utility_functions.R')
 
 Let's plot our data! 
 
-If the data are in lat/lon format then the `gmap()` function will automatically add a terrain layer from Stamen Maps to the plots. Let's plot the survey sightings in blue, the survey tracklines in black, the whale watch sightings in purple, the whale watch ports in red.
+If the data are in lat/lon format then the `gmap()` function will automatically add a terrain layer to the plots. Let's plot the survey sightings in blue, the survey tracklines in black, the whale-watch sightings in purple, the whale watch ports in red.
 
 ```{r 'map-gmap', message=FALSE, cache=TRUE, warning=F}
 gmap(Sightings_survey) +
@@ -111,7 +111,7 @@ gmap(Sightings_survey) +
   gg(WW_ports, colour='red')
 ```
 
-By default `gmap` uses Google maps (although this often changes (see `?get_map`)), see [Additional tips](#Ad1) for ways to use open-source maps for publication.
+Some of the maps used by default in `gmap` are copyrighted  (e.g., Google maps, see `?get_map`), see [Additional tips](#Ad1) for ways to use open-source maps for publication.
 
 To remove the map layer, simply replace the `gmap(Sightings_survey)` with `ggplot()`.
 
@@ -167,38 +167,45 @@ xtabs(~ YEAR + DATASET, data=Effort_survey@data)
 
 ## Transforming the data into a new CRS
 
-For modelling, we will transform the data from lat/lon into a new "Canadian" CRS: NAD83 datum with UTM Zone 20N projection. This projection will help to preserve euclidean distance between points. The EPSG code is 2961.
+For modelling, we will transform the data from lat/lon into a new "Canadian" CRS: NAD83 datum with UTM Zone 20N projection. This projection will help to preserve euclidean distance between points. We define the CRS object for this projection with EPSG code 2961:
 
-To do the transformation, we will use the `spTransform()` function. For example, to transform the Whale Watch sightings spatial object `Sightings_DRWW_sp`, we first define the CRS object as follows:
-
-```{r}
+```{r 'can_proj', cache=TRUE}
 Can_proj <- CRS("+init=EPSG:2961")
 Can_proj <- fm_crs_set_lengthunit(Can_proj, unit='km')
 ```
 
 The second line of code specifies that we want to work in units of km instead of the default meters. This can prove vital in applications to avoid numerical overflow.
 
-Next, we transform `Sightings_DRWW_sp`:
+### Transforming spatial points, lines, and polygons
 
-```{r, warning=F}
+To do the transformation, we will use the `spTransform()` function. For example, we transform the whale-watch sightings spatial object `Sightings_DRWW_sp` as follow:
+
+```{r 'ww_transform', warning=FALSE, cache=TRUE}
 Sightings_DRWW_sp <- spTransform(Sightings_DRWW_sp, Can_proj)
 Sightings_DRWW_sp@proj4string
 ```
 
-Notice the changed output from calling `@proj4string`. We repeat this for all the spatial objects that are points or lines.
+Notice the changed output from calling `@proj4string`. 
+
+### Exercise 2 {#Ex2}
+
+Please repeat this for all the spatial objects that are points, lines or polygons.
+
 <div class="fold s o"> 
-```{r, warning=F}
+```{r 'plp_transform', warning=FALSE, cache=TRUE}
 Sightings_survey <- spTransform(Sightings_survey, Can_proj)
 Effort_survey <- spTransform(Effort_survey, Can_proj)
 WW_ports <- spTransform(WW_ports, Can_proj)
+Domain <- spTransform(Domain, Can_proj)
 ```
 </div>
 
+### Transforming raster-like spatial pixels objects
+
 Transforming the 'raster'-like SpatialPixelsDataFrame objects (`Bathym`, `Dist_Brier`, and `Dist_Quoddy`) using `spTransform` would be inappropriate here. The projection leads to a curvature of the pixels. A more appropriate approach here is to use bilinear interpolation. The `projectRaster()` function from the *raster* package works great for this. This requires converting the `SpatialPixelsDataFrame` object into an object of type `raster`. This is made easy with the function `raster()`. Finally, to convert the `raster` object back into a `SpatialPixelsDataFrame`, we can use the `as()` function from the *maptools* package. This function is extremely useful for converting spatial objects between the popular packages: *sp*, *spatstat*, and *sf*. We use this function substantially throughout the workshop.
 
-```{r, warning=F}
+```{r 'pixel_transform', warning=FALSE, cache=TRUE}
 Bathym <- as(projectRaster(raster(Bathym), crs=Can_proj), 'SpatialPixelsDataFrame')
-Domain <- spTransform(Domain, Can_proj)
 Dist_Brier <- as(projectRaster(raster(Dist_Brier), crs=Can_proj), 'SpatialPixelsDataFrame')
 Dist_Quoddy <- as(projectRaster(raster(Dist_Quoddy), crs=Can_proj), 'SpatialPixelsDataFrame')
 ```
@@ -223,9 +230,9 @@ layout=matrix(1:4, nrow=2, ncol=2, byrow = TRUE))
 
 Don't like the colour scheme? See [Additional tips](#Ad3) to learn how to define your own manually.
 
-## Reducing the size of the domain to lie 'close' to the survey tracklines
+## Reducing the size of the domain (study area)
 
-In it's current form, the domain is too large for the application. The domain extends far beyond the survey tracklines and the whale watch ports. To combat this, we will create a new domain that is restricted to lie within 30km of the nearest trackline.
+In its current form, the domain is too large for the application. The domain extends far beyond the survey tracklines and the whale-watch ports. To combat this, we will create a new domain that is restricted to lie within 30km of the nearest trackline.
 
 ```{r, cache=T, message=F}
 # Create a set of SpatialPixels across the domain
@@ -796,6 +803,8 @@ This is why we turn to log-Gaussian Cox processes in the next tutorial. By assum
 If you got stuck on any of the exercises, then please feel free to try them again. Here are links to the problems:
 
 1. [Plotting data by year](#Ex1)
+
+2. [Transforming spatial points and lines](#Ex2)
 
 ### Bonus Exercises
 
