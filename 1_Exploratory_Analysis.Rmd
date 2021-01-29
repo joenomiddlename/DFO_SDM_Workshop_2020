@@ -637,7 +637,7 @@ ggplot(data=data.frame(Bathym_obs = Bathym_obs),
   scale_color_manual(name = "Density", values = c('Sightings' = 'black', 'Domain' = 'red'))
 ```
 
-**JOE: this presentation of log(1-bathy) here is great and specify that this is done for the Poisson point process, but also for all of the models explored afterward. Then save the log_bathym objects in Modelling_Data.rds (and maybe Modelling_Data2_New .rds?) so that they can be loaded in the next tutorials without going through these steps. I'm not sure whether you need to do the transformation for the obs also, here it's just the domain.**
+**JOE: this presentation of log(1-bathy) here is great and specify that this is done here for the Poisson point process, but also for all of the models explored afterward. Then save the log_bathym objects in Modelling_Data.rds (and maybe Modelling_Data2_New .rds?) so that they can be loaded in the next tutorials without going through these steps. I'm not sure whether you need to do the transformation for the obs also, here it's just the domain.**
 
 We see a very skewed distribution of Bathymetry with a huge range of values. Leaving the covariate in this form risks wild predictions of intensity being made! A log transform is desired. We also flip the sign to make it interpretable as log depth (larger is deeper).
 
@@ -662,24 +662,30 @@ ggplot(data=data.frame(Bathym_obs = log(1-Bathym_obs)),
 
 Perhaps there is evidence of whales preferring areas of shallower waters? 
 
-These plots may suggest that sightings locations are associated with regions with shallower waters compared what is available in the study area. However, these results are really investigating the associations between $lambda_{obs}$ and the covariates and **not** the desired associations between $lambda_{true}$ and the covariates. The associations may simply reflect the types of regions preferentially visited by observers! Remember - most encounters are made by the whale watch vessels close to port!
+These plots may suggest that sightings locations are associated with regions with shallower waters compared what is available in the study area. However, these results are really investigating the associations between $\lambda_{obs}$ and the covariates and **not** the desired associations between $\lambda_{true}$ and the covariates. The associations may simply reflect the types of regions preferentially visited by observers! Remember - most encounters are made by the whale-watch vessels close to port!
 
-In lecture 1, we introduced the simplest distributional assumption on the counts. We assumed that the distribution of the number of encounters within any region $A$ was Poisson distributed, with mean equal to the integrated intensity surface: $$N(Y \cap A) \backsim Poisson(\int \lambda_{obs}(s) ds)$$.
+**JOE: I've tried to dumb down some of the text, just check that I have not included errors.**
 
-We will see in lecture 2, that if we define a set of regions $A_i$ to be a grid that covers $\Omega$, if we increase the number of cells the likelihood of the Poisson counts converges to the likelihood of the Inhomogeneous Poisson process. 
+In lecture 1, we introduced the simplest distributional assumption on the number of sightings in a region. We assumed that the distribution of the number of encounters within any region $A$ was Poisson distributed, with mean equal to the integrated intensity surface: 
 
-So, to investigate trends between the species intensity and the covariates, we fit Poisson point process models to the sightings data using the `ppm()` function from the **spatstat** package. These are similar to Maxent models. Ignoring effort for the time being, what does a Poisson point process model tell us?
+$$N(Y \cap A) \backsim Poisson(\int \lambda_{obs}(s) ds)$$.
+
+Remember that $N(Y \cap A)$ represents the number of sightings in $A$. This equation represents a homogeneous Poisson process, where we assume that the probability of encountering a whale does not change through space (i.e., is homogeneous). 
+
+We will see in lecture 2, that if we define a set of regions $A_i$ to be a grid that covers the domain $\Omega$, if we increase the number of cells the likelihood of the Poisson counts converges to the likelihood of the inhomogeneous Poisson process. **JOE: I'm confused by this statement, and I also wonder whether the main point to be made here about inhomogeneous Poisson process is that lambda_obs changes through space.**
+
+To investigate trends between the species intensity and the covariate bathymetry, we fit an inhomogeneous Poisson point process models to the sightings data using the `ppm()` function from the **spatstat** package. These are similar to Maxent models. Ignoring effort for the time being, what does a Poisson point process model tell us?
 
 ```{r 'ppm', message=FALSE, cache=TRUE}
 # Fitting the Poisson point process model
-Ppm_1 <- ppm(All_obs_ppp~log_Bathym_im,
+Ppm_1 <- ppm(All_obs_ppp~log_Bathym_im, # equation describing the relationship
                   data=list(log_Bathym_im=log_Bathym_im,
-                            Domain=as(Domain, 'owin')),
+                            Domain=as(Domain, 'owin')), # transform domain in the format required for ppm
                   subset = Domain)
 summary(Ppm_1)
 ```
 
-Looking at the table of coefficients and Ztest symbols, we find some evidence that the whales may be found more often in regions with shallower waters. Ignoring effort, we find a significant association (p < 0.05 indicated by at least one star in the Ztest column) between $\lambda_{obs}$ and log depth.
+Looking at the Ztest symbols (p < 0.05 indicated by at least one *) and estimates in the table of fitted trend coefficients, we find a significant association between $\lambda_{obs}$ and log depth and thus some evidence that the whales may be found more often in regions with shallower waters (negative estimate).
 
 Next, we can attempt to make a crude adjustment for effort and see if these estimates change. We have already created a SpatialPixelsDataFrame object containing distance from the two whale-watch ports. Next, we can create a SpatialPixelsDataFrame containing the perpendicular distances to the nearest trackline. This fails to account for overlap in survey tracklines, but offers a reasonable first approach to crudely control for effort for the purposes of exploratory analysis.
 
