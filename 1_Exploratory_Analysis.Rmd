@@ -809,7 +809,7 @@ Ppm_2 <- ppm(All_obs_ppp~log_Bathym_im +
 coef(summary(Ppm_2))
 ```
 
-With this rough attempt at controlling for heterogeneous effort, we see that log depth is found to be significantly associated with the whale density, with a positive coefficient. The negative effects of all three complicated expressions imply that a negative association between 'distance' and observed intensity is witnessed (agreeing with common sense).
+With this rough attempt at controlling for heterogeneous effort, we see that log depth is found to be significantly associated with the whale density, with a positive coefficient. The negative effects of all three complicated expressions imply that a negative association between 'distance' and observed intensity is witnessed (agreeing with common sense). **JOE: I'm confused by this last sentence.**
 
 We can plot the estimated 'true' whale intensity $\hat{\lambda}_{true}(s)$ predicted from this model:
 
@@ -823,24 +823,30 @@ plot(predict.ppm(Ppm_2, ngrid=c(300,300),
 
 ```
 
-Alternatively, we can also plot the fitted observed intensity surface $\lambda_{obs} =\lambda_{true} \lambda_{effort}$) for all observer types. We plot the observed intensity surfaces for both the survey and Quoddy-based whale watch vessels.
+Alternatively, we can also plot the fitted observed intensity surface $\lambda_{obs} =\lambda_{true} \lambda_{effort}$) for each observer types. First we plot the observed intensity surfaces for both the survey.
 
 ```{r 'fig-maxentFitted', cache=TRUE}
 pred_coef <- coef(Ppm_2)
 plot(log(predict(Ppm_2, ngrid=c(300,300),
              new.coef=pred_coef)[[3]]),superimpose=F,
      hcl.colors(60, "YlOrRd", rev = TRUE))
-# Plot Quoddy
+```
+
+We see that the observed intensity, $\lambda_{obs}$ is dominated by the effort $\lambda_{eff}$. In other words, that we mainly expect to observe whales more often where the survey plane was present.
+
+We can see the same patterns for the whale-watch vessels, here for Quoddy: 
+
+```{r 'fig-maxentFitted-Quoddy', cache=TRUE}
 plot(log(predict(Ppm_2, ngrid=c(300,300),
              new.coef=pred_coef)[[2]]),superimpose=F,
      hcl.colors(60, "YlOrRd", rev = TRUE))
 ```
 
-We see that the observed intensity, $\lambda_{obs}$ is dominated by the effort $\lambda_{eff}$. Despite this, we still detect significant effects of both log depth.
+Despite the fact that observations are driven by efforts, we still detect significant effects of both log depth.
 
-This exploratory analysis is useful at informing us about possible species-environment relationships to investigate in our futurer models. By playing around with different covariates and functional forms (e.g. quadratic effects), we can develop an understanding of which models to formally compare in the modelling stage.
+This exploratory analysis is useful at informing us about possible species-environment relationships to investigate in our future models. By playing around with different covariates and functional forms (e.g. quadratic effects), we can develop an understanding of which models to formally compare in the modelling stage.
 
-Note that the above effort-correction approach is **not** the same as the one performed by *inlabru* later. It should only be used for exploratory purposes.
+Note that the above effort-correction approach is **not** the same as the one performed by *inlabru* later. **JOE: worth noting that the halfnorm squared stuff is the same and maybe give a bit more hint to how it differs** It should only be used for exploratory purposes. **JOE: is the reason why is not good the one explained below? In that we need a random field? If so make it clearer here (point to the next section).**
 
 ### Assessing the suitability of an inhomogeneous Poisson process
 
