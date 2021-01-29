@@ -59,7 +59,7 @@ Throughout this workshop, we use data collected on fin whales in June, July, and
 
 * Opportunistic fin whale sightings from two whale-watching operators, found in `Sightings_DRWW_sp`. This dataset is not accompanied by tracklines. Again, these datasets contains whale counts, but for simplicity we will analyze them as presence/absence data in these tutorials. These sightings are maintained in the DFO Maritimes Region Whale Sightings Database (MacDonald et. al. 2017). 
 
-* **JOE: add info on Dist_Brier and Dist_Quody** 
+* Distance from port for both the Quoddy and Brier whale watch vessels. These covariates will be used to model effort from the whale watch vessels.
 
 * Ocean depth data, found in `Bathym`. Bathymetry data will be our main covariate in our analysis and we will explore whether the distribution of fin whales is linked to bathymetry.
 
@@ -230,45 +230,47 @@ layout=matrix(1:4, nrow=2, ncol=2, byrow = TRUE))
 
 Don't like the colour scheme? See [Additional tips](#Ad3) to learn how to define your own manually.
 
-## Reducing the size of the domain (study area)
+## Simplifying the coastline (domain)
 
-**JOE: as we talked about, this is too much detail for here. What I would prefer is that the domain saved in the data file (Compiled_Data_new.rds) and loaded at the top is the domain that looks like the intersect of the original domain and the restricted domain. And that you explain in detail how to change the domain for the creating the mesh and the covariates. I understand that this is annoying because the model fitting is hard, so if we can't get that, then fine. But we need to simplify this in some way without hiding the important parts. What I am asking is that if you change something else that would affect the model fit and will have to redo model fitting anyway, please do my suggestion. If not then, find a compromise solution. Talk to me about your solution first, so we decide together what's the best course of action before you do a lot of work.**
+**JOE: explain in detail how to change the domain for the creating the mesh and the covariates. I understand that this is annoying because the model fitting is hard, so if we can't get that, then fine. But we need to simplify this in some way without hiding the important parts. What I am asking is that if you change something else that would affect the model fit and will have to redo model fitting anyway, please do my suggestion. If not then, find a compromise solution. Talk to me about your solution first, so we decide together what's the best course of action before you do a lot of work.**
 
-In its current form, the domain is too large for the application. The domain extends far beyond the survey tracklines and the whale-watch ports. To combat this, we will create a new domain that is restricted to lie within 30km of the nearest trackline.
+<!-- In its current form, the domain is too large for the application. The domain extends far beyond the survey tracklines and the whale-watch ports. To combat this, we will create a new domain that is restricted to lie within 30km of the nearest trackline. -->
 
-```{r, cache=T, message=F}
-# Create a set of SpatialPixels across the domain
-pixels <- SpatialPoints(makegrid(Domain, n=5000),proj4string = Domain@proj4string)
-# Convert the SpatialPixels into a SpatialPoints object before subsetting
-#pred_int_points <- as(pred_int,'SpatialPoints')
-# Subset to 30 km from Effort lines - can be slow
-pixels_restricted <- 
-  pixels[which(apply(gWithinDistance(pixels, Effort_survey,dist = 30,byid = T),2,sum)>0),]
-# Select only the points that lie within the Domain
-pixels_restricted <- pixels_restricted[Domain,]
-# Convert to SpatialPolygons via SpatialPixels
-pixels_restricted <- as(as(pixels_restricted,'SpatialPixels'),'SpatialPolygons')
-# Merge the SpatialPolygons into a single Domain polygon using gUnionCascaded
-pixels_restricted <- gUnionCascaded(pixels_restricted)
-# Plot to check the new domain
-ggplot() +
-  gg(Bathym) + 
-  gg(pixels_restricted) +
-  xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') + 
-  coord_fixed(ratio = 1)
-# Smooth the Domain using gSimplify
-Domain_restricted <- gSimplify(pixels_restricted,tol=20)
-# Plot
-ggplot() +
-  gg(Domain_restricted) +
-  gg(Domain, color='red') +
-  gg.spatiallines_mod(Effort_survey, colour='blue')
-```
+<!-- ```{r, cache=T, message=F} -->
+<!-- # Create a set of SpatialPixels across the domain -->
+<!-- pixels <- SpatialPoints(makegrid(Domain, n=5000),proj4string = Domain@proj4string) -->
+<!-- # Convert the SpatialPixels into a SpatialPoints object before subsetting -->
+<!-- #pred_int_points <- as(pred_int,'SpatialPoints') -->
+<!-- # Subset to 30 km from Effort lines - can be slow -->
+<!-- pixels_restricted <-  -->
+<!--   pixels[which(apply(gWithinDistance(pixels, Effort_survey,dist = 30,byid = T),2,sum)>0),] -->
+<!-- # Select only the points that lie within the Domain -->
+<!-- pixels_restricted <- pixels_restricted[Domain,] -->
+<!-- # Convert to SpatialPolygons via SpatialPixels -->
+<!-- pixels_restricted <- as(as(pixels_restricted,'SpatialPixels'),'SpatialPolygons') -->
+<!-- # Merge the SpatialPolygons into a single Domain polygon using gUnionCascaded -->
+<!-- pixels_restricted <- gUnionCascaded(pixels_restricted) -->
+<!-- # Plot to check the new domain -->
+<!-- ggplot() + -->
+<!--   gg(Bathym) +  -->
+<!--   gg(pixels_restricted) + -->
+<!--   xlab('East(km)') + ylab('North(km)') + labs(fill='Bathymetry') +  -->
+<!--   coord_fixed(ratio = 1) -->
+<!-- # Smooth the Domain using gSimplify -->
+<!-- Domain_restricted <- gSimplify(pixels_restricted,tol=20) -->
+<!-- # Plot -->
+<!-- ggplot() + -->
+<!--   gg(Domain_restricted) + -->
+<!--   gg(Domain, color='red') + -->
+<!--   gg.spatiallines_mod(Effort_survey, colour='blue') -->
+<!-- ``` -->
 
-Whilst the new SpatialPolygons object `Domain_restricted` no longer extrapolates far beyond the survey tracklines, the smoothing achieved by the function `gSimplify()` has caused the new Domain to no longer contain all the tracklines. To counter this, we will buffer the study region prior to simplifying using `gBuffer`.
+The `Domain` in its current form has a very complex coastline. In the second and third workshops, `inlabru` will require a triangulation mesh to be created that covers the `Domain`. Unfortunately, creating a triangulation mesh over a 'wiggly' coastline is very challenging and numerous issues can arise. To combat these issues, we will smooth the `Domain` using the functions `gSimplify()` and `gBuffer()`. `gSimplify()` attempts to reduce the number of segments used to define the SpatialPolygonsDataFrame. The amount of reduction is determined by the argument `tol=`. `gBuffer()` will extend (or buffer) the boundary of the SpatialPolygonsDataFrame by an amount determined by the argument `width=`. When used together, these two functions can help to define smoothed and simplified boundaries that completely contain the original complex `Domain`.
+
+However, we should repeat the process once more for the covariates. `inlabru` requires that every covariate is defined at every point within the computational mesh. Because simplification of the boundary can occur when the mesh is created, it can help to define a second extended and simplified domain for defining the covariates over. By ensuring that this second extended domain is slightly larger than the first extended domain, we can ensure that a covariate value is properly defined at every value in the computational mesh. We create these two domains below:
 
 ```{r}
-Domain_restricted <- gSimplify(gBuffer(pixels_restricted,width=15),tol=20)
+Domain_restricted <- gSimplify(gBuffer(Domain,width=15),tol=20)
 # Plot
 ggplot() +
   gg(Domain_restricted) +
@@ -278,7 +280,7 @@ ggplot() +
 gContains(Domain_restricted,Effort_survey)
 
 # Create a new domain that is slightly larger - for defining covariates later
-Domain_restricted2 <- gSimplify(gBuffer(pixels_restricted,width=40),tol=20)
+Domain_restricted2 <- gSimplify(gBuffer(Domain,width=30),tol=20)
 # Plot
 ggplot() +
   gg(Domain_restricted) +
@@ -288,19 +290,13 @@ ggplot() +
 gContains(Domain_restricted2,Domain_restricted)
 ```
 
-Great! We have defined a new buffered and smoothed domain that will no longer extrapolate far beyond our survey tracklines. To restore the original coastline definition we can use the function `gIntersection()`. We now update the SpatialPolygons object `Domain` using `gIntersection()`:
+Great! We have defined two new buffered and smoothed domains. The original domain (`Domain`) is shown in red and is where the computation will take place. The domain over which the computational mesh will be defined (`Domain_restricted`) is shown in black. Lastly, the domain over which the covariates will be defined (`Domain_restricted2`) is shown in green. 
 
-```{r}
-Domain <- gIntersection(Domain_restricted,Domain)
-ggplot() + gg(Domain) + gg.spatiallines_mod(Effort_survey)
-```
-
-
-Note that we will need to use `Domain_restricted` for defining our computational mesh and `Domain_restricted2` for defining our covariates later in the workshop! The smoothing of the coastline will help us to define a computational mesh that has fewer numerical issues. More on that later!
+Once again, the smoothing of the coastline helps us to define a computational mesh that has fewer numerical issues. All computations will still take place over the original domain (`Domain`). More on that later!
 
 ## Extending the covariates to match the new domain
 
-We will need to use `Domain_restricted2` for defining our computational mesh later in the workshop! The package `inlabru` requires that our covariates are also defined at every point in the new domain. This will require extending our covariates to take 'sensible' values at points beyond our original domain (`Domain`). We will see that these imputed values will not affect the model estimates. 
+The package `inlabru` will require that our covariates are defined at every point in `Domain_restricted`. To guarantee this, we will now extend our covariates to take 'sensible' values at all points in `Domain_restricted2`. These imputed values will not affect the model estimates as the model will be fit to the original `Domain`. 
 
 Our covariate depth is well-defined on the original (un-buffered) domain as defined by the SpatialPolygons `Domain`. At values outside this, we choose to 'fill-in' these points with nearest neighbour imputations. The code below does this for depth.
 
@@ -784,8 +780,24 @@ summary(Ppm_1)
 
 Looking at the Ztest symbols (p < 0.05 indicated by at least one *) and estimates in the table of fitted trend coefficients, we find a significant association between $\lambda_{obs}$ and log depth and thus some evidence that the whales may be found more often in regions with shallower waters (negative estimate).
 
+<<<<<<< HEAD
+## THE ABOVE HISTOGRAM SECTION WILL BE MOVED TO EXPLORATORY ANALYSIS
+
+We assume the same functional relationship between each whale watch effort intensity $\lambda_{eff, i}$ and distance from their port location $s_i^*$. Here $i$ indicates the port and $s_i^*$ denotes the $i^{th}$ port location. We scale the half-norm functions by a unique constant $\lambda_i$, to capture the different number of vessels across the two ports: $$\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right)$$.
+
+```{r 'halfnorm', warning=FALSE, message=FALSE, cache=TRUE}
+Dist_Surveylines$Dist_surveylines <- Dist_Surveylines$Dist_surveylines^2
+Dist_Brier_sq <- as(Dist_Brier,'SpatialPixels')
+Dist_Brier_sq$Dist_Brier_sq <- Dist_Brier$Dist_Brier^2
+Dist_Quoddy_sq <- as(Dist_Quoddy,'SpatialPixels')
+Dist_Quoddy_sq$Dist_Quoddy_sq <- Dist_Quoddy$Dist_Quoddy^2
+```
+
+Now we fit a Inhomogeneous Poisson point process model. As we are specifying the model on the log intensity, we need to include unique intercept parameters $\alpha_{0,i} : i \in \{1,2\}$ for the two whale watch port intensities ($\alpha_{0,i} = log \lambda_i$) and three unique parameters $\alpha_1$ and $\alpha_{1,i} : i \in \{1,2\}$ defining the shapes of the three half norm functions ($\alpha_{1,i} = \frac{-1}{2\sigma_i^2}$ and $\alpha_1 = \frac{-1}{2\sigma^2}$).
+=======
 Next, we can attempt to make a crude adjustment for effort and see if these estimates change.
 Now we fit a Inhomogeneous Poisson point process model **JOE: was above an homogeneous PP? The now makes it feel that it is. I assumed the ppm1 was inhomogeneous pp. Please check that what I wrote in the next sentences is true and fill in the blank.**. We will use the squared survey line distances we created above as **??** and the the squared distances to port we created above as **??**. As we are specifying the model on the log intensity, we need to include unique intercept parameters $\alpha_{0,i} : i \in \{1,2\}$ for the two whale-watch port intensities ($\alpha_{0,i} = log \lambda_i$) and three unique parameters $\alpha_1$ and $\alpha_{1,i} : i \in \{1,2\}$ defining the shapes of the three half norm functions ($\alpha_{1,i} = \frac{-1}{2\sigma_i^2}$ and $\alpha_1 = \frac{-1}{2\sigma^2}$).
+>>>>>>> b0d96fde1e63df118edde9ec8a278f1937104e40
 
 We must also inform spatstat about the source of each sighting, by fixing the value of its mark.
 
