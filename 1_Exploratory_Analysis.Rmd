@@ -597,6 +597,53 @@ The 'CPUE' values are highly variable! The wild differences could be due to the 
 
 As we will see in the next tutorial, by taking a model-based approach to inference, we will be able to combine the data from all three surveys to estimate the whale density across space. Unfortunately, due to the lack of spatial overlap between the surveys' efforts (tracklines), we are unable to account for any differences between the survey protocols within a model without strong prior information available. For example, an intercept added to the model for each survey would be confounded by the spatial field. From now on, we assume that each survey is equivalent.
 
+## Identifying a good detection function
+
+**JOE: this was below in the ppm stuff and it was a bit confusing when lumped with the survey distance trackline, at first sight it felt like the histogram was for the nearest distance you calculated withthe trackline. Since in lecture 1 you talk about detection function in general, it makes sense to look at it in a seperate section.**
+
+To explore which detection function that should be used with the survey data, we now plot the histogram of measured distances from the plane (i.e. the observed distances of sightings from the trackline).
+
+```{r 'dectectionDistance-hist', warning=FALSE, message=FALSE, cache=TRUE}
+# What is the maximum detection distance?
+ggplot(Sightings_survey@data, aes(x=DISTANCE)) + geom_histogram()
+```
+
+The histogram of the perpendicular distances from the aircraft shows an apparent maximum detection probability at a value of distance above 0! Low detection probability close to 0 is common for aerial surveys since it is harder to see below the plane. Given the limited size of the survey data and the potential numerical issues we may face fitting a complex detection probability function, we will fix all values less than 250m equal to 250m. This crude approach will help to make the histogram appear as a monotonically decreasing function of distance, satisfying the simplest class of detection probability functions. While we will use this modified distance data throughout the tutorials, it should not be done in practice. When you have enough data, a 2-parameter detection probability function should be used instead.
+
+In addition, it is often advised in distance sampling applications to threshold our upper detection distances at a 'sensible' value. For the histogram above, it looks like 2km could be a reasonable threshold value to choose. Let's set all values above 2km equal to 2km and scale the distances onto the km units scale. *This rescaling to units of km is crucial for numerical stability.* We define a variable 'distance' that contains the rescaled distances. Note that a few distances are missing. We impute these with the mean distance.
+
+```{r 'distance-modified', cache=TRUE}
+# Setting the distances <250 to 250
+Sightings_survey@data$DISTANCE <- ifelse(Sightings_survey@data$DISTANCE>250,Sightings_survey@data$DISTANCE,250)
+
+# Setting the distances >2000 to 2000
+Sightings_survey@data$DISTANCE <- 
+  ifelse(Sightings_survey$DISTANCE>2000 & !is.na(Sightings_survey$DISTANCE),
+         2000,Sightings_survey$DISTANCE)
+
+# Needs renaming to match the formula argument
+Sightings_survey$distance <- Sightings_survey$DISTANCE
+# Impute missing distances with the mean
+Sightings_survey$distance[is.na(Sightings_survey$distance)] <- mean(Sightings_survey$distance,na.rm=T)
+# Remove the old DISTANCE column
+Sightings_survey <- Sightings_survey[,-c(8)]
+# Rescaling to km
+Sightings_survey$distance <- Sightings_survey$distance / 1000
+
+# Plot the modified distances
+ggplot(Sightings_survey@data, aes(x=distance)) + geom_histogram()
+```
+
+The histogram perhaps shows an initial steady decline in sightings with distance, before decaying more quickly as distance increases. Again, we need to remember that this plot is showing associations between distance $d$ and $\lambda_{obs}$ and **not** with $p(d)$. **JOE: you need to explain this, I don't understand why it's not something close to $p(d)$. I'm not sure when you mentioned this (the 'again' above implies that we have talked about this before)? In the lecture? ** To capture this shape, we will use a half-norm detection function: 
+
+$$p(d) = exp\left(\frac{-d^2}{2\sigma^2}\right)$$ 
+This requires us to square the values of distance from the trackline.
+
+```{r 'Surbeylines-halfnorm', cache=TRUE}
+Dist_Surveylines$Dist_surveylines <- scale(Dist_Surveylines$Dist_surveylines^2)
+```
+
+
 ## Investigating trends between the environmental covariates and whale density
 
 We will investigate trends between the whale density and the covariate bathymetry. We use only the training data.
@@ -696,7 +743,7 @@ Dist_Surveylines$Dist_surveylines <- as.numeric(apply(gDistance(Dist_Surveylines
 Dist_Surveylines <- as(Dist_Surveylines,'SpatialPixelsDataFrame')
 ```
 
-We can then map the distance to the nearest trackline. **JOE: my understanding from teh description in the previous paragraph, though I find the code above a bit confusing, is that it is combining the distance to port to the survey line distance. I'm confused why the below only shows the distance to trackline.**
+We can then map the distance to the nearest trackline. **JOE: my understanding from the description in the previous paragraph, though I find the code above a bit confusing, is that it is combining the distance to port to the survey line distance. I'm confused why the below only shows the distance to trackline.**
 
 ```{r 'map-dectectionDistance', warning=FALSE, message=FALSE, cache=TRUE}
 colsc <- function(...) {
@@ -707,49 +754,6 @@ colsc <- function(...) {
 ggplot() + gg(Domain) + gg(Dist_Surveylines) + colsc(Dist_Surveylines@data[,1])
 ```
 
-**JOE: is was a bit confusing when lumped with the above, at first sight it felt like the historgram was for the nearest distance you calculated in the above. I think the detection function stuff could likely have it own section further above.**
-
-To explore which detection function should be used, we now plot the histogram of measures distances in the survey data (i.e. the observed distances of sightings from the trackline).
-
-```{r 'dectectionDistance-hist', warning=FALSE, message=FALSE, cache=TRUE}
-# What is the maximum detection distance?
-ggplot(Sightings_survey@data, aes(x=DISTANCE)) + geom_histogram()
-```
-
-The histogram of the perpendicular distances from the aircraft shows an apparent maximum detection probability at a value of distance above 0! Low detection probability close to 0 is common for aerial surveys since it is harder to see below the plane. Given the limited size of the survey data and the potential numerical issues we may face fitting a complex detection probability function, we will fix all values less than 250m equal to 250m. This crude approach will help to make the histogram appear as a monotonically decreasing function of distance, satisfying the simplest class of detection probability functions. While we will use this modified distance data throughout the tutorials, it should not be done in practice. When you have enough data, a 2-parameter detection probability function should be used instead.
-
-In addition, it is often advised in distance sampling applications to threshold our upper detection distances at a 'sensible' value. For the histogram above, it looks like 2km could be a reasonable threshold value to choose. Let's set all values above 2km equal to 2km and scale the distances onto the km units scale. *This rescaling to units of km is crucial for numerical stability.* We define a variable 'distance' that contains the rescaled distances. Note that a few distances are missing. We impute these with the mean distance.
-
-```{r 'distance-modified', cache=TRUE}
-# Setting the distances <250 to 250
-Sightings_survey@data$DISTANCE <- ifelse(Sightings_survey@data$DISTANCE>250,Sightings_survey@data$DISTANCE,250)
-
-# Setting the distances >2000 to 2000
-Sightings_survey@data$DISTANCE <- 
-  ifelse(Sightings_survey$DISTANCE>2000 & !is.na(Sightings_survey$DISTANCE),
-         2000,Sightings_survey$DISTANCE)
-
-# Needs renaming to match the formula argument
-Sightings_survey$distance <- Sightings_survey$DISTANCE
-# Impute missing distances with the mean
-Sightings_survey$distance[is.na(Sightings_survey$distance)] <- mean(Sightings_survey$distance,na.rm=T)
-# Remove the old DISTANCE column
-Sightings_survey <- Sightings_survey[,-c(8)]
-# Rescaling to km
-Sightings_survey$distance <- Sightings_survey$distance / 1000
-
-# Plot the modified distances
-ggplot(Sightings_survey@data, aes(x=distance)) + geom_histogram()
-```
-
-The histogram perhaps shows an initial steady decline in sightings with distance, before decaying more quickly as distance increases. Again, we need to remember that this plot is showing associations between distance $d$ and $\lambda_{obs}$ and **not** with $p(d)$. **JOE: you need to explain this, I don't understand why it's not something close to $p(d)$. I'm not sure when you mentioned this (the 'again' above implies that we have talked about this before)? In the lecture? ** To capture this shape, we will use a half-norm detection function: 
-
-$$p(d) = exp\left(\frac{-d^2}{2\sigma^2}\right)$$ 
-This requires us to square the values of distance from the trackline.
-
-```{r 'Surbeylines-halfnorm', cache=TRUE}
-Dist_Surveylines$Dist_surveylines <- scale(Dist_Surveylines$Dist_surveylines^2)
-```
 
 **JOE: I would make a different section for this too before the ppm stuff. I would present both as, remember we are interested in p(d) and so we look into it. And here for distance to port I would say, remember from lecture 1, when we don't have effort data we can model it with covariates. Here we will use for whale-watch data, distance from port. I would push all of the ppm stuff further below after having talked about the main parts described in lecture 1 and that will be used in your models in the next.**
 
