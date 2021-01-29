@@ -668,9 +668,11 @@ Dist_Surveylines$Dist_surveylines <- scale(Dist_Surveylines$Dist_surveylines^2)
 
 ## Exploring covariates for effort in whale-watch data
 
-**JOE: again this in the ppm section. But this is general info that is usful for your own models. I would make a different section for this too before the ppm stuff. And here for distance to port I would say, remember from lecture 1, when we don't have effort data we can model it with covariates. Here we will use for whale-watch data, distance from port. I would push all of the ppm stuff further below after having talked about the main parts described in lecture 1 and that will be used in your models in the next.**
+**JOE: again this was the ppm section, but this is general info that is useful for your own models so we want to divorce it from the ppm stuff and put it here own its on. I think you also talk about it in lecture one, so it fits here very well.**
 
-Now, we investigate a potential functional form for the distance from port covariate. To do this, we plot a histogram of the distances from port at each of the whale watch sighting locations.
+Remember from lecture 1, when we do not have effort data, we can model it with covariates. Throughout our tutorials, we will use distance from port as a covariate of effor for the the whale-watch data. 
+
+Here, we investigate a potential functional form for the distance from port covariate. To do this, we plot a histogram of the distances from port at each of the whale watch sighting locations.
 
 ```{r 'plot-funcFormDist', cache=TRUE}
 # Plot the sightings with distance from the port
@@ -691,7 +693,6 @@ Dist_Brier_sq$Dist_Brier_sq <- scale(Dist_Brier$Dist_Brier^2)
 Dist_Quoddy_sq <- as(Dist_Quoddy,'SpatialPixels')
 Dist_Quoddy_sq$Dist_Quoddy_sq <- scale(Dist_Quoddy$Dist_Quoddy^2)
 ```
-
 
 ## Investigating trends between the environmental covariates and whale density
 
