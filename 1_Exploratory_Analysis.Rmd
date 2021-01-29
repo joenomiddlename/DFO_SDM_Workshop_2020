@@ -709,11 +709,11 @@ On the log scale, this covariate can be estimated as a linear effect on the squa
 We assume the same functional relationship between each whale watch effort intensity $\lambda_{eff, i}$ and distance from their port location $s_i^*$. Here $i$ indicates the port and $s_i^*$ denotes the $i^{th}$ port location. We scale the half-norm functions by a unique constant $\lambda_i$, to capture the different number of vessels across the two ports: $$\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right)$$.
 
 ```{r 'halfnorm', warning=FALSE, message=FALSE, cache=TRUE}
-Dist_Surveylines$Dist_surveylines <- scale(Dist_Surveylines$Dist_surveylines^2)
+Dist_Surveylines$Dist_surveylines <- Dist_Surveylines$Dist_surveylines^2
 Dist_Brier_sq <- as(Dist_Brier,'SpatialPixels')
-Dist_Brier_sq$Dist_Brier_sq <- scale(Dist_Brier$Dist_Brier^2)
+Dist_Brier_sq$Dist_Brier_sq <- Dist_Brier$Dist_Brier^2
 Dist_Quoddy_sq <- as(Dist_Quoddy,'SpatialPixels')
-Dist_Quoddy_sq$Dist_Quoddy_sq <- scale(Dist_Quoddy$Dist_Quoddy^2)
+Dist_Quoddy_sq$Dist_Quoddy_sq <- Dist_Quoddy$Dist_Quoddy^2
 ```
 
 Now we fit a Inhomogeneous Poisson point process model. As we are specifying the model on the log intensity, we need to include unique intercept parameters $\alpha_{0,i} : i \in \{1,2\}$ for the two whale watch port intensities ($\alpha_{0,i} = log \lambda_i$) and three unique parameters $\alpha_1$ and $\alpha_{1,i} : i \in \{1,2\}$ defining the shapes of the three half norm functions ($\alpha_{1,i} = \frac{-1}{2\sigma_i^2}$ and $\alpha_1 = \frac{-1}{2\sigma^2}$).
