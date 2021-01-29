@@ -304,6 +304,8 @@ We will need to use `Domain_restricted2` for defining our computational mesh lat
 
 Our covariate depth is well-defined on the original (un-buffered) domain as defined by the SpatialPolygons `Domain`. At values outside this, we choose to 'fill-in' these points with nearest neighbour imputations. The code below does this for depth.
 
+**JOE: see my comment below with regards to the bathymetry and removing values that are on land. Changing the values of the bathymetry (as in removing the pixels on land and explaining why log_depth and why log(1-log(depth)) was actually the thing I was suggesting to move here, not the restricting the covariate values to the mesh. I think the stuff associated with the mesh makes more sense in the next tutorial. What I'm envisioning is actually removing the values above 0 in the file that is save in the data file Compiled_Data_new.rds, make them NAs. And keep the explanation of log(1 - depth) here, since I think that's what you use in the Point process model below anyway and you can talk about why the transformation of the variable makes sense for the Point process model and for the other analysis in one go. Keep the crop to mesh size in tutorial 2 after you talk about the mesh. See the two comments below.**
+
 ```{r `map-covariatesWithMesh`, cache=TRUE}
 ## Redefine log_Depth across our modified domain
 # Create the log depth and log slope covariates
@@ -386,7 +388,7 @@ For well-designed surveys, e.g. distance-sampling surveys, we have additional da
 
 Finally, we defined the observed intensity of the encounters $\lambda_{obs}(s)$ as 'the expected density of encounters per unit area around point s'. If our approximation of effort ($\lambda_{eff}(s)$), and the detection probability function $p(d)$ is good, then we hope to see: 
 
-**JOE: the two definitions are not the most intuitive. Can you dumb them down? Or at least emphasize the differences. Something like lambda_obs is how many sightings (or the probablity of a sighting?) we expect given the amount of effort in that area? And something like $\lambda_{true}(s)$ is the probability of a sighting at point s if it is searched. I'm sure some of this is not correct, but hopefully you get the idea.**
+**JOE: the two definitions are not the most intuitive. Can you dumb them down and emphasize the differences? Something like lambda_obs is how many sightings (or the probability of a sighting?) we expect given the amount of effort in that area? And something like $\lambda_{true}(s)$ is the probability of a sighting at point s if it is searched. I'm sure some of this is not correct, but hopefully you get the idea.**
 
 $$\lambda_{obs}(s) \approx \lambda_{true}(s) \lambda_{eff}(s)$$
 
@@ -398,7 +400,7 @@ Later, we will be fitting spatial point process models to the encounters. A requ
 
 Planned surveys can be designed to (approximately) satisfy the independence assumption. The boat speed can be fixed at a high value relative to the individuals' speeds (no double-counting) and a narrow perpendicular field-of-view can be enforced. Then, assuming that the individuals of the target species are in equilibrium with respect to their stationary distribution $\lambda_{true}(\textbf{s})$ (i.e. the species' density) and locally mixing faster than the time between revisits by observers, the independence assumption may reasonably hold.
 
-Conversely, no such assumptions can be made regarding the whale-watch sightings. The unknown positions of the whale-watching boats, the 360 degree fields-of-view on-board, the variable boat speed, and the repeated sightings of the same individuals throughout each day can all invalidate the independence assumption required to fit the desired models.
+Conversely, no such assumptions can be made regarding the whale-watch sightings. The unknown positions of the whale-watching boats **JOE: when they are not with whales? we have the location with whales, no?**, the 360 degree fields-of-view on-board, the variable boat speed, and the repeated sightings of the same individuals throughout each day can all invalidate the independence assumption required to fit the desired models.
 
 In our workshop, we will see some potential solutions to address this issue of independence. In this session, we will perform some exploratory analyses to investigate the suitability of the independence assumption, and to investigate possible ways of estimating observer effort. 
 
@@ -422,8 +424,9 @@ gDistance(Sightings_DRWW_sp[2:4,], byid = T)[cbind(c(1,2),c(2:3))] /
 ```
 
 This hypothesis would imply a traveling speed of between 4km/h and 16km/h. Is this plausible? Since fin whales are known to sustain much higher speeds (> 30km/h), we will discard all repeated sightings each day. We will keep only the first sighting made each day by each company. 
-
 Note that there is no overlap between the sighting locations from the two whale-watch companies, indicating that an assumption of independent encounters between the two companies could be reasonable. 
+
+**JOE: given how fast fin whales move, either check this further (how distant apart are the encounters from different whale watch on the same day) or add a caveat/warning here about it.**
 
 ```{r 'map-overlap', message=FALSE, cache=TRUE}
 Sightings_DRWW_sp$PLATFORM <- as.factor(Sightings_DRWW_sp$PLATFORM)
@@ -456,7 +459,7 @@ As we discussed earlier, we are unable to model temporal changes in the species 
 
 How reasonable is our assumption that the species density remains constant across the years and across the months? Again, we can visually assess the suitability of the assumption with a plot.
 
-If each whale watch sighting is indeed an independent realisation from a temporally static point process, then there should be no association between the spatial distances between the whale watch sightings and how far apart in time they were made. 
+If each whale-watch sighting is indeed an independent realization from a temporally static point process, then there should be no association between the spatial distances between the whale-watch sightings and how far apart in time they were made. 
 
 To plot distances against time intervals, we first compute the distances in time and the euclidean distances in space between each sighting. 
 
@@ -470,7 +473,7 @@ diffspace_Quoddy <- dist(Sightings_Quoddy_nodup@coords)
 difftime_Quoddy_fac <- as.factor(difftime_Quoddy)
 ```
 
-We will create multiple plots with days on the x-axis and km on the y-axis. The first plot restricted to only consider temporal differences of less than 85 days. We are plotting a sequence of boxplots to help detect patterns. 
+We will create multiple plots with days on the x-axis and km on the y-axis. The first plots are restricted to only consider temporal differences of less than 85 days. We are plotting a sequence of boxplots to help detect patterns. 
 
 ```{r 'fig-difference', message=FALSE, cache=TRUE}
 ggplot(data=data.frame(difftime = 
@@ -482,7 +485,7 @@ difftime_Brier_fac[as.numeric(difftime_Brier)<85],
   ylab('difference in space (km)')
 ```
 
-The second plot is a different version, which uses a loess smoother curve to try to help detect the same patterns.
+The second plot is a different version that uses a loess smoother curve to try to help detect the same patterns.
 
 ```{r 'fig-differencel85', message=FALSE, cache=TRUE}
 ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[as.numeric(difftime_Brier)<85],
@@ -494,7 +497,7 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[as.numeric(difftime
 
 ```
 
-These two first plots indicate some moderate autocorrelation between the sightings, with encounters made ~1 month apart typically being around 50% further away than those made 24 hours apart. Notice that the trend plateaus after ~14 days. Perhaps this trend is due to the autocorrelation being caused exclusively by persistence in animal movement? Furthermore, the flat-line trend between day ~30 and day ~75 could be evidence in favour of an approximately constant density across the summer months. If the space use did indeed change dramatically across the months (e.g. due to migration), then we would expect to see a monotonically increasing trend over time.
+These two plots indicate some moderate autocorrelation between the sightings, with encounters made ~1 month apart typically being around 50% further away than those made 24 hours apart. Notice that the trend plateaus after ~14 days. Perhaps this trend is due to the autocorrelation being caused exclusively by persistence in animal movement? Furthermore, the flat-line trend between day ~30 and day ~75 could be evidence in favour of an approximately constant density across the summer months. If the space use did indeed change dramatically across the months (e.g. due to migration), then we would expect to see a monotonically increasing trend over time.
 
 The third plot investigates the space-time relationship across years.
 
@@ -507,24 +510,20 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[],
   ylab('difference in space (km)')
 ```
 
-This third plot shows no evidence that the average spatial separation between whale watch sightings differs year-to-year. This supports our assumption that the spatial density can be assumed to be constant across the years, albeit within the (very) small spatial region visited by the whale watch boats departing from Brier Island.
+This third plot shows no evidence that the average spatial separation between whale watch sightings differs year-to-year. This supports our assumption that the spatial density can be assumed to be constant across the years, albeit within the (very) small spatial region visited by the whale-watch boats departing from Brier Island.
 
+We now repeat the plots, but for the whalewatch boats that depart from Quoddy, starting with the loess smoother curve on the first 84 days. 
 
-We now repeat the plots, but for the whale watch boats that depart from Quoddy.
-
-```{r 'map-difftime', message=FALSE, cache=TRUE}
+```{r 'fig-difference-quoddy', message=FALSE, cache=TRUE}
 ggplot(data=data.frame(difftime = as.numeric(difftime_Quoddy)[as.numeric(difftime_Quoddy)<85],
                        diffspace = as.numeric(diffspace_Quoddy)[as.numeric(difftime_Quoddy)<85]),
        aes(x=difftime, y=diffspace)) +
   geom_point() + geom_smooth(method='loess')
+```
 
-ggplot() + gg(Domain) + gg(Sightings_DRWW_sp, colour=Sightings_DRWW_sp$PLATFORM_CODE)
+In this plot, we see a large separation in the y-axis. This is caused by a cluster of sightings made way East of the port as seen in the map created above (right-most cluster of blue points). To stop this from impacting our estimate of trend, we restrict the spatial differences and times to be those within each of the two clusters of sightings.
 
-ggplot(data=data.frame(difftime = as.numeric(difftime_Quoddy)[as.numeric(difftime_Quoddy)<85 & as.numeric(diffspace_Quoddy)<50],
-                       diffspace = as.numeric(diffspace_Quoddy)[as.numeric(difftime_Quoddy)<85 & as.numeric(diffspace_Quoddy)<50]),
-       aes(x=difftime, y=diffspace)) +
-  geom_point() + geom_smooth(method='loess')
-
+```{r 'map-difftime', message=FALSE, cache=TRUE}
 ggplot(data=data.frame(difftime = 
 difftime_Quoddy_fac[as.numeric(difftime_Quoddy)<85 & as.numeric(diffspace_Quoddy)<50],
                        diffspace = as.numeric(diffspace_Quoddy)[as.numeric(difftime_Quoddy)<85 & as.numeric(diffspace_Quoddy)<50]),
@@ -533,23 +532,38 @@ difftime_Quoddy_fac[as.numeric(difftime_Quoddy)<85 & as.numeric(diffspace_Quoddy
   xlab('difference in time (days)') +
   ylab('difference in space (km)')
 
+ggplot(data=data.frame(difftime = as.numeric(difftime_Quoddy)[as.numeric(difftime_Quoddy)<85 & as.numeric(diffspace_Quoddy)<50],
+                       diffspace = as.numeric(diffspace_Quoddy)[as.numeric(difftime_Quoddy)<85 & as.numeric(diffspace_Quoddy)<50]),
+       aes(x=difftime, y=diffspace)) +
+  geom_point() + geom_smooth(method='loess')
 ```
 
-In the first plot we see a large separation in the y-axis. This is caused by a cluster of sightings made way East of port. This is seen in the second plot as the right-most cluster of blue points. To stop this from impacting our estimate of trend, we restrict the spatial differences and times to be those within each of the two clusters of sightings. The third plot displays the results from doing this. Once again, we see some potential evidence of autocorrelation upto ~14 days. This could be due to persistence of animal movement, for example, due to a few whales remaining in the same area for a few days. 
+These two plots show some evidence of potential autocorrelation upto ~14 days. This could be due to persistence of animal movement, for example, due to a few whales remaining in the same area for a few days. 
+
+As we see below, there is no evidence for across year differences.
+
+```{r 'fig-differenceYears-quoddy', message=FALSE, cache=TRUE}
+ggplot(data=data.frame(difftime = as.numeric(difftime_Quoddy)[as.numeric(diffspace_Quoddy)<50],
+                       diffspace = as.numeric(diffspace_Quoddy)[as.numeric(diffspace_Quoddy)<50]),
+       aes(x=difftime, y=diffspace)) +
+  geom_point() + geom_smooth(method='loess')+
+  xlab('difference in time (days)') +
+  ylab('difference in space (km)')
+```
 
 We have seen some evidence that residual autocorrelations remain in the sightings data. This is despite subsetting the data to the initial daily sightings. The result of this may be overdispersion. We may be able to partially correct for this by using of a log-Gaussian Cox process (introduced in lecture 2). By including latent effects (e.g. spatial fields) in the model, we can hopefully capture some of this additional clustering. In fact, log-Gaussian Cox processes are always overdispersed relative to Poisson processes.
 
-However, trying to determine which latent effects are really describing $\lambda_{true}$ and which are simply capturing the movement persistence is problematic! For example, if we falsely attribute too much variability and clustering to persistence, then we risk underestimating the uncertainty with our estimates of $\lambda_{true}$! This could lead to over-confident inference.
+However, trying to determine which latent effects are really describing $\lambda_{true}$ and which are simply capturing the movement persistence is problematic. For example, if we falsely attribute too much variability and clustering to movement persistence, then we risk underestimating the uncertainty with our estimates of $\lambda_{true}$! This could lead to over-confident inference.
 
 ### Creating training and testing datasets
 
 It is common for multiple competing models to be fit. Deciphering which model fits the data 'best' using information criterion alone (AIC, DIC, etc.,) can be problematic. Performing model comparisons using the same dataset as were used to fit the models and perform exploratory analysis can be problematic (overfitting can occur). An alternative approach is to test both the predictive accuracy and the estimated uncertainty on an unseen dataset.
 
-We now subset the data into a training and test set. We choose the training set to contain all the sightings from 2007-2009. For the test data, we choose **all** the sightings from 2011. See [Additional tips](#Ad4) for an explanation of why the potential repeated sighting in 2011 between survey and whale-watch datat, means that the whale-watching data cannot be added to the training dataset. Note that we perform all remaining exploratory analysis on the training data from hereon out.
+We now subset the data into a training and test set. We choose the training set to contain all the sightings from 2007-2009. For the test data, we choose **all** the sightings from 2011. See [Additional tips](#Ad4) for an explanation of why the potential repeated sighting in 2011 between survey and whale-watch data means that the whale-watching data cannot be added to the training dataset. Note that we perform all remaining exploratory analysis on the training data from hereon out.
 
 Below, we split the data into training and test data.
 
-```{r}
+```{r 'divide-datasets', cache=TRUE}
 Sightings_Brier_nodup_test <- Sightings_Brier_nodup[Sightings_Brier_nodup$YEAR==2011,]
 Sightings_Brier_nodup <- Sightings_Brier_nodup[Sightings_Brier_nodup$YEAR!=2011,]
 Sightings_Quoddy_nodup_test <- Sightings_Quoddy_nodup[Sightings_Quoddy_nodup$YEAR==2011,]
@@ -561,12 +575,11 @@ Effort_survey <- Effort_survey[Effort_survey$YEAR!='2011',]
 
 # How many survey sightings by year?
 table(Sightings_survey$YEAR)
-
 ```
 
 Next, we evaluate a crude estimate of the total amount of survey effort spent each year, as measured by the total trackline length. Using this, we then crudely estimate a 'catch per unit effort' (CPUE) measure by year.
 
-```{r}
+```{r 'effort-aprox', cache=TRUE}
 # How much survey effort (in trackline length) is there by year
 by(gLength(Effort_survey,byid = T), Effort_survey$YEAR, sum)
 # Crude estimate of relative `CPUE'
@@ -588,7 +601,7 @@ As we will see in the next tutorial, by taking a model-based approach to inferen
 
 We will investigate trends between the whale density and the covariate bathymetry. We use only the training data.
 
-A quick first step is to evaluate whether the empirical densities of each covariate at the encounter locations (representing habitat used by the whale) differ from the empirical density across the domain (representing available habitat values). Such difference may indicate that the whales associated with a subset of the available habitat (or indicate differences in observer coverage).  
+A quick first step is to evaluate whether the empirical densities of each covariate at the encounter locations (representing habitat used by the whales) differ from the empirical density across the domain (representing available habitat values). Such difference may indicate that the whales associated with a subset of the available habitat (or indicate differences in observer coverage).  
 
 To extract the covariate values at each location, we will convert the SpatialPixelsDataFrame objects into objects of class `im` from the *spatstat* package. Then, after creating a `ppp` point pattern object containing the sightings locations from all sources, we can easily extract the values of each covariate at each point location^[Alternatively, we can use the function `over()` from the *sp* package. We choose to create `im` objects so that we can later use the `ppm` function from *spatstat* for exploratory analysis purposes. `ppm` fits Poisson process models, which can be equivalent to Maxent models.]. 
 
@@ -611,6 +624,8 @@ All_obs_ppp <- ppp(x=c(Sightings_survey@coords[,1],
 Bathym_obs <- Bathym_im[All_obs_ppp]
 ```
 
+**JOE: I wrote this comment first, but see the above comment on bathymetry. Here is another example were I would just change the data loaded. Make a new bathy object that has values greater to 0 as NA (or something like that). Save that object in Compiled_Data_new.rds. Doing these kinds of things as much as possible will just simplify the code (and text). Keep in mind that not everyone find it as easy as you to read code. You are a super duper expert, most of us are just dummies. See comment below.**
+
 First, we plot the empirical densities of the Bathymetry at the sightings locations at throughout the domain (study area). Let's only consider values in water (max bathym is 313, so restrict to < 0).
 
 ```{r 'map-bathy', message=FALSE, warning=FALSE, cache=TRUE}
@@ -621,7 +636,6 @@ ggplot(data=data.frame(Bathym_obs = Bathym_obs),
                aes(x=Bathym_dom, colour='Domain')) + xlab('Bathymetry (m)') +
   scale_color_manual(name = "Density", values = c('Sightings' = 'black', 'Domain' = 'red'))
 ```
-
 
 We see a very skew distribution of Bathymetry with a huge range of values. Leaving the covariate in this form risks wild predictions of intensity being made! A log transform is desired. We also flip the sign to make it interpretable as log depth (larger is deeper).
 
@@ -644,6 +658,8 @@ In lecture 1, we introduced the simplest distributional assumption on the counts
 We will see in lecture 2, that if we define a set of regions $A_i$ to be a grid that covers $\Omega$, if we increase the number of cells the likelihood of the Poisson counts converges to the likelihood of the Inhomogeneous Poisson process. 
 
 So, to investigate trends between the species intensity and the covariates, we fit Poisson point process models to the sightings data using the `ppm()` function from the **spatstat** package. These are similar to Maxent models. Ignoring effort for the time being, what does a Poisson point process model tell us?
+
+**JOE: here is where to talk about the log(1-bathy) in detail and specify that this is done for the Poisson point process, but also for all of the models explored afterward. Then save the log_bathy objects so that they can be loaded in the next tutorials and skip that step. **
 
 ```{r 'ppm', message=FALSE, cache=TRUE}
 # Transforming the covariate
