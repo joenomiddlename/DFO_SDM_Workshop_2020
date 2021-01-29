@@ -232,6 +232,8 @@ Don't like the colour scheme? See [Additional tips](#Ad3) to learn how to define
 
 ## Reducing the size of the domain (study area)
 
+** JOE: as we talked about, this is too much detail for here. What I would prefer is that the domain saved in the data file loaded (Compiled_Data_new.rds) is the domain that looks like the intersect of the original domain and the restricted domain. And that you explain in detail how to change the domain for the creating the mesh and the covariates. I understand that this is annoying because the model fitting is hard, so if we can't get that then fine, but we need to simplify this in some way without hiding the important part. What I am asking is that if you change something else that would affect the model fit and will have to redo things anyway, please do my suggestion. If not then, find a compromise solution. **
+
 In its current form, the domain is too large for the application. The domain extends far beyond the survey tracklines and the whale-watch ports. To combat this, we will create a new domain that is restricted to lie within 30km of the nearest trackline.
 
 ```{r, cache=T, message=F}
