@@ -1,6 +1,6 @@
 ---
-title: "Exploratory Analysis"
-subtitle: "Graphically assessing model assumptions and trends"
+title: "Exploratory Analysis & Data Preparation"
+subtitle: "Graphically assessing model assumptions and prepartion of the data for modelling"
 author: "Joe Watson and Marie Auger-Méthé"
 date: "07/01/2021"
 output: 
@@ -649,7 +649,7 @@ Dist_Surveylines$Dist_surveylines <- as.numeric(apply(gDistance(Dist_Surveylines
 Dist_Surveylines <- as(Dist_Surveylines,'SpatialPixelsDataFrame')
 ```
 
-We can then map the distance to the nearest trackline. **JOE: my understanding from the description in the previous paragraph, though I find the code above a bit confusing, is that it is combining the distance to port to the survey line distance. I'm confused why the below only shows the distance to trackline. Is the first line of code above just setting the format?**
+We can then map the distance to the nearest trackline. **JOE: my understanding from the original (now cut) description in the previous paragraph, though I find the code above a bit confusing, is that it is combining the distance to port to the survey line distance. I'm confused why the below only shows the distance to trackline. Is the first line of code above just setting the format?**
 
 ```{r 'map-dectectionDistance', warning=FALSE, message=FALSE, cache=TRUE}
 colsc <- function(...) {
