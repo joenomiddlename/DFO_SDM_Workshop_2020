@@ -285,7 +285,7 @@ The smoothing of the coastline helps us to define a computational mesh that has 
 
 Now we must extend our covariates to take 'sensible' values at all points in `Domain_restricted2`. These imputed values will not affect the model estimates as the model will be fit to the original `Domain`. 
 
-Our covariate `Slope` is well-defined on the original (un-buffered) domain as defined by the SpatialPolygons `Domain`. At values outside this, we choose to 'fill-in' these points with nearest-neighbour imputations. Next, we redefine the covariate as a log Slope variable, which we call `log_Slope`. We take the logarithm to reduce the range of values the covariate can take as these could cause our models to make wild predictions in the future workshops. We discuss the reasons for taking a log transform in more depth later in this session. 
+Our covariate `Slope` is well-defined on the original (un-buffered) domain as defined by the SpatialPolygons `Domain`. At values outside this, we choose to 'fill-in' these points with nearest-neighbour imputations. Next, we redefine the covariate as a log Slope variable, which we call `log_Slope`. We take the logarithm to reduce the range of values the covariate can take as these could cause our models to make wild predictions in the future tutorials. We discuss the reasons for taking a log transform in more depth later in this session. 
 
 <!-- **JOE: see my comment below with regards to the bathymetry and removing values that are on land. Changing the values of the bathymetry (as in removing the pixels on land and explaining why log_depth and why log(1-log(depth)) was actually the thing I was suggesting to move here, not the restricting the covariate values to the mesh. I think the stuff associated with the mesh makes more sense in the next tutorial. What I'm envisioning is actually removing the values above 0 in the file that is save in the data file Compiled_Data_new.rds, make them NAs. And keep the explanation of log(1 - depth) here, since I think that's what you use in the Point process model below anyway and you can talk about why the transformation of the variable makes sense for the Point process model and for the other analysis in one go. Keep the crop to mesh size in tutorial 2 after you talk about the mesh. See the two comments below.** -->
 
@@ -316,7 +316,7 @@ log_Slope_sq$log_Slope_sq <- log_Slope_sq$log_Slope_sq^2
 ggplot() + gg(log_Slope) + gg(Domain_restricted)
 ```
 
-We also need to buffer and rescale the distance from port covariates `Dist_Brier` and `Dist_Quoddy`.  Unlike with previous covariates, however, we will fix all buffered values on land equal to a large constant. This will help to ensure that negligible effort is recorded from the whale watch vessels on land through $\lambda_{eff}$.
+We also need to buffer and rescale the distance from port covariates `Dist_Brier` and `Dist_Quoddy`.  Unlike with previous covariates, however, we will fix all buffered values on land equal to a large constant. This will help to ensure that negligible effort is recorded from the whale-watch vessels on land through $\lambda_{eff}$.
 
 We show how to do it with the distance to Brier.
 
@@ -369,7 +369,7 @@ In the first lecture, we defined the species' intensity surface $\lambda_{true}(
 
 However, we believe that the effort from our observers is heterogeneous across our domain $\Omega$. This heterogeneous effort makes the estimation of $\lambda_{true}(s)$ a challenge, since both the effort and the true species' space use both drive the observed encounter locations. To control for effort, we attempt to estimate/approximate an effort intensity surface $\lambda_{eff}(s)$. This defines 'the expected amount of observer effort around s'. Loosely speaking, $\lambda_{eff}(s)$ answers the question 'where do the observers look?'. Both of these surfaces will be linked to a set of covariates (and later we'll even include random fields). 
 
-For well-designed surveys, e.g. distance-sampling surveys, we have additional data available on the perpendicular distance of the encountered animal to the observer. We saw that we can use this to jointly model a detection probability function $p(d)$. This models the 'probability that an individual of the species is detected by an observer, given it is a distance $d$ away'. *inlabru*, the package we will use in the later workshops, handles all of the necessary integrations required to jointly model the encounter locations with the encounter distances. Note that the integrations are performed across each survey trackline segment. 
+For well-designed surveys, e.g. distance-sampling surveys, we have additional data available on the perpendicular distance of the encountered animal to the observer. We can use this to jointly model a detection probability function $p(d)$. $p(d)$ models the 'probability that an individual of the species is detected by an observer, given it is a distance $d$ away'. *inlabru*, the package we will use in the later workshops, handles all of the necessary integrations required to jointly model the encounter locations with the encounter distances. Note that the integrations are performed across each survey trackline segment. 
 
 Finally, we defined the observed intensity of the encounters $\lambda_{obs}(s)$ as 'the expected density of encounters per unit area around point s'. This quantity is **not** the target of our inference as it is confounded by effort. Loosely speaking, $\lambda_{obs}(s)$ helps to answer the question 'where do we expect encounters between the species and observers to occur?'. If our approximation of the effort ($\lambda_{eff}(s)$), and the fitted detection probability function $p(d)$ is good, then we hope to see: 
 
@@ -385,7 +385,7 @@ The above product decomposition reads loosely as "the expected number encounters
 
 Later, we will be fitting spatial point process models to the encounters. A requirement for using these models is that, conditional on $\lambda_{eff}(s)$, each encounter with the animal is an **independent snapshot** from its true intensity $\lambda_{true}(\textbf{s})$.
 
-Planned surveys can be designed to (approximately) satisfy the independence assumption. The boat speed can be fixed at a high value relative to the individuals' speeds (no double-counting) and a narrow perpendicular field-of-view can be enforced. Then, assuming that the individuals of the target species are in equilibrium with respect to their stationary distribution $\lambda_{true}(\textbf{s})$ (i.e. the species' density) and locally mixing faster than the time between revisits by observers, the independence assumption may reasonably hold.
+Planned surveys can be designed to (approximately) satisfy the independence assumption. The plane speed can be fixed at a high value relative to the individuals' speeds (no double-counting) and a narrow perpendicular field-of-view can be enforced. Then, assuming that the individuals of the target species are in equilibrium with respect to their stationary distribution $\lambda_{true}(\textbf{s})$ (i.e. the species' density) and locally mixing faster than the time between revisits by observers, the independence assumption may reasonably hold.
 
 Conversely, no such assumptions can be made regarding the whale-watch encounters. The unknown positions of the whale-watching boats when they are not with whales, the 360 degree fields-of-view on-board, the variable boat speed, and the repeated encounters of the same individuals throughout each day can all invalidate the independence assumption required to fit the desired models.
 
@@ -393,12 +393,13 @@ In our workshop, we will see some potential solutions to address this issue of i
 
 ### Investigating the autocorrelation between whale-watch sighting locations
 
-Let's look at the whale-watching data. Specifically, let's investigate the 2nd, 3rd and 4th encounters in the dataset. Notice that they were made on the same day and very close together in time. Often, little information is provided on the database management procedures. For example, are these multiple encounters with the same individual? Would the database discard or retain problematic repeated encounters? 
+Let's look at the whale-watching data. Specifically, let's investigate the 2nd, 3rd and 4th encounters in the dataset.  
+
 ```{r, warning=FALSE, message=F}
 Sightings_DRWW_sp@data[2:4,c('WS_TIME','WS_DATE','PLATFORM')]
 ```
 
-Without additional information available on the database management protocols, we can investigate whether these encounters could be of the same individual. To investigate this hypothesis, we can compute the distance between the encounters using the `gDistance()` function, the time between the encounters, and the required travel speed of the individual under the assumed hypothesis.
+Notice that they were made on the same day and very close together in time. Often, little information is provided on the database management procedures. For example, are these multiple encounters with the same individual? Would the database discard or retain problematic repeated encounters? Without additional information available on the database management protocols, we can investigate whether these encounters could be of the same individual. To investigate this hypothesis, we can compute the distance between the encounters using the `gDistance()` function, the time between the encounters, and the required travel speed of the individual under the assumed hypothesis.
 
 ```{r}
 # How far away are these encounters in space (in kilometers)?
@@ -412,7 +413,7 @@ gDistance(Sightings_DRWW_sp[2:4,], byid = T)[cbind(c(1,2),c(2:3))] /
 
 This hypothesis would imply a traveling speed of between 4km/h and 16km/h. Is this plausible? Since fin whales are known to sustain much higher speeds (> 30km/h), we will discard all repeated encounters each day. We will keep only the first sighting made each day by each company. 
 
-Note that there is no overlap between the sighting locations from the two whale-watch companies, indicating that an assumption of independent encounters between the two companies could be reasonable. In fact, the distance between the average locations of the encounters made by the two companies is around 80km (see the code below). For an 8-hour whale watch day, this would require a 10km/h persistant movement between the two regions for multiple encounters to occur.
+Note that there is no overlap between the sighting locations from the two whale-watch companies, indicating that an assumption of independent encounters between the two companies could be reasonable. In fact, the distance between the average locations of the encounters made by the two companies is around 80km (see the code below). For an 8-hour whale watch day, this would require a 10km/h persistent movement between the two regions for multiple encounters to occur.
 
 ```{r}
 # What is the average distance between the encounters from the two companies?
