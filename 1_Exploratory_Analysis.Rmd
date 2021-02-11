@@ -244,14 +244,11 @@ Don't like the colour scheme? See [Additional tips](#Ad3) to learn how to define
 
 ## Simplifying the coastline (domain)
 
-The `Domain` in its current form has a very complex and 'wiggly' coastline. In the second and third workshops, `inlabru` will require a triangulation mesh to be created that covers the `Domain`. Unfortunately, accurately capturing the 'wigglyness' of the coastline with a mesh requires it to have a large number of triangles, slowing down the computation. To help reduce the number of triangles required to recreate the coastline, we will smooth the `Domain` using the functions `gSimplify()`. `gSimplify()` attempts to reduce the number of segments used to define the SpatialPolygonsDataFrame. The amount of reduction is determined by the argument `tol=`.
+The `Domain` in its current form has a very complex and 'wiggly' coastline. The modeling functions from `inlabru` will require a triangulation mesh that covers the `Domain`. Unfortunately, accurately capturing the 'wigglyness' of the coastline with a mesh requires it to have a large number of triangles, slowing down the computation. To help reduce the number of triangles required to recreate the coastline, we will smooth the `Domain` using the functions `gSimplify()`. `gSimplify()` attempts to reduce the number of segments used to define the SpatialPolygonsDataFrame. The amount of reduction is determined by the argument `tol=`.
 
-While we want to simplify the coastline, we still need to accurately capture the shape of the coastline. Failing to do so can lead to some of the encounters to fall outside the mesh, forcing us to discard them. Thus, we will use `gBuffer()` in combintaion to `gSimplify()`.
-`gBuffer()` will extend (or buffer) the boundary of the SpatialPolygonsDataFrame by an amount determined by the argument `width=`. This should help to stop some of the encounters from falling outside of the mesh. 
+While we want to simplify the coastline, we still need to accurately capture the shape of the coastline. Failing to do so can lead to some of the encounters to fall outside the mesh, forcing us to discard them. To stop some of the encounters from falling outside of the mesh, we will use `gBuffer()` in combination to `gSimplify()`. `gBuffer()` will extend (or buffer) the boundary of the SpatialPolygonsDataFrame by an amount determined by the argument `width=`.
 
-However, we should repeat the process once more for the covariates. `inlabru` requires that every covariate is defined at every point within the computational mesh. When the computational mesh is created later, the boundary may expand slightly. If the covariates are defined on the original domain, there may end up being points of the mesh that do not have a well-defined covariate value. To counter this, it can help to define a second extended and simplified domain for defining the covariates over. By ensuring that this second extended domain is slightly larger than the first extended domain, we can ensure that a covariate value is properly defined at every value in the computational mesh. We create these two domains below:
-
-```{r}
+```{r `domain_restricted`}
 Domain_restricted <- gSimplify(gBuffer(Domain,width=15),tol=20)
 # Plot
 ggplot() +
@@ -261,7 +258,15 @@ ggplot() +
 # Does the new domain contain all the survey tracklines?
 gContains(Domain_restricted,Effort_survey)
 
+```
+
+
+`inlabru` requires that every covariate is defined at every point within the computational mesh. When the computational mesh is created later, the boundary may expand slightly. If the covariates are defined on the original domain, there may end up being points of the mesh that do not have a well-defined covariate value. By creating a second extended domain that is slightly larger than the first extended domain created above, we can ensure that a covariate value is properly defined at every value in the computational mesh. We create this extended domain:
+
+
+```{r `domain_restricted2`}
 # Create a new domain that is slightly larger - for defining covariates later
+# Notice width of gBuffer is larger
 Domain_restricted2 <- gSimplify(gBuffer(Domain,width=35),tol=20)
 # Plot
 ggplot() +
@@ -274,7 +279,7 @@ gContains(Domain_restricted2,Domain_restricted)
 
 Great! We have defined two new buffered and smoothed domains. The original domain (`Domain`) is shown in red and is where the computation will take place. The domain over which the computational mesh will be defined (`Domain_restricted`) is shown in black. Lastly, the domain over which the covariates will be defined (`Domain_restricted2`) is shown in green. 
 
-Once again, the smoothing of the coastline helps us to define a computational mesh that has fewer numerical issues. All computations will still take place over the original domain (`Domain`). More on that later!
+The smoothing of the coastline helps us to define a computational mesh that has fewer numerical issues. All computations will still take place over the original domain (`Domain`). More on that later!
 
 ## Extending the covariates to match the new domain
 
