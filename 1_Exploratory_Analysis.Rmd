@@ -660,7 +660,7 @@ The single-parameter detection probability function we will use is the half-norm
 $$p(d) = exp\left(\frac{-d^2}{2\sigma^2}\right)$$ 
 
 
-## Exploring covariates for effort in whale-watch data
+## Exploring covariates for effort in whale-watch data {#SectionEffort}
 
 <!-- **JOE: again this was the ppm section, but this is general info that is useful for your own models so we want to divorce it from the ppm stuff and put it here own its on. I think you also talk about it in lecture one, so it fits here very well.** -->
 
@@ -677,7 +677,7 @@ hist(over(Sightings_Quoddy_nodup,Dist_Quoddy)$Dist_Quoddy,breaks=20, main='Histo
 
 For both ports, we detect a decreasing frequency of encounters made as the distance from port increases. Based on the histograms, we choose to model the functional form as a half-normal function. More complicated functional forms (e.g. weibull or hazard functions) could also be used.
 
-More specifically, let the whale-watch effort intensity from the $i^{th}$ port be denoted $\lambda_{eff, i}$ and let the location of the $i^{th}$ port be denoted $s_i^*$. Finally, let the scalar parameter $\lambda_i$ be unique for each port. Then we assume the following functional form for the whale watch effort intensity from the $i^{th}$ port: $$\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right)$$.
+More specifically, let the whale-watch effort intensity from the $i^{th}$ port be denoted $\lambda_{eff, i}$ and let the location of the $i^{th}$ port be denoted $s_i^*$. Finally, let the scalar parameter $\lambda_i$ be unique for each port. Then we assume the following functional form for the whale-watch effort intensity from the $i^{th}$ port: $$\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right)$$.
 
 On the log scale, this covariate can be estimated as a linear effect on the squared distance from port. Thus, we create SpatialPixelsDataFrame objects which store the squared distances from port.
 
@@ -739,6 +739,8 @@ These plots suggest that encounter locations are associated with regions with hi
 
 ## Investigating trends between the environmental covariates and the true whale intensity using `inlabru`
 
+**JOE: this section needs work. I know you now changed to inlabru and that's great, but I had more or less removed lost of details from this section before so they would addressed above to  help discuss things in small manageable packages (you can still see this from my old comment above), but you have re-put a lot of the details back. I must be honest this is very discouraging to me, it's not that the work is not good and the inlabru change is good, but I spend hours (evening hours) doing these changes to help make the material more understandable for ecologist, and I feel they were more less ignored and reverted back (or not merged). It's particularly weird now, because you don't go into the details of inlabru, but yet give tons of details, many of them with the preface of we are going to talk about this again, or more, or. Just talk about things well up front, rather than repeating yourself. I also thing this is a missed oppotunity to present some of the ideas of inlabru syntax and I'm not sure what's the point of this now, since it's a lot of "we will talk about this later". What do you want them to get out of this? I've spent again some time doing the changes, but please read this critically, and think about whether you have said this before. If so cut it, it there is just one additional point, move that additional point in the main place you talk about it. **
+
 In lecture 1, we introduced the simplest distributional assumption on the number of encounters in a region. We assumed that the distribution of the number of encounters within any region $A$ was Poisson distributed, with mean equal to the integrated intensity surface: 
 
 $$N(Y \cap A) \backsim Poisson(\int \lambda_{obs}(s) ds)$$.
@@ -747,9 +749,7 @@ Remember that $N(Y \cap A)$ represents the number of encounters in $A$. We will 
 
 The `inlabru` package can fit inhomogeneous Poisson processes to the data using a similar approximation technique to the one defined above! Thus, we can use `inlabru`to investigate trends between the observed intensity and the log slope covariate using the encounter data. 
 
-`inlabru` can also approximate the point process likelihoods when the observers have followed distance sampling protocols along a set of known tracklines and is also able to model the whale watch effort using a set of covariates! Thus, we will also use `inlabru`to investigate trends between the **true whale intensity** and the log slope covariate.
-
-In the next 2 lectures and sessions, we will explore `inlabru` in depth. We will explore the package's ability to fit both inhomogeneous Poisson processes and log-Gaussian Cox processes and we will learn the syntax in depth. For now, we will use only the output from `inlabru` models for the purposes of exploratory analyses.
+In the next 2 tutorials, we will explore `inlabru`'s ability to fit both inhomogeneous Poisson processes and log-Gaussian Cox processes and we will learn the syntax in depth. For now, we will look at the output from `inlabru` models for the purposes of exploratory analyses.
 
 Ignoring effort for the time being, we will use `inlabru` to fit an inhomogeneous Poisson point process to investigate the relationship between $\lambda_{obs}(s)$ and log Slope. To do this, we simply ignore effort completely and fit the observed encounter locations to a set of covariates of interest. We do this below (in the hidden code), with log_Slope as our covariate of interest. The output from the model is shown below:
 
@@ -813,16 +813,20 @@ summary(mod_IPP1)
 
 We ignore all the details regarding the code for now and look at the table of fixed effects. We find a 'significant' positive association between $\lambda_{obs}$ and log slope and thus some evidence that the whales may be found more often in regions with higher slope. The 'significance' comes from the fact that the 95% posterior credible intervals do not cover 0 and the credible intervals are valid when the assumed Poisson distribution on the counts is true. However, the **cause** of this 'significant' association may be due to either the observers or the whales spending more time in regions of high slope!
 
-To investigate whether this association with log Depth is in fact with the true whale intensity $\lambda_{true}$, we can attempt to adjust for effort and see if these estimates change. We once again fit an Inhomogeneous Poisson point process model, but this time we include the survey line transects (`Effort_survey`) and the two squared distance from port covariates (`Dist_Brier_sq`,`Dist_Quoddy_sq`). We also define a half-normal detection probability function for the survey data.
+To investigate whether this association with log Depth is in fact with the true whale intensity $\lambda_{true}$, we can attempt to adjust for effort and see if these estimates change. We once again fit an inhomogeneous Poisson point process model, but this time we include the survey line transects (`Effort_survey`) and the two squared distance from port covariates (`Dist_Brier_sq`,`Dist_Quoddy_sq`).
 
-More specifically, we are specifying a model for both the log effort intensity and the log whale intensity. For the log effort intensity we are estimating a unique intercept parameter for the two whale watch observers and we are assuming that all encounters with whales at a distance of 0 metres from the survey aircraft are detected. We are assuming that the effort from the two whale watch companies is explained by a half-normal function of distance that we estimate. Similarly, we assume that the probability of detecting a whale decreases as a half-normal function of distance from the trackline ($p(d)$) for the observers onboard the aircrafts. Thus, our model is:
+**JOE: this is a repeat, I'm pretty sure I had moved most of that up before.**
+
+More specifically, we are specifying a model for both the log effort intensity and the log whale intensity. For the log effort intensity we are estimating a unique intercept parameter for the two whale-watch observers and we are assuming that all encounters with whales at a distance of 0 metres from the survey aircraft are detected. We are assuming that the effort from the two whale-watch companies is explained by a half-normal function of distance that we estimate. Similarly, we assume that the probability of detecting a whale decreases as a half-normal function of distance from the trackline ($p(d)$) for the observers onboard the aircrafts. Thus, our model is:
 
 $$\lambda_{obs}(s) =  \lambda_{eff}(s) \lambda_{true}(s)\\
-\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right) \textrm{ for WW data} \\  
+\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right) \textrm{ for shale-watch data} \\  
 \lambda_{eff,surv,j}(s) = p(d_j(s)) \textrm{   for survey data}\\
 \lambda_{true}(s) = \beta_0 + \beta_1 X(s).$$
 
-For the two whale watch companies, $\lambda_{eff,i}(s)$, $s_i^*$ denotes the location of the whale watch port, $\lambda_i$ denotes the intercept for the whale watch company, and $\sigma_i$ determines how far from port the whale watch vessels travel. For the survey data, we compute the effort uniquely for each survey trackline (indexed by $j$) with $p(d_j(s))$ denoting the perpendicular distance from the $j^{th}$ trackline segment (if it exists). We will explain this in more depth in the upcoming lectures. Finally, we assume the true species intensity is driven exclusively by log depth ($X(s)$).  
+For the two whale-watch companies, $\lambda_{eff,i}(s)$, $s_i^*$ denotes the location of the whale watch port, $\lambda_i$ denotes the intercept for the whale watch company, and $\sigma_i$ determines how far from port the whale watch vessels travel. For the survey data, we compute the effort uniquely for each survey trackline (indexed by $j$) with $p(d_j(s))$ denoting the perpendicular distance from the $j^{th}$ trackline segment (if it exists). We will explain this in more depth in the upcoming lectures. Finally, we assume the true species intensity is driven exclusively by log depth ($X(s)$).  
+
+**JOE: Stating again that things will be talked about later is not particularly useful and a bit of a wasted opportunity to explain things. **
 
 Again, the details of the code are not important to understand right now. We will cover the `inlabru` syntax in depth in the following tutorials and lectures. What we will focus on is whether or not we detect an association between log slope after making this adjustment for effort.
 
