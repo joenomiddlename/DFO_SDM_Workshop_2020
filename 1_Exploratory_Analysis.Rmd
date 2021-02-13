@@ -437,13 +437,20 @@ Sightings_Brier_nodup <- Sightings_Brier_nodup[!duplicated(Sightings_Brier_nodup
 
 Sightings_Quoddy_nodup <- Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='QUODDY LINK',]
 Sightings_Quoddy_nodup <- Sightings_Quoddy_nodup[!duplicated(Sightings_Quoddy_nodup$WS_DATE),]
-
-dim(Sightings_DRWW_sp)[1]; dim(Sightings_Brier_nodup)[1]; dim(Sightings_Quoddy_nodup)[1];
 ```
 
-Notice that we have a total of `r 144+85` whale watch encounters after the subsetting procedure, down from an original count of 567 encounters.
+We now have a total of `r 144+85` whale watch encounters after the subsetting procedure, down from an original count of `r dim(Sightings_DRWW_sp)[1]` encounters, see:
 
-Strictly speaking, for the desired point process models to be reasonable, it is required that the initial daily encounter locations from the whale watch vessels are independent realizations from $\lambda_{true}$, conditioned on $\lambda_{eff}$. We will assume that the typical journeys/routes of the whale watch vessels remains constant across months and years under study. Thus, we assume that $\lambda_{eff}$ is constant through time. 
+```{r}
+# Original dataset
+dim(Sightings_DRWW_sp)[1]
+# Initial encounters from Brier
+dim(Sightings_Brier_nodup)[1]
+# Initial encounters from Quoddy
+dim(Sightings_Quoddy_nodup)[1]
+```
+
+Strictly speaking, for the desired point process models to be reasonable, it is required that the initial daily encounter locations from the whale-watch vessels are independent realizations from $\lambda_{true}$, conditioned on $\lambda_{eff}$. We will assume that the typical journeys/routes of the whale-watch vessels remains constant across months and years under study. Thus, we assume that $\lambda_{eff}$ is constant through time. 
 
 ### Is summer species density changing through time?
 
@@ -506,7 +513,7 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[],
   ylab('difference in space (km)')
 ```
 
-This third plot shows no evidence that the average spatial separation between whale watch encounters differs year-to-year. This supports our assumption that the spatial density can be assumed to be constant across the years, albeit within the (very) small spatial region visited by the whale-watch boats departing from Brier Island.
+This third plot shows no evidence that the average spatial separation between whale-watch encounters differs year-to-year. This supports our assumption that the spatial density can be assumed to be constant across the years, albeit within the (very) small spatial region visited by the whale-watch boats departing from Brier Island.
 
 We now repeat the plots, but for the whalewatch boats that depart from Quoddy, starting with the loess smoother curve on the first 84 days. 
 
@@ -517,7 +524,7 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Quoddy)[as.numeric(difftim
   geom_point() + geom_smooth(method='loess')
 ```
 
-In this plot, we see a large separation in the y-axis. This is caused by a single encounter that was made (far) East of the port. This is seen in the map created above, as the right-most cluster of blue points. Note that both encounters seen in the cluster were made on the same day (we only kept the initial encounter). The plot above indicates that these encounters were made over 90km from port! From hereon out, we will discard this encounter and assume the location was miscoded. 
+In this plot, we see a large separation in the y-axis. This is caused by a single encounter that was made (far) East of the port. This is seen in the map created above, as the right-most cluster of blue points. Note that both encounters seen in the cluster were made on the same day (we only kept the initial encounter). The plot above indicates that these encounters were made over 90km from port (potentially data entry mistake), and for simplicity we will discard this encounter.
 
 ```{r}
 Sightings_Quoddy_nodup <- Sightings_Quoddy_nodup[which(gDistance(Sightings_Quoddy_nodup, gCentroid(Sightings_Quoddy_nodup),byid=T)<50),] 
@@ -539,7 +546,7 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Quoddy)[as.numeric(difftim
   geom_point() + geom_smooth(method='loess')
 ```
 
-These two plots also show evidence of potential autocorrelation existing upto ~14 days. This could be due to persistence of animal movement, for example, due to a few whales remaining in the same area for a few days. 
+These two plots also show evidence of potential autocorrelation existing up to ~14 days. This could be due to persistence of animal movement, for example, due to a few whales remaining in the same area for a few days. 
 
 As we see below, there is no evidence for across year differences.
 
