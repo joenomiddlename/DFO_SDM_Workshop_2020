@@ -219,7 +219,7 @@ With the understanding of what the SD and range define, we are asked to define t
 $$P(\rho < \rho_0) = p_{\rho} \\ P(\sigma > \sigma_0) = p_{\sigma}.$$
 The goal is to specify the lower tail quantile $\rho_0$ and probability $p_{\rho}$ for the range parameter and the upper tail quantile $\sigma_0$ and probability $p_{\sigma}$ for the marginal standard deviation. We choose these 4 parameters to help ensure that the field does not become to 'complex'; specifically we want to avoid the field becoming too 'wiggly' or 'large'. The PC prior shrinks the spatial field towards the base model of no spatial variance and variance zero, hence the name 'Penalized Complexity'. Note that as the complexity of the field increases, so does the risk of overfitting our data!
 
-We now define our model, with $\rho_0$, $p_{\rho}$, $\sigma_0$, and $p_{\sigma}$ fixed at 35km, 0.01, 2, and 0.01 respectively. Roughly speaking, our priors state that the range is likely larger than 35km and the standard deviation is smaller than 2 whale encounters. **JOE: check this interpretation.**
+We now define our model, with $\rho_0$, $p_{\rho}$, $\sigma_0$, and $p_{\sigma}$ fixed at 35km, 0.01, 2, and 0.01 respectively. Roughly speaking, our priors state that the range is likely larger than 35km and the standard deviation is smaller than 2 whale encounters. **JOE: check this simplified interpretation I have added.**
 
 ```{r 'spde', cache=TRUE}
 # First define the SPDE model
@@ -230,7 +230,7 @@ matern_land <- inla.spde2.pcmatern(mesh_land,
 
 ### Defining the detection probability function
 
-Next, we must define our detection probability function. First, we define a half-normal detection probability function. This object will take the form of a base R function.
+Next, we must define our detection probability function. As we discussed in the previous tutorial, we will use a half-normal detection probability function. The object we will define will take the form of a base R function.
 
 ```{r}
 # Define a half-normal detection probability function (code from inlabru tutorials)
@@ -283,7 +283,7 @@ Thus, the expected encounter rate of an animal at location $s$, a distance $d$ a
 
 $$\lambda_{obs}(s) = 2 \lambda_{true}(s) p(d).$$
 
-Note that $Z(s)$ is the value of the GRF `mySpatial` evaluated at position $s$, and $\sigma$ is the exponential of `lsig`. We multiply $ \lambda_{true}(s) p(d)$ by 2 since detections can occur either side of the aircraft.
+Note that $Z(s)$ is the value of the GRF `mySpatial` evaluated at position $s$, and $\sigma$ is the exponential of `lsig`. We multiply $\lambda_{true}(s) p(d)$ by 2 since detections can occur either side of the aircraft.
 
 Defining the components and the formula separately in two stages is what gives *inlabru* its generalisibility. Parameters can be included within a model non-linearly, unlike most other R packages! For example, `lsig` was included nonlinearly through our custom function `log_hn`! Behind the scenes, for nonlinear models, *inlabru* linearises the model via a Taylor series expansion.  
 
@@ -337,13 +337,9 @@ Next, we call the function `bru`. This function combines all the likelihood obje
 
 Running this function may take 2-5 min.
 
-```{r 'bru', message=FALSE, cache=TRUE, eval=F}
+```{r 'bru', message=FALSE, cache=TRUE}
 # Warning: can be slow!
 fit <- bru(fit, components = cmp_land1)
-```
-
-```{r 'bruload', message=FALSE, cache=TRUE, echo=F}
-fit <- readRDS('./Model_Files/fit.rds')
 ```
 
 Is this a good fit? One simple way of assessing how well a model fits the data is to assess it's DIC value. DIC is similar to AIC/BIC in that it trades of goodness-of-fit with a penalty for the complexity of the model under the Occam's Razor principle of 'simple explanations trump complicated ones when both predict outcomes equally well'. Whilst a lone DIC value is somewhat meaningless, we can compare the DIC values across competing models **fit to the same data**. The lower the DIC score, the better the model fit. A similar measure is the Watanabe-Akaike information criterion (WAIC). We will use both to judge model fit.
@@ -417,7 +413,7 @@ ggplot() + gg(pred_int[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, col
 
 From these plots, we see 2 interesting features. First, a very low whale intensity is predicted in the regions frequently visited by the whale-watching companies. Second, hotspots are identified in the Western region that had lots of survey effort focused in it, and in the center of the study region. 
 
-### Plotting the posterior distribution of parameters and ??
+### Plotting the posterior distribution of GRF parameters
 
 Next, let's look at the posterior distributions of the spatial range and the marginal variance of the random field. Remember: the spatial range (in km) is estimating the 'approximate distance required between two points for the values of the intensity their to be approximately independent'. For this, we use the functions `spde.posterior` and `plot`.
 
@@ -430,7 +426,9 @@ plot(spde.var)
 
 We can see that the model is estimating a spatial field with a reasonably large spatial range (~200km) and small variance (<1). No evidence of severe overfitting is shown (a very large variance with a tiny spatial range can be suspicious).
 
-Next, we can plot the estimated detection probability function, with uncertainty intervals. For this, we use `predict` once again, with one slight modification. Instead of using `pixels` to define a set of SpatialPixels to plot over, we must manually specify a `data.frame` object with the desired values of `distance` to predict across. Then, we can use the function `plot` as before. Note: I have had some issues with using the `predict` function on non-spatial data.frames. If you get an error message, see [Additional tips](#Ad2).
+### Plotting the estimated detection probability function
+
+We can plot the estimated detection probability function, with uncertainty intervals. For this, we use `predict` once again, with one slight modification. Instead of using `pixels` to define a set of SpatialPixels to plot over, we must manually specify a `data.frame` object with the desired values of `distance` to predict across. Then, we can use the function `plot` as before. Note: I have had some issues with using the `predict` function on non-spatial data.frames. If you get an error message, see [Additional tips](#Ad2).
 
 ```{r 'predictDetection', cache=TRUE}
 distdf <- data.frame(distance = seq(0, 2, length = 100))
@@ -462,7 +460,7 @@ This is huge!
 
 Under these (flawed) assumptions, we predict the total number of groups falling within the Domain. To achieve this, we use the function `ipoints`. This function sets a series of integration points with weights (areas), to allow us to approximate various integrals of interest with a Riemann sum approximation. For example, we can estimate the integral of the true intensity surface across the domain to obtain estimates of the total number of groups as follows: $$\int_\Omega  \lambda_{true}(s) ds \approx \sum_{A_i} \hat{\bar{\lambda}}_{true}(s_i) |A_i|,$$
 
-where $\hat{\bar{\lambda}}_{true}(s_i)$ are a single sample of values of ${\lambda}}_{true}$ evaluated at the locations $s_i$ defined by `ipoints`, with weights $|A_i|$. By generating a large number of Monte Carlo samples of $\hat{\bar{\lambda}}_{true}(s_i)$, we are able to compute any quantity of interest for the total group size, including the mean, standard deviation, etc.,
+where $\hat{\bar{\lambda}}_{true}(s_i)$ are a single sample of values of $\lambda_{true}$ evaluated at the locations $s_i$ defined by `ipoints`, with weights $|A_i|$. By generating a large number of Monte Carlo samples of $\hat{\bar{\lambda}}_{true}(s_i)$, we are able to compute any quantity of interest for the total group size, including the mean, standard deviation, etc.
 
 Note that `ipoints` creates a SpatialPointsDataFrame object with a single named variable `weight` containing the area of each region corresponding to each integration point.
 
@@ -591,12 +589,9 @@ Step 2, fit the model with `bru`.
 
 This will take 2-5 min to run.
 
-```{r 'bru2', warning=FALSE, cache=TRUE, eval=F}
+```{r 'bru2', warning=FALSE, cache=TRUE}
 # Slow to run bru
 fit2 <- bru(fit2, components = cmp_land2)
-```
-```{r 'bruload2', message=FALSE, cache=TRUE, echo=F}
-fit2 <- readRDS('./Model_Files/fit2.rds')
 ```
 
 We can then explore the results.
