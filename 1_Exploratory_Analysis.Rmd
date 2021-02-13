@@ -413,21 +413,23 @@ gDistance(Sightings_DRWW_sp[2:4,], byid = T)[cbind(c(1,2),c(2:3))] /
 
 This hypothesis would imply a traveling speed of between 4km/h and 16km/h. Is this plausible? Since fin whales are known to sustain much higher speeds (> 30km/h), we will discard all repeated encounters each day. We will keep only the first sighting made each day by each company. 
 
-Note that there is no overlap between the sighting locations from the two whale-watch companies, indicating that an assumption of independent encounters between the two companies could be reasonable. In fact, the distance between the average locations of the encounters made by the two companies is around 80km (see the code below). For an 8-hour whale watch day, this would require a 10km/h persistent movement between the two regions for multiple encounters to occur.
-
-```{r}
-# What is the average distance between the encounters from the two companies?
-gDistance(gCentroid(Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='BRIER ISLAND WHALEWATCH',]),gCentroid(Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='QUODDY LINK',]))
-```
-
-<!-- **JOE: given how fast fin whales move, either check this further (how distant apart are the encounters from different whale watch on the same day) or add a caveat/warning here about it.** -->
+Below, we can see that there is no overlap between the sighting locations from the two whale-watch companies, suggesting that an assumption of independent encounters between the two companies may be reasonable. 
 
 ```{r 'map-overlap', message=FALSE, cache=TRUE}
 Sightings_DRWW_sp$PLATFORM <- as.factor(Sightings_DRWW_sp$PLATFORM)
 ggplot() + gg(Domain) + gg(Sightings_DRWW_sp, colour=Sightings_DRWW_sp$PLATFORM_CODE)
 ```
 
-Thus we subset the data to keep only the initial encounters from each company:
+However, the distance between the average locations of the encounters made by the two companies is around 80km:
+
+```{r}
+# What is the average distance between the encounters from the two companies?
+gDistance(gCentroid(Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='BRIER ISLAND WHALEWATCH',]),gCentroid(Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='QUODDY LINK',]))
+```
+
+Given the speed at which fin whales travel, we should investigate this further in a real analysis, especially since a violation of this assumption will results in overestimating the densities of whales in the whale-watching areas. 
+
+However, for simplicity we will assume that the encounters between the two companies are independent. We subset the data to keep only the initial encounters from each company:
 
 ```{r}
 Sightings_Brier_nodup <- Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='BRIER ISLAND WHALEWATCH',]
