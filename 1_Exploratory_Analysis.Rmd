@@ -567,7 +567,7 @@ However, trying to determine which latent effects are really describing $\lambda
 
 It is common for multiple competing models to be fit. Deciphering which model fits the data 'best' using information criterion alone (AIC, DIC, etc.,) can be problematic. Performing model comparisons using the same dataset as were used to fit the models and perform exploratory analysis can be problematic (overfitting can occur). An alternative approach is to test both the predictive accuracy and the estimated uncertainty on an unseen dataset.
 
-We now subset the data into a training and test set. We choose the training set to contain all the encounters from 2007-2009. For the test data, we choose **all** the encounters from 2011. See [Additional tips](#Ad4) for an explanation of why the potential repeated sighting in 2011 between survey and whale-watch data means that the whale-watching data cannot be added to the training dataset. Note that we perform all remaining exploratory analysis on the training data from hereon out.
+We now subset the data into a training and test set. We choose the training set to contain all the encounters from 2007-2009. For the test data, we choose **all** the encounters from 2011. See [Additional tips](#Ad4) for an explanation of why the potential repeated sighting in 2011 between survey and whale-watch data means that the whale-watching data cannot be added to the training dataset. Note that we perform all remaining exploratory analysis on the training data.
 
 Below, we split the data into training and test data.
 
@@ -585,23 +585,32 @@ Effort_survey <- Effort_survey[which(Effort_survey$YEAR!='2011'),]
 table(Sightings_survey$YEAR)
 ```
 
-Next, we evaluate a crude estimate of the total amount of survey effort spent each year, as measured by the total trackline length. Using this, we then crudely estimate a 'catch per unit effort' (CPUE) measure by year.
+Next, we evaluate a crude estimate of the total amount of survey effort spent each year, as measured by the total trackline length. 
 
 ```{r 'effort-aprox', cache=TRUE}
 # How much survey effort (in trackline length) is there by year
 by(gLength(Effort_survey,byid = T), Effort_survey$YEAR, sum)
+```
+
+Using this effort estimate, we then crudely estimate a 'catch per unit effort' (CPUE) measure by year.
+
+```{r 'cpue-aprox', cache=TRUE}
 # Crude estimate of relative `CPUE'
 (table(Sightings_survey$YEAR) / 
        by(gLength(Effort_survey,byid = T), Effort_survey$YEAR, sum))/
   min(table(Sightings_survey$YEAR) / 
         by(gLength(Effort_survey,byid = T), Effort_survey$YEAR, sum))
+```
 
+The 'CPUE' values are highly variable! The wild differences could be due to the small efforts in years 2008 and 2009 relative to 2007.
+
+```{r 'effortbyyear-aprox', cache=TRUE}
 # How many WW sightings by year
 table(Sightings_Quoddy_nodup$YEAR)
 table(Sightings_Brier_nodup$YEAR)
 ```
 
-The 'CPUE' values are highly variable! The wild differences could be due to the small efforts in years 2008 and 2009 relative to 2007. Alternatively, they could be due to differences in survey protocols that took place each year. Or, the differences could actually reflect real differences in whale density across the three distinct regions visited each year! Without taking a model-based approach and controlling for differences in spatial effort, it is unclear how to combine the encounters from these three surveys.
+Alternatively, the differences in CPUE could be due to differences in survey protocols that took place each year. Or, the differences could actually reflect real differences in whale density across the three distinct regions visited each year! Without taking a model-based approach and controlling for differences in spatial effort, it is unclear how to combine the encounters from these three surveys.
 
 As we will see in the next tutorial, by taking a model-based approach to inference, we will be able to combine the data from all three surveys to estimate the whale density across space. Unfortunately, due to the lack of spatial overlap between the surveys' efforts (tracklines), we are unable to account for any differences between the survey protocols within a model without strong prior information available. For example, an intercept added to the model for each survey would be confounded by the spatial field. From now on, we assume that each survey is equivalent.
 
