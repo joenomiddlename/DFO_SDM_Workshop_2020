@@ -413,21 +413,23 @@ gDistance(Sightings_DRWW_sp[2:4,], byid = T)[cbind(c(1,2),c(2:3))] /
 
 This hypothesis would imply a traveling speed of between 4km/h and 16km/h. Is this plausible? Since fin whales are known to sustain much higher speeds (> 30km/h), we will discard all repeated encounters each day. We will keep only the first sighting made each day by each company. 
 
-Note that there is no overlap between the sighting locations from the two whale-watch companies, indicating that an assumption of independent encounters between the two companies could be reasonable. In fact, the distance between the average locations of the encounters made by the two companies is around 80km (see the code below). For an 8-hour whale watch day, this would require a 10km/h persistent movement between the two regions for multiple encounters to occur.
-
-```{r}
-# What is the average distance between the encounters from the two companies?
-gDistance(gCentroid(Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='BRIER ISLAND WHALEWATCH',]),gCentroid(Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='QUODDY LINK',]))
-```
-
-<!-- **JOE: given how fast fin whales move, either check this further (how distant apart are the encounters from different whale watch on the same day) or add a caveat/warning here about it.** -->
+Below, we can see that there is no overlap between the sighting locations from the two whale-watch companies, suggesting that an assumption of independent encounters between the two companies may be reasonable. 
 
 ```{r 'map-overlap', message=FALSE, cache=TRUE}
 Sightings_DRWW_sp$PLATFORM <- as.factor(Sightings_DRWW_sp$PLATFORM)
 ggplot() + gg(Domain) + gg(Sightings_DRWW_sp, colour=Sightings_DRWW_sp$PLATFORM_CODE)
 ```
 
-Thus we subset the data to keep only the initial encounters from each company:
+However, the distance between the average locations of the encounters made by the two companies is around 80km:
+
+```{r}
+# What is the average distance between the encounters from the two companies?
+gDistance(gCentroid(Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='BRIER ISLAND WHALEWATCH',]),gCentroid(Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='QUODDY LINK',]))
+```
+
+Given the speed at which fin whales travel, we should investigate this further in a real analysis, especially since a violation of this assumption will results in overestimating the densities of whales in the whale-watching areas. 
+
+However, for simplicity we will assume that the encounters between the two companies are independent. We subset the data to keep only the initial encounters from each company:
 
 ```{r}
 Sightings_Brier_nodup <- Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='BRIER ISLAND WHALEWATCH',]
@@ -435,13 +437,20 @@ Sightings_Brier_nodup <- Sightings_Brier_nodup[!duplicated(Sightings_Brier_nodup
 
 Sightings_Quoddy_nodup <- Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='QUODDY LINK',]
 Sightings_Quoddy_nodup <- Sightings_Quoddy_nodup[!duplicated(Sightings_Quoddy_nodup$WS_DATE),]
-
-dim(Sightings_DRWW_sp)[1]; dim(Sightings_Brier_nodup)[1]; dim(Sightings_Quoddy_nodup)[1];
 ```
 
-Notice that we have a total of `r 144+85` whale watch encounters after the subsetting procedure, down from an original count of 567 encounters.
+We now have a total of `r 144+85` whale watch encounters after the subsetting procedure, down from an original count of `r dim(Sightings_DRWW_sp)[1]` encounters, see:
 
-Strictly speaking, for the desired point process models to be reasonable, it is required that the initial daily encounter locations from the whale watch vessels are independent realizations from $\lambda_{true}$, conditioned on $\lambda_{eff}$. We will assume that the typical journeys/routes of the whale watch vessels remains constant across months and years under study. Thus, we assume that $\lambda_{eff}$ is constant through time. 
+```{r}
+# Original dataset
+dim(Sightings_DRWW_sp)[1]
+# Initial encounters from Brier
+dim(Sightings_Brier_nodup)[1]
+# Initial encounters from Quoddy
+dim(Sightings_Quoddy_nodup)[1]
+```
+
+Strictly speaking, for the desired point process models to be reasonable, it is required that the initial daily encounter locations from the whale-watch vessels are independent realizations from $\lambda_{true}$, conditioned on $\lambda_{eff}$. We will assume that the typical journeys/routes of the whale-watch vessels remains constant across months and years under study. Thus, we assume that $\lambda_{eff}$ is constant through time. 
 
 ### Is summer species density changing through time?
 
@@ -504,7 +513,7 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[],
   ylab('difference in space (km)')
 ```
 
-This third plot shows no evidence that the average spatial separation between whale watch encounters differs year-to-year. This supports our assumption that the spatial density can be assumed to be constant across the years, albeit within the (very) small spatial region visited by the whale-watch boats departing from Brier Island.
+This third plot shows no evidence that the average spatial separation between whale-watch encounters differs year-to-year. This supports our assumption that the spatial density can be assumed to be constant across the years, albeit within the (very) small spatial region visited by the whale-watch boats departing from Brier Island.
 
 We now repeat the plots, but for the whalewatch boats that depart from Quoddy, starting with the loess smoother curve on the first 84 days. 
 
@@ -515,7 +524,7 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Quoddy)[as.numeric(difftim
   geom_point() + geom_smooth(method='loess')
 ```
 
-In this plot, we see a large separation in the y-axis. This is caused by a single encounter that was made (far) East of the port. This is seen in the map created above, as the right-most cluster of blue points. Note that both encounters seen in the cluster were made on the same day (we only kept the initial encounter). The plot above indicates that these encounters were made over 90km from port! From hereon out, we will discard this encounter and assume the location was miscoded. 
+In this plot, we see a large separation in the y-axis. This is caused by a single encounter that was made (far) East of the port. This is seen in the map created above, as the right-most cluster of blue points. Note that both encounters seen in the cluster were made on the same day (we only kept the initial encounter). The plot above indicates that these encounters were made over 90km from port (potentially data entry mistake), and for simplicity we will discard this encounter.
 
 ```{r}
 Sightings_Quoddy_nodup <- Sightings_Quoddy_nodup[which(gDistance(Sightings_Quoddy_nodup, gCentroid(Sightings_Quoddy_nodup),byid=T)<50),] 
@@ -537,7 +546,7 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Quoddy)[as.numeric(difftim
   geom_point() + geom_smooth(method='loess')
 ```
 
-These two plots also show evidence of potential autocorrelation existing upto ~14 days. This could be due to persistence of animal movement, for example, due to a few whales remaining in the same area for a few days. 
+These two plots also show evidence of potential autocorrelation existing up to ~14 days. This could be due to persistence of animal movement, for example, due to a few whales remaining in the same area for a few days. 
 
 As we see below, there is no evidence for across year differences.
 
@@ -558,7 +567,7 @@ However, trying to determine which latent effects are really describing $\lambda
 
 It is common for multiple competing models to be fit. Deciphering which model fits the data 'best' using information criterion alone (AIC, DIC, etc.,) can be problematic. Performing model comparisons using the same dataset as were used to fit the models and perform exploratory analysis can be problematic (overfitting can occur). An alternative approach is to test both the predictive accuracy and the estimated uncertainty on an unseen dataset.
 
-We now subset the data into a training and test set. We choose the training set to contain all the encounters from 2007-2009. For the test data, we choose **all** the encounters from 2011. See [Additional tips](#Ad4) for an explanation of why the potential repeated sighting in 2011 between survey and whale-watch data means that the whale-watching data cannot be added to the training dataset. Note that we perform all remaining exploratory analysis on the training data from hereon out.
+We now subset the data into a training and test set. We choose the training set to contain all the encounters from 2007-2009. For the test data, we choose **all** the encounters from 2011. See [Additional tips](#Ad4) for an explanation of why the potential repeated sighting in 2011 between survey and whale-watch data means that the whale-watching data cannot be added to the training dataset. Note that we perform all remaining exploratory analysis on the training data.
 
 Below, we split the data into training and test data.
 
@@ -576,23 +585,32 @@ Effort_survey <- Effort_survey[which(Effort_survey$YEAR!='2011'),]
 table(Sightings_survey$YEAR)
 ```
 
-Next, we evaluate a crude estimate of the total amount of survey effort spent each year, as measured by the total trackline length. Using this, we then crudely estimate a 'catch per unit effort' (CPUE) measure by year.
+Next, we evaluate a crude estimate of the total amount of survey effort spent each year, as measured by the total trackline length. 
 
 ```{r 'effort-aprox', cache=TRUE}
 # How much survey effort (in trackline length) is there by year
 by(gLength(Effort_survey,byid = T), Effort_survey$YEAR, sum)
+```
+
+Using this effort estimate, we then crudely estimate a 'catch per unit effort' (CPUE) measure by year.
+
+```{r 'cpue-aprox', cache=TRUE}
 # Crude estimate of relative `CPUE'
 (table(Sightings_survey$YEAR) / 
        by(gLength(Effort_survey,byid = T), Effort_survey$YEAR, sum))/
   min(table(Sightings_survey$YEAR) / 
         by(gLength(Effort_survey,byid = T), Effort_survey$YEAR, sum))
+```
 
+The 'CPUE' values are highly variable! The wild differences could be due to the small efforts in years 2008 and 2009 relative to 2007.
+
+```{r 'effortbyyear-aprox', cache=TRUE}
 # How many WW sightings by year
 table(Sightings_Quoddy_nodup$YEAR)
 table(Sightings_Brier_nodup$YEAR)
 ```
 
-The 'CPUE' values are highly variable! The wild differences could be due to the small efforts in years 2008 and 2009 relative to 2007. Alternatively, they could be due to differences in survey protocols that took place each year. Or, the differences could actually reflect real differences in whale density across the three distinct regions visited each year! Without taking a model-based approach and controlling for differences in spatial effort, it is unclear how to combine the encounters from these three surveys.
+Alternatively, the differences in CPUE could be due to differences in survey protocols that took place each year. Or, the differences could actually reflect real differences in whale density across the three distinct regions visited each year! Without taking a model-based approach and controlling for differences in spatial effort, it is unclear how to combine the encounters from these three surveys.
 
 As we will see in the next tutorial, by taking a model-based approach to inference, we will be able to combine the data from all three surveys to estimate the whale density across space. Unfortunately, due to the lack of spatial overlap between the surveys' efforts (tracklines), we are unable to account for any differences between the survey protocols within a model without strong prior information available. For example, an intercept added to the model for each survey would be confounded by the spatial field. From now on, we assume that each survey is equivalent.
 
@@ -642,7 +660,7 @@ The single-parameter detection probability function we will use is the half-norm
 $$p(d) = exp\left(\frac{-d^2}{2\sigma^2}\right)$$ 
 
 
-## Exploring covariates for effort in whale-watch data
+## Exploring covariates for effort in whale-watch data {#SectionEffort}
 
 <!-- **JOE: again this was the ppm section, but this is general info that is useful for your own models so we want to divorce it from the ppm stuff and put it here own its on. I think you also talk about it in lecture one, so it fits here very well.** -->
 
@@ -659,7 +677,7 @@ hist(over(Sightings_Quoddy_nodup,Dist_Quoddy)$Dist_Quoddy,breaks=20, main='Histo
 
 For both ports, we detect a decreasing frequency of encounters made as the distance from port increases. Based on the histograms, we choose to model the functional form as a half-normal function. More complicated functional forms (e.g. weibull or hazard functions) could also be used.
 
-More specifically, let the whale-watch effort intensity from the $i^{th}$ port be denoted $\lambda_{eff, i}$ and let the location of the $i^{th}$ port be denoted $s_i^*$. Finally, let the scalar parameter $\lambda_i$ be unique for each port. Then we assume the following functional form for the whale watch effort intensity from the $i^{th}$ port: $$\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right)$$.
+More specifically, let the whale-watch effort intensity from the $i^{th}$ port be denoted $\lambda_{eff, i}$ and let the location of the $i^{th}$ port be denoted $s_i^*$. Finally, let the scalar parameter $\lambda_i$ be unique for each port. Then we assume the following functional form for the whale-watch effort intensity from the $i^{th}$ port: $$\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right)$$.
 
 On the log scale, this covariate can be estimated as a linear effect on the squared distance from port. Thus, we create SpatialPixelsDataFrame objects which store the squared distances from port.
 
@@ -672,7 +690,7 @@ Dist_Quoddy_sq$Dist_Quoddy_sq <- Dist_Quoddy$Dist_Quoddy^2
 
 ## Investigating trends between the environmental covariates and the observed intensity
 
-In this section, we will investigate trends between the observed intensity and the covariate bathymetry using only the training data. We will also see why taking a log transform of `Slope` was a sensible thing to do.
+In this section, we will investigate trends between the observed intensity and the covariate slope using only the training data. We will also see why taking a log transform of `Slope` was a sensible thing to do.
 
 A quick first step is to evaluate whether the empirical densities of a covariate at the encounter locations (representing habitat used by the whales) differs from the empirical density across the domain (representing available habitat values). Such difference may indicate that the whales are associated with a subset of the available habitat. Of course, any differences may simply reflect differences in the types of habitat visited by observers!  
 
@@ -721,15 +739,17 @@ These plots suggest that encounter locations are associated with regions with hi
 
 ## Investigating trends between the environmental covariates and the true whale intensity using `inlabru`
 
+**JOE: this section needs work. I know you now changed to inlabru and that's great, but I had more or less removed lost of details from this section before so they would addressed above to  help discuss things in small manageable packages (you can still see this from my old comment above), but you have re-put a lot of the details back. I must be honest this is a bit discouraging. Your work is great and the inlabru change here is also a great improvement on using ppm, and I know you worked days and days on this. But I spend hours (evening hours) doing these changes to help make the material more understandable for ecologists, and I feel some comments were more less ignored and reverted back (or not merged?). It's been a bit of a pattern lately, so it's harder for me to take it. Having lots of details is particularly weird now, because you don't go into the details of inlabru and preface many things with "we are going to talk about this again or later". I think you missed opportunity to present some of the ideas of inlabru syntax and I'm not sure I understand what's the main message here. What do you want them to get out of this? Please read this critically, and think about whether you have said this before, whether it's needed now, whether it can be skipped. **
+
 In lecture 1, we introduced the simplest distributional assumption on the number of encounters in a region. We assumed that the distribution of the number of encounters within any region $A$ was Poisson distributed, with mean equal to the integrated intensity surface: 
 
 $$N(Y \cap A) \backsim Poisson(\int \lambda_{obs}(s) ds)$$.
 
-Remember that $N(Y \cap A)$ represents the number of encounters in $A$. We will see in lecture 2 that this equation actually defines an inhomogeneous Poisson process, where we assume that the rate of encounters with whales changes through space according (only) to a set of measured covariates (i.e., the rate is spatially-inhomogeneous). The above distribution for $N(Y \cap A)$ will hold for any number of non-overlapping regions $A_i \subset \Omega$. Furthermore, we will see that if we define a grid of non-overlapping cells $A_i$ that cover (partition) the domain $\Omega$, then as the number of cells of the grid increases, the (Poisson) likelihood of the counts (falling within each $A_i$) will converge to the likelihood of the inhomogeneous Poisson process that preserves the exact locations of the encounters! Do not panic if this point is unclear - we will cover it in depth in lecture 2.
+Remember that $N(Y \cap A)$ represents the number of encounters in $A$. We will see in lecture 2 that this equation defines an inhomogeneous Poisson process, where we assume that the rate of encounters with whales changes through space according (only) to a set of measured covariates (i.e., the rate is spatially-inhomogeneous). The above distribution for $N(Y \cap A)$ will hold for any number of non-overlapping regions $A_i \subset \Omega$. If we define a grid of non-overlapping cells $A_i$ that cover the domain $\Omega$, then as the number of cells of the grid increases, the (Poisson) likelihood of the counts (falling within each $A_i$) will converge to the likelihood of the inhomogeneous Poisson process that preserves the exact locations of the encounters! Do not panic if this point is unclear - we will cover it in depth in lecture 2.
 
-Importantly, the `inlabru` package can fit inhomogeneous Poisson processes (and log-Gaussian Cox processes) to the data using a similar approximation technique to the one defined above! Thus, we can use `inlabru`to investigate trends between the observed intensity and the log slope covariate using the encounter data. However, `inlabru` can go even further! It is able to approximate the point process likelihoods when the observers have followed distance sampling protocols along a set of known tracklines and is also able to model the whale watch effort using a set of covariates! Thus, we will also use `inlabru`to investigate trends between the **true whale intensity** and the log slope covariate.
+The `inlabru` package can fit inhomogeneous Poisson processes to the data using a similar approximation technique to the one defined above! Thus, we can use `inlabru`to investigate trends between the observed intensity and the log slope covariate using the encounter data. 
 
-In the next 2 lectures and sessions, we will explore `inlabru` in depth. We will explore the package's ability to fit both inhomogeneous Poisson processes and log-Gaussian Cox processes and we will learn the syntax in depth. For now, we will use only the output from `inlabru` models for the purposes of exploratory analyses. We will save the explanation of the code until the next lectures and sessions. 
+In the next 2 tutorials, we will explore `inlabru`'s ability to fit both inhomogeneous Poisson processes and log-Gaussian Cox processes and we will learn the syntax in depth. For now, we will look at the output from `inlabru` models for the purposes of exploratory analyses.
 
 Ignoring effort for the time being, we will use `inlabru` to fit an inhomogeneous Poisson point process to investigate the relationship between $\lambda_{obs}(s)$ and log Slope. To do this, we simply ignore effort completely and fit the observed encounter locations to a set of covariates of interest. We do this below (in the hidden code), with log_Slope as our covariate of interest. The output from the model is shown below:
 
@@ -793,16 +813,20 @@ summary(mod_IPP1)
 
 We ignore all the details regarding the code for now and look at the table of fixed effects. We find a 'significant' positive association between $\lambda_{obs}$ and log slope and thus some evidence that the whales may be found more often in regions with higher slope. The 'significance' comes from the fact that the 95% posterior credible intervals do not cover 0 and the credible intervals are valid when the assumed Poisson distribution on the counts is true. However, the **cause** of this 'significant' association may be due to either the observers or the whales spending more time in regions of high slope!
 
-To investigate whether this association with log Depth is in fact with the true whale intensity $\lambda_{true}$, we can attempt to adjust for effort and see if these estimates change. We once again fit an Inhomogeneous Poisson point process model, but this time we include the survey line transects (`Effort_survey`) and the two squared distance from port covariates (`Dist_Brier_sq`,`Dist_Quoddy_sq`). We also define a half-normal detection probability function for the survey data.
+To investigate whether this association with log Depth is in fact with the true whale intensity $\lambda_{true}$, we can attempt to adjust for effort and see if these estimates change. We once again fit an inhomogeneous Poisson point process model, but this time we include the survey line transects (`Effort_survey`) and the two squared distance from port covariates (`Dist_Brier_sq`,`Dist_Quoddy_sq`).
 
-More specifically, we are specifying a model for both the log effort intensity and the log whale intensity. For the log effort intensity we are estimating a unique intercept parameter for the two whale watch observers and we are assuming that all encounters with whales at a distance of 0 metres from the survey aircraft are detected. We are assuming that the effort from the two whale watch companies is explained by a half-normal function of distance that we estimate. Similarly, we assume that the probability of detecting a whale decreases as a half-normal function of distance from the trackline ($p(d)$) for the observers onboard the aircrafts. Thus, our model is:
+**JOE: this is a repeat, I'm pretty sure I had moved most of that up before.**
+
+More specifically, we are specifying a model for both the log effort intensity and the log whale intensity. For the log effort intensity we are estimating a unique intercept parameter for the two whale-watch observers and we are assuming that all encounters with whales at a distance of 0 metres from the survey aircraft are detected. We are assuming that the effort from the two whale-watch companies is explained by a half-normal function of distance that we estimate. Similarly, we assume that the probability of detecting a whale decreases as a half-normal function of distance from the trackline ($p(d)$) for the observers onboard the aircrafts. Thus, our model is:
 
 $$\lambda_{obs}(s) =  \lambda_{eff}(s) \lambda_{true}(s)\\
-\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right) \textrm{ for WW data} \\  
+\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right) \textrm{ for shale-watch data} \\  
 \lambda_{eff,surv,j}(s) = p(d_j(s)) \textrm{   for survey data}\\
 \lambda_{true}(s) = \beta_0 + \beta_1 X(s).$$
 
-For the two whale watch companies, $\lambda_{eff,i}(s)$, $s_i^*$ denotes the location of the whale watch port, $\lambda_i$ denotes the intercept for the whale watch company, and $\sigma_i$ determines how far from port the whale watch vessels travel. For the survey data, we compute the effort uniquely for each survey trackline (indexed by $j$) with $p(d_j(s))$ denoting the perpendicular distance from the $j^{th}$ trackline segment (if it exists). We will explain this in more depth in the upcoming lectures. Finally, we assume the true species intensity is driven exclusively by log depth ($X(s)$).  
+For the two whale-watch companies, $\lambda_{eff,i}(s)$, $s_i^*$ denotes the location of the whale watch port, $\lambda_i$ denotes the intercept for the whale watch company, and $\sigma_i$ determines how far from port the whale watch vessels travel. For the survey data, we compute the effort uniquely for each survey trackline (indexed by $j$) with $p(d_j(s))$ denoting the perpendicular distance from the $j^{th}$ trackline segment (if it exists). We will explain this in more depth in the upcoming lectures. Finally, we assume the true species intensity is driven exclusively by log depth ($X(s)$).  
+
+**JOE: Stating again that things will be talked about later is not particularly useful and a bit of a wasted opportunity to explain things. **
 
 Again, the details of the code are not important to understand right now. We will cover the `inlabru` syntax in depth in the following tutorials and lectures. What we will focus on is whether or not we detect an association between log slope after making this adjustment for effort.
 

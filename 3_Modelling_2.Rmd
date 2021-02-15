@@ -45,7 +45,7 @@ library(knitr)
 
 Use `getwd()` to verify that you are inside the folder titled: 'DFO_SDM_Workshop_2020'. If not, change this by navigating to the correct folder in the bottom right panel (folder view), opening it, and then clicking "Set as Working Directory" under the tab 'More'.
 
-*Fitting these joint models can take a while. For the purposes of this workshop, I have made all the pre-fitted model files available for use via the `readRDS` function.*
+*Fitting these joint models can take a while. For the purposes of this workshop, we have made all the pre-fitted model files available for use via the `readRDS` function.*
 
 Now we can load in the precompiled data, workshop 2 models, and functions.
 ```{r message=F}
@@ -55,7 +55,7 @@ fit2 <- readRDS('./Model_Files/fit2.rds')
 source('utility_functions.R')
 ```
 
-Next, lets ask inlabru to print the convergence information and to perform a fast empirical Bayes analysis.
+Next, let's ask inlabru to print the convergence information and to perform a fast empirical Bayes analysis.
 
 ```{r}
 bru_options_set(
@@ -74,7 +74,7 @@ rgdal::set_thin_PROJ6_warnings(TRUE)
 options("rgdal_show_exportToProj4_warnings"="none")
 ```
 
-## Incorporating the presence-only whale watch sightings into our models
+## Incorporating the presence-only whale-watch sightings into our models
 
 ### Accounting for the unmeasured whale-watch effort
 
@@ -136,7 +136,7 @@ cmp_WW_Combined1 <- ~
 
 There are a lot of new additions to the components. First, we see the addition of `Dist_Quoddy_sq` and `Dist_Brier_sq`. These define linear covariates on the respective SpatialPixelsDataFrame objects (i.e. they define the half-normal functions) and hence describe the shape and range of the effort surfaces. These were defined as $\alpha_{i,1}$ earlier. 
 
-Next, we include the scalar parameters `Intercept_WW_Q` and `Diff_WW_Q_B`. These will define the intercept for the Quoddy whale watch port and a term related to the relative log intensity of the Brier whale watch port compared with Quoddy. In our earlier notation, these two parameters were defined as $\alpha_{Quoddy, 0}$ and $\alpha_{Brier, 0}-\alpha_{Quoddy, 0}$. We will see why we chose to define the second parameter as a contrast later. Finally, we have also chosen to include log slope.
+Next, we include the scalar parameters `Intercept_WW_Q` and `Diff_WW_Q_B`. These will define the intercept for the Quoddy whale-watch port and a term related to the relative log intensity of the Brier whale-watch port compared with Quoddy. In our earlier notation, these two parameters were defined as $\alpha_{Quoddy, 0}$ and $\alpha_{Brier, 0}-\alpha_{Quoddy, 0}$. We will see why we chose to define the second parameter as a contrast later. Finally, we have also chosen to include log slope.
 
 As an aside, if we wanted to include a copy of the spatial field `mySpatial` across the two whale watch datasets we would need to add two additional components. We demonstrate this below, with the two additional components `mySpatial_Brier` and `mySpatial_Quoddy`. Note that these are arbitrary names and can be changed. These components would define copies of the original spatial field `mySpatial`. To tell `inlabru` that we want to copy the original model, we would use the argument `copy = mySpatial`. The argument `fixed = T` tells `inlabru` that we do not want to scale the field by an estimated scalar parameter.
 Mathematically, it says that we want to add $Z(s)$ to each linear predictor, not $\beta_{i,Z}Z(s)$, with $\beta_{i,Z}$ a unique scalar parameter defined separately for each port $i$.
@@ -222,7 +222,7 @@ fit_WW_Q1 = like(data = Sightings_Quoddy_nodup,
                  family = 'cp')
 ```
 
-Notice the polygonal `samplers` used in defining the likelihoods for the whale watch data. This is because we are assuming that the whale watch vessels can only travel on water (defined by `Domain`). 
+Notice the polygonal `samplers` used in defining the likelihoods for the whale-watch data. This is because we are assuming that the whale-watch vessels can only travel on water (defined by `Domain`). 
 
 We can now fit the model using `bru`. It can be very slow to fit (~5-10 minutes), so we suggest you load the pre-compiled file yourself using the code below:
 
@@ -373,11 +373,11 @@ Qualitatively, the intensity surfaces from the joint and survey-only models appe
 
 ### Incorporating external information into the model for the presence-only sightings
 
-For our second model, we will use the available information on the fleet sizes of the two whale watch companies and the number and duration of trips that leave each port. Looking at the two websites, we estimate Brier to have 3.22 times more effort on the water than Quoddy. Additional details on computing this number are given at the end of this workshop [click here](#WW_est).
+For our second model, we will use the available information on the fleet sizes of the two whale watch companies and the number and duration of trips that leave each port. Looking at the two websites, we estimate Brier to have 3.22 times more effort on the water than Quoddy (see [end of this tutorial](#WW_est) for additional details).
 
-Note that the previous model estimated Brier's effort surface to be only `r signif(Rel_Effort$mean,2)` times bigger! This is unrealistic... Instead, in model 2, we will fix the total effort from Brier equal to 3.22 times that of Quoddy. To achieve this, we will replace the contrast term (`Diff_...`) with a log(3.22) offset to the Brier linear predictor. This is the reason we defined the model in terms of a contrast!
+Since the previous model estimated a much smaller Brier's effort surface (only `r signif(Rel_Effort$mean,2)` times bigger than Quoddy), in model 2, we will fix the total effort from Brier equal to 3.22 times that of Quoddy. To achieve this, we will replace the contrast term (`Diff_...`) with a log(3.22) offset to the Brier linear predictor.
 
-For the log offset to truly represent the relative efforts, we also need to define an integration function to integrate the whale watch effort intensities across the two respective 'sampler' polygons. This function will use the current guess of the parameters `Dist_Brier_sq` and `Dist_Quoddy_sq` and the integral it computes will be used to normalise the two effort surfaces and put them on the same scale. This will allow us to use the log(3.22) offset to represent the relative effort. Let's define these now. 
+For the log offset to truly represent the relative efforts, we also need to define an integration function to integrate the whale-watch effort intensities across the two respective 'sampler' polygons. This function will use the current guess of the parameters `Dist_Brier_sq` and `Dist_Quoddy_sq` and the integral it computes will be used to normalise the two effort surfaces and put them on the same scale. This will allow us to use the log(3.22) offset to represent the relative effort. Let's define these now. 
 
 ```{r, cache=T}
 # These functions approximate the integral of the (unscaled) effort surface across the sampler and returns the negative logarithm. Needs to return negative log as we need to subtract the integral on the log lambda_eff scale (equivalent to division on the original scale)
@@ -506,15 +506,13 @@ We once again restrict our predictions of the total number of groups to the smal
 
 ### Including external knowledge about the presence-only observers as a Bayesian prior
 
-We now move on to our third and final model. In the first model, we completely ignored all available information about the relative amounts of effort from each of the two whale watch ports. In the second model, we calculated an estimate for the relative total effort and put a **hard constraint** on the model with this estimate as a fixed offset term.
+We now move on to our third and final model. In the first model, we completely ignored all available information about the relative amounts of effort from each of the two whale watch ports. In the second model, we calculated an estimate for the relative total effort and put a **hard constraint** on the model with this estimate as a fixed offset term. Neither approach is ideal. We do not know for certain that the total effort from Brier exceeded that of Quoddy by a factor of 3.22. The reported trip times are merely estimates; the reported number of daily departures fail to account for cancellation days due to bad weather or poor turnout. There may exist biases between the two companies with regards to exceeding or failing to meet the advertised trip duration. In summary, there are numerous reasons why our estimated effort ratio of 3.22 may be inaccurate. 
 
-In reality, neither approach is ideal. We do not know for certain that the total effort from Brier exceeded that of Quoddy by a factor of 3.22. The reported trip times are merely estimates; the reported number of daily departures fail to account for cancellation days due to bad weather or poor turnout. There may exist biases between the two companies with regards to exceeding or failing to meet the advertised trip duration. In summary, there are numerous reasons why our estimated effort ratio of 3.22 may be inaccurate. 
+To capture this uncertainty, we can define a prior distribution on the relative total effort. We put a normal prior on the log scale factor, centered at log(3.22), with a prior standard deviation of 0.1. Thus, a-priori, we put a prior probability of 0.95 that the ratio of effort between Brier vs Quoddy is between 2.6 and 3.9. 
 
-To capture this uncertainty, we can use Bayesian machinery and define a prior distribution on the the relative total effort. We put a normal prior on the log scale factor, centered at log(3.22), with a prior standard deviation of 0.1. Thus, a-priori, we put a prior probability of 0.95 that that the ratio of effort between Brier vs Quoddy is between 2.6 and 3.9. 
+We now define the shared components and the formulae. We place a Gaussian prior on the `Diff_QQ_B_Q` term in the components with the arguments `mean.linear=1.17, prec.linear=100`. Note that the precision is defined as the inverse of the variance and 1.17 = log(3.22). 
 
-We now define the shared components and the formulae. Then, we define the likelihood objects and fit the joint model using `bru`. We place a Gaussian prior on the `Diff_QQ_B_Q` term in the components with the arguments `mean.linear=1.17, prec.linear=100`. Note that the precision is defined as the inverse of the variance and 1.17 = log(3.22). 
-
-```{r, cache=TRUE}
+```{r 'cmp_Comb3', cache=TRUE}
 cmp_WW_Combined3 <- ~ 
   Dist_Quoddy_sq(main=Dist_Quoddy_sq, model='linear') +
   Dist_Brier_sq(main=Dist_Brier_sq, model='linear') +
@@ -524,7 +522,11 @@ cmp_WW_Combined3 <- ~
   Intercept(1) +
   lsig(1) +
   log_Slope(main = log_Slope, model='linear')
+```
 
+Then, we define the likelihood objects and fit the joint model using `bru`. 
+
+```{r 'formulae_Comb3', cache=TRUE}
 formula_WW_B3 = coordinates ~
   Dist_Brier_sq + 
   Intercept_WW_Q + 
@@ -819,7 +821,7 @@ ggplot(Scores, aes(x=Model, y=mean, ymax=q0.975, ymin=q0.025)) +
   ylab('Score') + ggtitle('Posterior Scores of the 3 Models')
 ```
 
-So what do we find out? According to the 2011 test data alone, we fail to find any evidence that including log slope in a model for the whale intensity improves either the predictions of the total number of encounters, or the predicted spatial distribution of encounters. Furthermore, we also fail to find any evidence that incorporating the whale watch sightings improved either measure of predictive performance.
+So what do we find out? According to the 2011 test data alone, we fail to find any evidence that including log slope in a model for the whale intensity improves either the predictions of the total number of encounters, or the predicted spatial distribution of encounters. Furthermore, we also fail to find any evidence that incorporating the whale-watch sightings improved either measure of predictive performance.
 
 So why haven't things improved? For starters, the test dataset used for model comparison contained only 15 sightings. Thus only huge differences in model fit would likely be detected by the scoring approach. Secondly, we made strong assumptions that: the whale density did not change across the three months, each survey followed identical protocols with identical detection functions and the whale density in 2011 matched that in 2007-2009.
 
