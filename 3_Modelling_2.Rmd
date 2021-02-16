@@ -2,7 +2,7 @@
 title: "Model Fitting 2"
 subtitle: "Fitting the integrative model framework using inlabru"
 author: "Joe Watson and Marie Auger-Méthé"
-date: "11/01/2021"
+date: "15/02/2021"
 output: 
   html_document:
     css: "CSSdefs.css"
@@ -45,14 +45,13 @@ library(knitr)
 
 Use `getwd()` to verify that you are inside the folder titled: 'DFO_SDM_Workshop_2020'. If not, change this by navigating to the correct folder in the bottom right panel (folder view), opening it, and then clicking "Set as Working Directory" under the tab 'More'.
 
-*Fitting these joint models can take a while. For the purposes of this workshop, we have made all the pre-fitted model files available for use via the `readRDS` function.*
+*Fitting these joint models can take a while. For the purposes of this workshop, we have made all the pre-fitted model files available for use via the `readRDS` function. Please ignore any messages regarding inlabru object version 2.2.5.*
 
 Now we can load in the precompiled data, workshop 2 models, and functions.
-```{r message=F}
+```{r, message=F, warning=F}
 load('./Data/Modelling_Data2_New.RData')
 fit <- readRDS('./Model_Files/fit.rds')
 fit2 <- readRDS('./Model_Files/fit2.rds')
-source('utility_functions.R')
 ```
 
 Next, let's ask inlabru to print the convergence information and to perform a fast empirical Bayes analysis.
@@ -138,8 +137,7 @@ There are a lot of new additions to the components. First, we see the addition o
 
 Next, we include the scalar parameters `Intercept_WW_Q` and `Diff_WW_Q_B`. These will define the intercept for the Quoddy whale-watch port and a term related to the relative log intensity of the Brier whale-watch port compared with Quoddy. In our earlier notation, these two parameters were defined as $\alpha_{Quoddy, 0}$ and $\alpha_{Brier, 0}-\alpha_{Quoddy, 0}$. We will see why we chose to define the second parameter as a contrast later. Finally, we have also chosen to include log slope.
 
-As an aside, if we wanted to include a copy of the spatial field `mySpatial` across the two whale watch datasets we would need to add two additional components. We demonstrate this below, with the two additional components `mySpatial_Brier` and `mySpatial_Quoddy`. Note that these are arbitrary names and can be changed. These components would define copies of the original spatial field `mySpatial`. To tell `inlabru` that we want to copy the original model, we would use the argument `copy = mySpatial`. The argument `fixed = T` tells `inlabru` that we do not want to scale the field by an estimated scalar parameter.
-Mathematically, it says that we want to add $Z(s)$ to each linear predictor, not $\beta_{i,Z}Z(s)$, with $\beta_{i,Z}$ a unique scalar parameter defined separately for each port $i$.
+As an aside, if we wanted to include a copy of the spatial field `mySpatial` across the two whale watch datasets we would need to add two additional components. We demonstrate this below, with the two additional components `mySpatial_Brier` and `mySpatial_Quoddy`. Note that these are arbitrary names and could be changed. These components would define copies of the original spatial field `mySpatial`. To tell `inlabru` that we want to copy the original model, we would use the argument `copy = mySpatial`. The argument `fixed = T` would tell `inlabru` that we did not want to scale the field by an estimated scalar parameter. Mathematically, it would say that we want to add $Z(s)$ to each linear predictor, not $\beta_{i,Z}Z(s)$, with $\beta_{i,Z}$ a unique scalar parameter estimated separately for each port $i$.
 
 ```{r 'cmp_WW_combined1_2', cache=TRUE, eval=F}
 cmp_WW_example <- ~ 
@@ -178,25 +176,6 @@ formula_2
 
 Now, we use the `like`/`bru` approach to combine all three likelihood objects (from the survey and two ports)! We must define the three likelihood objects using the joint set of components defined above.
 
-<!-- We define a set of `samplers` for the two ports equal to the regions in the water that are less than 140km from port (assuming maximum of 70kmh average speed for 2 hours). -->
-
-<!-- ```{r} -->
-<!-- # gBuffer will define a circle of radius 140 around the port -->
-<!-- # gIntersection will restore the coastline -->
-<!-- Sampler_Quoddy <-  -->
-<!--   gIntersection(Domain, -->
-<!--                 gBuffer(WW_ports[WW_ports$COMPANY=='QUODDY LINK',],  -->
-<!--                         width = 140) -->
-<!--                 ) -->
-<!-- Sampler_Brier <-  -->
-<!--   gIntersection(Domain, -->
-<!--                 gBuffer(WW_ports[WW_ports$COMPANY=='BRIER ISLAND WHALEWATCH',],  -->
-<!--                         width = 140) -->
-<!--                 ) -->
-<!-- ggplot() + gg(Sampler_Brier, color='red') + gg(Sampler_Quoddy,color='blue') + gg(Domain) -->
-<!-- ``` -->
-
-
 ```{r 'likeWW1', warning=FALSE, cache=TRUE}
 # from the survey model earlier
 fit2_like = like(data = Sightings_survey,
@@ -226,7 +205,7 @@ Notice the polygonal `samplers` used in defining the likelihoods for the whale-w
 
 We can now fit the model using `bru`. It can be very slow to fit (~5-10 minutes), so we suggest you load the pre-compiled file yourself using the code below:
 
-```{r 'bruWW1', warning=FALSE, cache=TRUE}
+```{r 'bruWW1', warning=FALSE, cache=TRUE, message=F}
 # Slow to fit, so we load a pre-compiled file instead
 
 #fit_combined1 <- bru(fit2_like, fit_WW_B1, fit_WW_Q1, components = cmp_WW_Combined1, options = list(bru_max_iter=17))
@@ -236,7 +215,7 @@ fit_combined1 <- readRDS('./Model_Files/fit_combined1_new.rds')
 
 Let's look at the results.
 
-```{r 'bruResultsWW1', warning=FALSE, cache=TRUE}
+```{r 'bruResultsWW1', warning=FALSE, cache=TRUE, message=F}
 fit_combined1$dic$dic #DIC is 2003 - new benchmark can't compare with previous models
 summary(fit_combined1) # WAIC has not converged - perhaps model is unstable?
 ```
@@ -245,20 +224,25 @@ The output from `summary` shows some interesting findings!
 
 We detect a large negative effect of the scaled squared distance from port (`Dist_Quoddy_sq` and `Dist_Brier_sq`). The values both lie between 250 and -450 which seems reasonable considering our earlier plots. 
 
-Most interestingly, we detect a large and highly 'significant' effect of log slope on the whale intensity. The claim of 'significance' comes from the fact that the 95% credible intervals lie far from 0. This is in agreement with the (crude) IPP model we fit in the exploratory analysis, but opposes the model we fit to the survey data! Remember - we failed to detect any effect of log slope in the previous workshop from the survey data alone! 
+Most interestingly, we detect a large and highly 'significant' effect of log slope on the whale intensity. The claim of 'significance' comes from the fact that the 95% credible intervals lie far from 0. This conclusion opposes the model we fit to the survey data! Remember - we failed to detect any effect of log slope in the previous workshop from the survey data alone! 
 
 By adding more data, we can expect to gain power to detect species-environmental trends. However, estimated trends from this joint model framework should be treated with caution. The causal DAG tells us that the estimates of these trends could become confounded if a path of association exists between the log slope and the true whale watch effort intensity. For example, suppose the whales do in fact spend more time in regions of high slope. Suppose also that whale watch companies learn this and preferentially situate their vessels in regions of higher slope with the intention of encountering more whales! Here, we would have a path from log depth through to the true effort. This would lead to us over-estimating the effect of log slope on the true whale intensity $\lambda_{true}$! 
 
-Why? Because there would be an effect of log slope on the true effort (say $\alpha_1^\star$) and an effect of log slope on the true intensity ($\beta^\star_1$). By assuming that log slope effects only the true intensity, our model would estimate $\alpha_1^\star + \beta^\star_1$ instead of the desired $\beta^\star_1$! The addition comes from the fact that $exp(\alpha_1^\star X(s))exp(\beta^\star_1 X(s)) = exp((\alpha_1^\star + \beta^\star_1) X(s))$. We display this problematic whale watch scenario with a DAG below. It is the two causal arrows leaving log slope that cause the problem.  
+Why? Because there would be an effect of log slope on the true effort (say $\alpha_1^\star$) and an effect of log slope on the true intensity ($\beta^\star_1$). By assuming that log slope effects only the true intensity, our model would estimate $\alpha_1^\star + \beta^\star_1$ instead of the desired $\beta^\star_1$! The addition comes from the fact that $exp(\alpha_1^\star X(s))exp(\beta^\star_1 X(s)) = exp((\alpha_1^\star + \beta^\star_1) X(s))$. Note that the 95% credible intervals for the effect of log_Slope from the previous survey-only model and this joint model do not overlap. As we discussed in lecture 3, this should make us suspicious. Either: i) we have detected a large, positive $\alpha_1^\star$ value (as discussed above), ii) we poorly estimated $\beta^\star_1$ using the survey data in the previous workshop, or iii) the estimates of $\beta^\star_1$ using the whale watch data without the Gaussian random field included are being strongly confounded by unmeasured environmental covariates $\textbf{x}^\star(\textbf{s},t)$ whose effects were previously being captured by the random field used in the survey-only model. We display the problematic scenarios i) and iii) with DAGs below. For i), it is the two causal arrows leaving log slope that cause the problem. For iii), it is the two red arrows that cause the confounding.  
 
 ```{r, echo=F}
 include_graphics('./Causal_DAG_Workshop_3.jpeg')
 ```
 
+```{r, echo=F}
+include_graphics('./Causal_DAG_Workshop_3_V2.jpeg')
+```
 
-Importantly then, depending on whether or not log slope is independent of the true effort, including log slope could either improve or harm our spatial predictions of the whale intensity! This is why we should attempt to model/emulate the true effort form the opportunistic data sources as accurately as possible. The better our approximations to the true effort intensity, the less we risk residual confounding hurting our estimates of species-environmental trends and the more justified we are with including the spatial field in the models for the opportunistic data.
+Importantly then, depending on which of the above three scenarios holds, including log slope could either improve or harm our spatial predictions of the whale intensity! This is why we should attempt to model/emulate the true effort from the opportunistic data sources as accurately as possible. The better our approximations to the true effort intensity, the less we risk residual confounding hurting our estimates of species-environmental trends and the more justified we are with including the spatial field in the models for the opportunistic data (i.e. we reduce the risk of scenarios i) and iii) occurring). 
 
-A cause for concern with this joint model is that we estimate a **very large** value of the WAIC. A very large WAIC (or DIC) value can often be a sign that the model is having convergence issues (is nearly singular). This instability is consistently seen throughout the remainder of this workshop session. The instability is due to us fitting a very complex model to a very small subset of the available data (we used only 63 survey sightings!). In practice, we should not confidently report results from such a model. However, for the purposes of this workshop, we continue and report the DIC results. 
+A final cause for concern with this joint model is that we estimate a **very large** value of the WAIC. A very large WAIC (or DIC) value can often be a sign that the model is having convergence issues (is nearly singular). This instability is consistently seen throughout the remainder of this workshop session. The instability is due to us fitting a very complex model to a very small subset of the available data (we used only 63 survey sightings!). In practice, we should not confidently report results from such a model. However, for the purposes of this workshop, we continue and report the DIC results. 
+
+Given all these concerns, how can we evaluate whether or not to trust the predictions from our joint models over the predictions from our survey-only models? This is why we split our data into test and training data-sets. Later in this workshop we will directly compare our two modeling approaches by assessing their predictive performance on the 2011 data.
 
 ### Investigating the estimated effort layer
 
@@ -285,15 +269,15 @@ ggplot() + gg(Dist_Brier_sq_plot[1]) + gg(Domain) +
 Repeat the above for the Quoddy port. Plot the effort intensity from both ports using `multiplot`. Fix the colour scale for both plots
 
 <div class="fold s o">
-```{r 'map-effotWW1Quoddy', message=FALSE, cache=TRUE}
+```{r 'map-effotWW1Quoddy', message=FALSE, cache=TRUE, warning=F}
 Dist_Quoddy_sq_plot <- pixels(mesh=mesh_land,mask=Domain)
 Dist_Quoddy_sq_plot <- predict(fit_combined1,Dist_Quoddy_sq_plot,~exp(Dist_Quoddy_sq + Intercept_WW_Q - Intercept),n.samples = 20, seed=seed)
 
 multiplot(
 ggplot() + gg(Dist_Quoddy_sq_plot[1]) + gg(Domain) +        colsc(c(Dist_Brier_sq_plot$mean,Dist_Quoddy_sq_plot$mean)) +
-    ggtitle('Effort surface for Quoddy'),
+    ggtitle('Effort surface for Quoddy') + coord_fixed(),
 ggplot() + gg(Dist_Brier_sq_plot[1]) + gg(Domain) +        colsc(c(Dist_Brier_sq_plot$mean,Dist_Quoddy_sq_plot$mean)) +
-    ggtitle('Effort surface for Brier')
+    ggtitle('Effort surface for Brier') + coord_fixed()
 )
 
 ```
@@ -316,7 +300,7 @@ We estimate that in total, the effort from the Brier port is around `r signif(Re
 
 Now, we plot the estimated intensity from the joint model **and** from the previous covariate model fit exclusively to the survey data (`fit2`). Then, we estimate the number of groups present in `Domain` in the summer months.
 
-```{r, message=F, cache=TRUE}
+```{r, message=F, cache=TRUE, warning=F}
 # define pixels across the domain
 plot_pixels_WW1 <- pixels(mesh_land, mask = Domain)
 
@@ -332,19 +316,19 @@ pred_int_WW1 <- predict(
 # plot the predictions - scale the colour scale values from 0 - 99th percentile to improve appearance
 multiplot(
   ggplot() + gg(pred_int2[1]) + gg(Domain) + 
-    gg.spatiallines_mod(Effort_survey, colour ='red') +
+    gg(Effort_survey, colour ='red') +
     colsc(quantile(c(pred_int2@data$mean, pred_int_WW1@data$mean),probs=c(0,0.99))) + 
     ggtitle('Covariate Model Mean'),
   ggplot() + gg(pred_int2[2]) + gg(Domain) + 
-    gg.spatiallines_mod(Effort_survey, colour = 'red') +
+    gg(Effort_survey, colour = 'red') +
     colsc(quantile(c(pred_int2@data$sd, pred_int_WW1@data$sd),probs=c(0,0.99))) + 
     ggtitle('Covariate Model SD'),
   ggplot() + gg(pred_int_WW1[1]) + gg(Domain) + 
-    gg.spatiallines_mod(Effort_survey, colour ='red') +
+    gg(Effort_survey, colour ='red') +
     colsc(quantile(c(pred_int2@data$mean, pred_int_WW1@data$mean),probs=c(0,0.99))) + 
     ggtitle('Joint Model Mean'),
   ggplot() + gg(pred_int_WW1[2]) + gg(Domain) + 
-    gg.spatiallines_mod(Effort_survey, colour = 'red') +
+    gg(Effort_survey, colour = 'red') +
     colsc(quantile(c(pred_int2@data$sd, pred_int_WW1@data$sd),probs=c(0,0.99))) + 
     ggtitle('Joint Model SD'),
   layout = matrix(
@@ -375,9 +359,9 @@ Qualitatively, the intensity surfaces from the joint and survey-only models appe
 
 For our second model, we will use the available information on the fleet sizes of the two whale watch companies and the number and duration of trips that leave each port. Looking at the two websites, we estimate Brier to have 3.22 times more effort on the water than Quoddy (see [end of this tutorial](#WW_est) for additional details).
 
-Since the previous model estimated a much smaller Brier's effort surface (only `r signif(Rel_Effort$mean,2)` times bigger than Quoddy), in model 2, we will fix the total effort from Brier equal to 3.22 times that of Quoddy. To achieve this, we will replace the contrast term (`Diff_...`) with a log(3.22) offset to the Brier linear predictor.
+Since the previous model estimated an unrealistically small amount of effort from the Brier whale watch company (only `r signif(Rel_Effort$mean,2)` times bigger than Quoddy), in model 2, we will fix the total effort from Brier equal to 3.22 times that of Quoddy. To achieve this, we will replace the contrast term (`Diff_...`) with a log(3.22) offset to the Brier linear predictor.
 
-For the log offset to truly represent the relative efforts, we also need to define an integration function to integrate the whale-watch effort intensities across the two respective 'sampler' polygons. This function will use the current guess of the parameters `Dist_Brier_sq` and `Dist_Quoddy_sq` and the integral it computes will be used to normalise the two effort surfaces and put them on the same scale. This will allow us to use the log(3.22) offset to represent the relative effort. Let's define these now. 
+For the log offset to truly represent the relative efforts, we also need to define an integration function to integrate the whale-watch effort intensities across the two respective 'sampler' polygons. This function will take the parameters `Dist_Brier_sq` and `Dist_Quoddy_sq` as arguments and the integral it computes will be used to normalize the two effort surfaces and put them on the same scale. This will allow us to use the log(3.22) offset to represent the relative effort. Let's define these now. 
 
 ```{r, cache=T}
 # These functions approximate the integral of the (unscaled) effort surface across the sampler and returns the negative logarithm. Needs to return negative log as we need to subtract the integral on the log lambda_eff scale (equivalent to division on the original scale)
@@ -424,7 +408,7 @@ formula_WW_Q2 = coordinates ~
 
 Note that `Diff_WW_Q_B` has been replaced with `log(3.22)` based on the reported trip numbers and durations. Now we can define the likelihoods and fit the models:
 
-```{r, cache=TRUE, warning=F}
+```{r, cache=TRUE, warning=F, message=F}
 fit_WW_B2 = like(data = Sightings_Brier_nodup,
                  samplers = Domain,
                  domain = list(
@@ -458,7 +442,7 @@ fit_combined2$dic$dic #DIC is 2072 - substantially worse fit.
 summary(fit_combined2) # WAIC is very large - indicative of convergence issues
 ```
 
-Despite the **larger** DIC, we would likely prefer the results from this model over the first model. We saw before that the unconstrained model led to unrealistic predictions of the relative total amounts of effort from the two ports. Again, WAIC indicates potential numerical issues. Ignoring this, let's investigate the predicted intensity and estimated number of groups.
+Despite the **larger** DIC, we may still prefer the results from this model over the first model. We saw before that the unconstrained model led to unrealistic predictions of the relative total amounts of effort from the two ports. Again, WAIC indicates potential numerical issues. Ignoring this, let's investigate the predicted intensity and estimated number of groups.
 
 ```{r, message=F, warning=F, cache=TRUE}
 # Plot the effort surfaces from the two WW companies/ports
@@ -477,13 +461,13 @@ pred_int_WW2 <- predict(fit_combined2, plot_pixels_WW2,
                         ~ exp(mySpatial + Intercept + log_Slope), n.samples = 20, seed=seed)
 
 # threshold the colour palette at the 99.5th percentile for nicer viewing
-multiplot(ggplot() + gg(pred_int_WW1[1]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+multiplot(ggplot() + gg(pred_int_WW1[1]) + gg(Domain) + gg(Effort_survey, colour='red') +
             colsc(quantile(c(pred_int_WW1@data$mean,pred_int_WW2@data$mean),probs = c(0,0.995))) + ggtitle('Joint Model 1 Mean'),
-          ggplot() + gg(pred_int_WW1[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+          ggplot() + gg(pred_int_WW1[2]) + gg(Domain) + gg(Effort_survey, colour='red') +
             colsc(quantile(c(pred_int_WW1@data$sd,pred_int_WW2@data$sd),probs = c(0,0.995))) + ggtitle('Joint Model 1 SD'),
-          ggplot() + gg(pred_int_WW2[1]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+          ggplot() + gg(pred_int_WW2[1]) + gg(Domain) + gg(Effort_survey, colour='red') +
             colsc(quantile(c(pred_int_WW1@data$mean,pred_int_WW2@data$mean),probs = c(0,0.995))) + ggtitle('Joint Model 2 Mean'),
-          ggplot() + gg(pred_int_WW2[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+          ggplot() + gg(pred_int_WW2[2]) + gg(Domain) + gg(Effort_survey, colour='red') +
             colsc(quantile(c(pred_int_WW1@data$sd,pred_int_WW2@data$sd),probs = c(0,0.995))) + ggtitle('Joint Model 2 SD'),
           layout = matrix(c(1:4),nrow=2,ncol=2,byrow = F))
 
@@ -502,7 +486,7 @@ ggplot(Lambda_df_restricted,aes(x=Model, y=mean, ymax=q0.975, ymin=q0.025)) +
 
 From the output of model 2 we find a similar, but larger estimate for the effect of log slope. Maps of the fitted intensity show qualitatively similar appearances.
 
-We once again restrict our predictions of the total number of groups to the smaller domain. We find large agreement between all 4 models, with the posterior mean number of groups very similar and with overlapping credible intervals. However, the second joint model has a much greater uncertainty in the predicted number of groups with a very large upper credible interval. This is caused by the larger estimate of the log slope effect.
+We once again restrict our predictions of the total number of groups to the smaller domain. We find large agreement between all 4 models, with the posterior mean number of groups very similar and with overlapping credible intervals. However, the second joint model has a much greater uncertainty in the predicted number of groups with a very large upper credible interval. This is caused by the larger estimate of the log slope effect. In summary then, it appears that this second joint model has very unstable predictions of whale intensity.
 
 ### Including external knowledge about the presence-only observers as a Bayesian prior
 
@@ -526,7 +510,7 @@ cmp_WW_Combined3 <- ~
 
 Then, we define the likelihood objects and fit the joint model using `bru`. 
 
-```{r 'formulae_Comb3', cache=TRUE}
+```{r 'formulae_Comb3', cache=TRUE, message=F, warning=F}
 formula_WW_B3 = coordinates ~
   Dist_Brier_sq + 
   Intercept_WW_Q + 
@@ -566,7 +550,7 @@ The estimated effects are very similar to those reported from the previous two j
 
 Next, we plot both the estimated whale intensity surface and the whale watch effort intensity surface.
 
-```{r, message=F, cache=TRUE}
+```{r, message=F, cache=TRUE, warning=F}
 # define pixels over the domain
 Dist_Brier_sq_plot3 <- pixels(mesh=mesh_land,mask=Domain)
 # predict over the pixels
@@ -588,20 +572,20 @@ plot_pixels_WW3 <- pixels(mesh_land, mask = Domain)
 pred_int_WW3 <- predict(fit_combined3, plot_pixels_WW3, 
                         ~ exp(mySpatial + Intercept + log_Slope), n.samples = 20, seed=seed)
 
-multiplot(ggplot() + gg(pred_int_WW1[1]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+multiplot(ggplot() + gg(pred_int_WW1[1]) + gg(Domain) + gg(Effort_survey, colour='red') +
             colsc(quantile(c(pred_int_WW1@data$mean,pred_int_WW3@data$mean),probs = c(0,0.995))) + ggtitle('Joint Model 1 Mean'),
-          ggplot() + gg(pred_int_WW1[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+          ggplot() + gg(pred_int_WW1[2]) + gg(Domain) + gg(Effort_survey, colour='red') +
             colsc(quantile(c(pred_int_WW1@data$sd,pred_int_WW3@data$sd),probs = c(0,0.995))) + ggtitle('Joint Model 1 SD'),
-          ggplot() + gg(pred_int_WW3[1]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+          ggplot() + gg(pred_int_WW3[1]) + gg(Domain) + gg(Effort_survey, colour='red') +
             colsc(quantile(c(pred_int_WW1@data$mean,pred_int_WW3@data$mean),probs = c(0,0.995))) + ggtitle('Joint Model 3 Mean'),
-          ggplot() + gg(pred_int_WW3[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+          ggplot() + gg(pred_int_WW3[2]) + gg(Domain) + gg(Effort_survey, colour='red') +
             colsc(quantile(c(pred_int_WW1@data$sd,pred_int_WW3@data$sd),probs = c(0,0.995))) + ggtitle('Joint Model 3 SD'),
           layout = matrix(c(1:4),nrow=2,ncol=2,byrow = F))
 ```
 
 Again, the predictions from this third model seem very similar to the predictions from the previous two models. Again, we restrict our inference to consider only the waters within 20 km of the nearest trackline and estimate the total number of groups:
 
-```{r, message=F, cache=TRUE}
+```{r, message=F, cache=TRUE, warning=F}
 # What is the estimated number of groups in the restricted region?
 Lambda_WW3_restricted <- predict(fit_combined3, predpts_restricted, ~ sum(weight * exp(mySpatial + Intercept + log_Slope)), n.samples = 20, seed=seed)
 Lambda_WW3_restricted
@@ -611,11 +595,11 @@ ggplot(Lambda_df_restricted,aes(x=Model, y=mean, ymax=q0.975, ymin=q0.025)) +
   geom_point() + geom_errorbar() + ggtitle('Estimated Number of Groups in Restricted Region')
 ```
 
-Estimates of the number of groups from joint model 3 appear to lie somewhere in-between those from joint model 1 and joint model 2.
+Estimates of the number of groups from joint model 3 appear to lie somewhere in-between those from joint model 1 and joint model 2. The instability of predictions seen in joint model 2 appears to have disappeared.
 
-We can estimate the relative effort across the two ports? Given that we have normalised the effort fields by their total integrals, we can assess the estimated relative effort by simply assessing the posterior marginal distribution of the exponential of `Diff_QQ_B_Q`.
+We can estimate the relative effort across the two ports. Given that we have normalised the effort fields by their total integrals, we can assess the estimated relative effort by simply assessing the posterior marginal distribution of the exponential of `Diff_QQ_B_Q`. To make a nice plot of an individual parameter, we can use the function `generate` to sample the parameters from the model and then use `sapply` to manually compute functions of the sampled parameters.
 
-```{r, cache=TRUE}
+```{r, cache=TRUE, message=F, warning=F}
 # To get the posterior of the exponential of the parameter, we can sample from the model. 
 samples_WW3 <- generate(fit_combined3,n.samples = 20, seed=seed) #sample all parameters
 Diff_QQ_B_Q_samples <- sapply(samples_WW3, FUN = function(x){return(exp(x$Diff_QQ_B_Q))})
@@ -633,12 +617,7 @@ The plot shows that the model is estimating the relative total efforts from the 
 
 As a final exercise, we plot the estimated effects of Slope across the three models. We restrict the range of log slope values to be between the minimum observed log slope value and the 95th percentile of the log slope values observed at the survey tracklines. This should help to stop us extrapolating the effect of log slope beyond the values observed in the data.
 
-```{r, cache=TRUE}
-# sample from the models
-samples_WW1 <- generate(fit_combined1,n.samples = 20, seed=seed)
-samples_WW2 <- generate(fit_combined2,n.samples = 20, seed=seed)
-samples_WW3 <- generate(fit_combined3,n.samples = 20, seed=seed)
-
+```{r, cache=TRUE, message=F, warning=F}
 # define a dataframe with slope values
 Slopedf <- data.frame(
   log_Slope = seq(from=min(log_Slope$log_Slope), 
@@ -646,39 +625,24 @@ Slopedf <- data.frame(
                   length.out = 100)
 )
 
-# predict
-Slopepred_WW1 <- sapply(samples_WW1,FUN = function(x){return(exp(Slopedf$log_Slope*x$log_Slope))})
+# Sample from the models
+Slopepred_WW1 <- predict(fit_combined1, Slopedf, ~exp(log_Slope),n.samples = 20, include = c("log_Slope"))
 
-Slopepred_WW2 <- sapply(samples_WW2,FUN = function(x){return(exp(Slopedf$log_Slope*x$log_Slope))})
+Slopepred_WW2 <- predict(fit_combined2, Slopedf, ~exp(log_Slope),n.samples = 20, include = c("log_Slope"))
 
-Slopepred_WW3 <- sapply(samples_WW3,FUN = function(x){return(exp(Slopedf$log_Slope*x$log_Slope))})
+Slopepred_WW3 <- predict(fit_combined3, Slopedf, ~exp(log_Slope),n.samples = 20, include = c("log_Slope"))
 
 # plot
 multiplot(
-ggplot(data.frame(mean=apply(Slopepred_WW1,1, mean),
-                  LCL=apply(Slopepred_WW1,1, quantile, probs=c(0.025)),
-                  UCL=apply(Slopepred_WW1,1, quantile, probs=c(0.975)),
-                  logSlope=Slopedf$log_Slope),
-       aes(y=mean,x=logSlope,ymax=UCL,ymin=LCL)) +
-  geom_line() + geom_ribbon(alpha=0.4) + ylim(c(0,170)) +
+plot(Slopepred_WW1) + ylim(c(0,170)) +
   ylab('Relative intensity change') +
   ggtitle('Joint model 1'),
 
-ggplot(data.frame(mean=apply(Slopepred_WW2,1, mean),
-                  LCL=apply(Slopepred_WW2,1, quantile, probs=c(0.025)),
-                  UCL=apply(Slopepred_WW2,1, quantile, probs=c(0.975)),
-                  logSlope=Slopedf$log_Slope),
-       aes(y=mean,x=logSlope,ymax=UCL,ymin=LCL)) +
-  geom_line() + geom_ribbon(alpha=0.4) + ylim(c(0,170)) +
+plot(Slopepred_WW2) + ylim(c(0,170)) +
   ylab('Relative intensity change') +
   ggtitle('Joint model 2'),
 
-ggplot(data.frame(mean=apply(Slopepred_WW3,1, mean),
-                  LCL=apply(Slopepred_WW3,1, quantile, probs=c(0.025)),
-                  UCL=apply(Slopepred_WW3,1, quantile, probs=c(0.975)),
-                  logSlope=Slopedf$log_Slope),
-       aes(y=mean,x=logSlope,ymax=UCL,ymin=LCL)) +
-  geom_line() + geom_ribbon(alpha=0.4) + ylim(c(0,170)) +
+plot(Slopepred_WW3) + ylim(c(0,170)) +
   ylab('Relative intensity change') +
   ggtitle('Joint model 3'),
 layout = matrix(1:3, nrow=1, ncol=3, byrow=T))
@@ -687,7 +651,7 @@ layout = matrix(1:3, nrow=1, ncol=3, byrow=T))
 
 We see very similar estimates of the log slope effect from the three joint models. It is estimated that the true whale intensity is over 50 times higher in regions of high slope vs regions with slope of 1. 
 
-As mentioned before, the causal DAG tells us that these estimates of the log slope effect may be overestimating the true effect size if the whale watch vessels tend to focus their efforts in regions of high slope. That is, the strong association we apparently see between log slope and the whale intensity may in fact be caused by the association between log slope and the whale watch effort intensity!
+As mentioned before, the causal DAG tells us that these estimates of the log slope effect may be overestimating the true effect size if the whale watch vessels tend to focus their efforts in regions of high slope. That is, the strong association we apparently see between log slope and the whale intensity may in fact be caused by the association between log slope and the whale watch effort intensity! Alternatively, the causal DAG also tells us that our large estimates of log Slope may be a result of confounding by unobserved covariates that are not being controlled for with our random field!
 
 Putting all the results together, and using our knowledge of the whale watch operations and the relative amounts of effort from the two companies, we decide to go with model 3 as our 'best' joint model. 
 
@@ -704,9 +668,9 @@ int_test_dist <- ipoints(domain = INLA::inla.mesh.1d(seq(0, 4, length.out = 60))
 # This defines integration points in both 2D space and 1D distance dimensions
 int_test_prod <- cprod(int_test,int_test_dist)
 
-ggplot() + gg(Domain) + gg(int_test_prod) + gg.spatiallines_mod(Effort_survey_test, colour='pink')
+ggplot() + gg(Domain) + gg(int_test_prod) + gg(Effort_survey_test, colour='pink')
 # Where do these points come from? They are the mesh vertices!
-ggplot() + gg(mesh_land) + gg(int_test_prod) + gg.spatiallines_mod(Effort_survey_test, colour='pink')
+ggplot() + gg(mesh_land) + gg(int_test_prod) + gg(Effort_survey_test, colour='pink')
 
 sum(int_test_prod$weight)
 sum(int_test$weight) 
@@ -756,13 +720,13 @@ ggplot(Lambda_tests, aes(x=Model, y=mean, ymax=q0.975, ymin=q0.025)) +
 
 ```
 
-We see that all three models under-estimate the total observed number of encounters, but that all three models contain the observed value within their 95% credible intervals. Any differences between the three models is minor. 
+We see that all three models under-estimate the total observed number of encounters, but that all three models contain the observed value within their 95% credible intervals. Any differences between the three models are minor. 
 
 An alternative approach for model comparison is to compare the spatial distribution of the points with respect to the fitted intensity surfaces. In other words, how well do our models capture the spatial distribution of 2011's whale intensity.
 
 Few methods exist for investigating this for log-Gaussian Cox process models. One idea could be to map each of the 2011 encounter locations to the closest mesh vertex (similarly for the recorded distance). Then, we could evaluate the Poisson density function of the counts evaluated at every combination of mesh vertices and distances. This would provide a score function for us to compare the models. By sampling from the posterior, we can approximate the posterior distribution for these scores. Note that a higher score indicates a better model fit.
 
-```{r, cache=TRUE}
+```{r, cache=TRUE, message=F, warning=F}
 # Loop through sightings. Find closest mesh locations and distance value.
 int_ind <- rep(NA, dim(Sightings_survey_test@coords)[1])
 int_test_prod$count <- 0
@@ -821,15 +785,17 @@ ggplot(Scores, aes(x=Model, y=mean, ymax=q0.975, ymin=q0.025)) +
   ylab('Score') + ggtitle('Posterior Scores of the 3 Models')
 ```
 
-So what do we find out? According to the 2011 test data alone, we fail to find any evidence that including log slope in a model for the whale intensity improves either the predictions of the total number of encounters, or the predicted spatial distribution of encounters. Furthermore, we also fail to find any evidence that incorporating the whale-watch sightings improved either measure of predictive performance.
+So what do we find out? According to the 2011 test data alone, we fail to find any evidence that including log slope in a model for the whale intensity improves either the predictions of the total number of encounters, or the predicted spatial distribution of encounters. Furthermore, we also fail to find any evidence that incorporating the whale-watch sightings improved either measure of predictive performance. Thus, based on these results, we would favour the survey-only models over the joint models due to them relying on far fewer assumptions.
 
 So why haven't things improved? For starters, the test dataset used for model comparison contained only 15 sightings. Thus only huge differences in model fit would likely be detected by the scoring approach. Secondly, we made strong assumptions that: the whale density did not change across the three months, each survey followed identical protocols with identical detection functions and the whale density in 2011 matched that in 2007-2009.
 
-What have we gained? For starters, by including the whale watch data within a joint model, we gained knowledge about a possible relationship between whale density and slope. Of course, the causal DAG introduced in the third lecture would tell us to be cautious: the detected trend could be due to confounding with terms that truly drive whale watch effort! Additionally, we now have a model for the number of sightings to be expected from the whale watch companies given an estimate of their total efforts. This could be used to detect large changes in the whale intensity within the waters in close proximity to their ports. Furthermore, our approach at approximating whale watch effort was very crude. Future work should consider emulating the whale watch efforts more accurately (e.g. obtaining 'typical' routes travelled by the vessels)..
+What have we gained? For starters, by including the whale watch data within a joint model, we gained knowledge about a possible relationship between whale density and slope. Of course, the causal DAG theory introduced in the third lecture would tell us to be cautious: the detected trend could be due to confounding with terms that truly drive whale watch effort! Additionally, we now have a model for the number of sightings to be expected from the whale watch companies given an estimate of their total efforts. This could be used to detect large changes in the whale intensity within the waters in close proximity to their ports. 
+
+However, our estimates of group size and our predictions of whale intensity under the joint models had a much higher level of uncertainty. This may be due to our crude approach taken to approximate the whale watch effort. Future work should consider emulating the whale watch efforts more accurately (e.g. obtaining 'typical' routes travelled by the vessels).
 
 In the interests of computation time, we only considered a small subset of the total data available on the fin whales for this workshop. It would be interesting to repeat this modelling process on the entire data! The resolution, precision, and accuracy of the intensity maps would likely increase greatly. In addition to the survey and whale watch data, opportunistic sightings from commercial vessels and other sources are also available. These could also be included in a joint model, with estimates of effort coming from AIS layers! 
 
-Many of the numerical instabilities we faced with fitting these models may also disappear with the commercial data included for three reasons. First, unlike the whale watch data, the commercial opportunistic data covers a much larger area of the domain. Second, commercial vessels may be less prone to preferentially focusing their efforts in regions where the whale intensity is high. The DAG tells us that this should reduce the risk of over-estimating species-environment trends (due to confounding). Finally, there is more overlap between the survey effort and the commercial effort. This should help with estimating the intercept parameters.
+Many of the numerical instabilities we faced with fitting these models may also disappear with the commercial data included for three reasons. First, unlike the whale watch data, the commercial opportunistic data covers a much larger area of the domain. Second, commercial vessels may be less prone to preferentially focusing their efforts in regions where the whale intensity is high. The DAG tells us that this could reduce the risk of confounding bias creeping into our estimates of species-environment trends. Finally, there is more overlap between the survey effort and the commercial effort. This should help with estimating the intercept parameters.
 
 
 ### Exercise {#Ex6}
@@ -906,30 +872,20 @@ summary(fit_combined4) # WAIC indicates the model is unstable
 </div>
 
 ### Exercise {#Ex7}
-Now, predict the fitted detection function from `fit_combined4` and compare it with the detection function estimated from `fit_combined2`. Combine the two into a single plot using `multiplot`. HINT: You may need to use the `generate` and `sapply` method if an error message is returned when using `predict`.
+Now, predict the fitted detection function from `fit_combined4` and compare it with the detection function estimated from `fit_combined2`. Combine the two into a single plot using `multiplot`. HINT: You can use the `predict` function with the argument `include = c('lsig')`.
 
 <div class="fold s o">
-```{r, cache=TRUE}
+```{r, cache=TRUE, message=F, warning=F}
 distdf <- data.frame(distance = seq(0, 2, length = 100))
-dfun_3 <- generate(fit_combined3, n.samples = 20)
-dfun_3 <- sapply(dfun_3, FUN = function(x){exp(log_hn(distdf$distance, as.numeric(x$lsig)))})
-  
-dfun_4 <- generate(fit_combined4, n.samples = 20)
-dfun_4 <- sapply(dfun_4, FUN = function(x){exp(log_hr(distdf$distance, as.numeric(x$lsig)))})
+dfun3 <- predict(fit_combined3, distdf, ~exp(log_hn(distance,lsig)),n.samples = 20, include = c("lsig"))
 
-dfun_df <- data.frame(distance=distdf$distance,
-                      mean_hnorm=apply(dfun_3,1,mean),
-                      mean_hazard=apply(dfun_4,1,mean),
-                      LCL_hnorm=apply(dfun_3,1,quantile,probs=0.025),
-                      UCL_hnorm=apply(dfun_3,1,quantile,probs=0.975),
-                      LCL_hazard=apply(dfun_4,1,quantile,probs=0.025),
-                      UCL_hazard=apply(dfun_4,1,quantile,probs=0.975)
-                      )
+dfun4 <- predict(fit_combined4, distdf, ~exp(log_hr(distance,lsig)),n.samples = 20, include = c("lsig"))
+
 multiplot(
-  ggplot(dfun_df,aes(x=distance, y=mean_hnorm, ymax=UCL_hnorm, ymin=LCL_hnorm)) +
+  plot(dfun3) +
     geom_line() + geom_ribbon(alpha=0.4, colour='red', fill='red') +
     ylab('Probability of detection half normal'),
-  ggplot(dfun_df,aes(x=distance, y=mean_hazard, ymax=UCL_hazard, ymin=LCL_hazard)) +
+  plot(dfun4) +
     geom_line() + geom_ribbon(alpha=0.4, colour='blue', fill='blue')  +
     ylab('Probability of detection hazard (shape 5)'),
   layout=matrix(1:2, nrow=2, ncol=1, byrow = T)
@@ -942,7 +898,7 @@ multiplot(
 Plot a map of the estimated **search effort half-normal functions** from both ports. HINT: To get the half-normal functions we want to investigate the quantity `exp(Dist_Brier_sq)` and `exp(Dist_Quoddy_sq`.
 
 <div class="fold s o">
-```{r, message=F, cache=TRUE}
+```{r, message=F, cache=TRUE, warning=F}
 Dist_Brier_sq_plot4 <- pixels(mesh=mesh_land,mask=Domain)
 Dist_Brier_sq_plot4 <- predict(fit_combined4,Dist_Brier_sq_plot4,~exp(Dist_Brier_sq),n.samples = 20, seed=seed)
 ggplot() + gg(Dist_Brier_sq_plot4[1]) + colsc(Dist_Brier_sq_plot4[1]$mean) + 
@@ -962,7 +918,7 @@ ggplot() + gg(Dist_Quoddy_sq_plot4[1]) + colsc(Dist_Quoddy_sq_plot4[1]$mean) +
 We failed to detect a difference in the posterior scores between `fit_combined3`, `fit`, and `fit2`. Now evaluate the posterior scores of `fit_combined4`. Do we find any evidence in favour of `fit_combined4`?
 
 <div class="fold s o">
-```{r}
+```{r, message=F, warning=F}
 Score_joint4 <- 
   predict(fit_combined4, int_test_prod, 
           ~ sum(dpois(count,
@@ -981,9 +937,6 @@ ggplot(Scores, aes(x=Model, y=mean, ymax=q0.975, ymin=q0.025)) +
   ylab('Score') + ggtitle('Posterior Scores of the 4 Models')
 ```
 </div>
-
-<!-- ### (BONUS CHALLENGING) Exercise {#Ex9} -->
-<!-- Additional opportunistic sightings are available in the SpatialPointsDataFrame object `Sightings_Opp_sp`, obtained by running the code below. Obtain AIS vessel density data, or manually create a rough one by hand.  Try to incorporate these additional sightings into a model. What changes?  -->
 
 ### Closing Notes
 
@@ -1025,9 +978,9 @@ Note that we cannot fit a spatio-temporal model to our data due to insufficient 
 
 ### Why we assume an IPP model for our whale watch data {#Addinfo}
 
-Based on our discussions of causal DAGs in the third lecture, we decide to **not** include the spatial field in the models for the whale watch data. We believe that the simple half-normal functions will fail to appropriately explain the efforts of the whale watch companies. Consequently, the causal DAG warns us that any residual spatial correlations caused by unexplained effort may be incorrectly absorbed by the spatial field. This would lead to bias to creep into our estimates of $\lambda_{true}$ within the regions visited by the whale watch companies (since we are assuming that the spatial field explains $\lambda_{true}$)!
+Based on our discussions of causal DAGs in the third lecture, we decide to **not** include the spatial field in the models for the whale watch data. We believe that the simple half-normal functions will fail to appropriately explain the efforts of the whale watch companies. Consequently, the causal DAG warns us that any residual spatial correlations caused by unexplained effort may be incorrectly absorbed by the spatial field. This would lead to bias to creep into our estimates of $\lambda_{true}$ within the regions visited by the whale watch companies (since we are assuming that the spatial field **only** explains $\lambda_{true}$)!
 
-The bias could be large in magnitude too! We have very little survey effort that takes place in the regions visited by the whale watch vessels. Consequently, the information from the whale watch encounters far dominates the information available from the survey data in the whale watch regions. This could cause the spatial field to over-fit to the unobserved effort!
+The bias could be large in magnitude too! We have very little survey effort that takes place in the regions visited by the whale watch vessels. Consequently, the information from the whale watch encounters far dominates the information available from the survey data in the whale watch regions. This could cause the estimates of the spatial field to become dominated by the unobserved effort!
 
 Instead, we will model the observed whale watch intensity as a function of the estimated (half-normal) effort intensity and an estimated function of log slope **only**. That is, the whale watch encounters will be modelled as realisations from an inhomogeneous Poisson process (IPP), while the survey data will be modelled as realisation from a log-Gaussian Cox process (LGCP) model. The estimated `log_Slope` parameter will be shared across the two models
 
@@ -1050,4 +1003,4 @@ Putting it all together, we estimate Brier to have 3.22 times more effort on the
 
 ## Messages of Thanks
 
-These workshops would not have been possible without the extensive organisational and data-preparation efforts of Shelley Lang and Catalina Gomez. We thank you both! Additionally, Finally, we would like to thank Finn Lindgren for making a stable release version of `inlabru` in time for these workshops and for providing coding assistance.
+These workshops would not have been possible without the extensive organisational and data-preparation efforts of Shelley Lang and Catalina Gomez. We thank you both! Finally, we would like to thank Finn Lindgren for making a stable release version of `inlabru` in time for these workshops and for providing coding assistance.
