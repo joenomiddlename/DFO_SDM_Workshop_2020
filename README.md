@@ -1,2 +1,2 @@
-# DFO_SDM_Workshop_2020
-DFO SDM Workshop Materials using INLA and inlabru
+# DFO Spatial Point Process Workshop 2020
+DFO Spatial Point Process Workshop Materials using INLA and inlabru
