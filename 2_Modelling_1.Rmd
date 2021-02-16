@@ -2,7 +2,7 @@
 title: "Model Fitting"
 subtitle: "Fitting distance sampling log-Gaussian Cox process models using inlabru"
 author: "Joe Watson and Marie Auger-Méthé"
-date: "11/01/2021"
+date: "15/02/2021"
 bibliography: bibliography.bib
 output: 
   html_document:
@@ -50,10 +50,9 @@ library(knitr)
 
 Using `getwd()` check that you are inside the folder 'DFO_SDM_Workshop_2020' that we downloaded in the previous tutorial. If not, change this by navigating to the correct folder in the bottom right panel (folder view), opening it, and then clicking "Set as Working Directory" under the tab 'More'.
 
-Now we can load in the precompiled data and functions
+Now we can load in the precompiled data
 ```{r message=F}
 list2env(readRDS('./Data/Modelling_Data.rds'),globalenv())
-source('utility_functions.R')
 ```
 
 Finally, let's turn off all warnings associated with coordinate reference systems. 
@@ -84,7 +83,7 @@ mesh_land <- inla.mesh.2d(boundary = Domain,
                                min.angle = 25,
                                max.edge = 45,
                                cutoff = 18)
-ggplot() + gg(mesh_land) + gg.spatiallines_mod(Effort_survey,colour='red')
+ggplot() + gg(mesh_land) + gg(Effort_survey,colour='red')
 ```
 
 Note that spatial correlations < 18km will not be detectable! We can print the number of mesh vertices (directly related to the length of time required later to fit the model).
@@ -97,18 +96,8 @@ We have a potential serious issue with this mesh. The coastline is jagged, which
 
 ```{r `map-meshBuffered`, cache=TRUE}
 ggplot() + gg(Domain_restricted) + 
-  gg.spatiallines_mod(Effort_survey,colour='red')
+  gg(Effort_survey,colour='red')
 ```
-
-<!-- Looking at the buffered coastline, we see that the boundary is quite 'wiggly'. This may prove problematic when trying to fit a series of triangles around it. To 'straighten out' the boundary, we can 'simplify' it using `gSimplify`. The amount of 'straightening' is specified by the tolerance argument `tol`. -->
-
-<!-- ```{r `map-meshSimplified`, cache=TRUE} -->
-<!-- # Use gSimplify to smooth the edges -->
-<!-- ggplot() + gg(gSimplify(gBuffer(Domain,width=15),tol=5)) + gg.spatiallines_mod(Effort_survey,colour='red') -->
-<!-- gContains(gSimplify(gBuffer(Domain,width=15),tol=5), Effort_survey)  -->
-
-<!-- Domain_restricted <- gSimplify(gBuffer(Domain,width=15),tol=5) # again all the survey tracklines are contained in the modified boundary -->
-<!-- ``` -->
 
 Using this new buffered and smoothed domain/study area shapefile (i.e. `Domain_restricted`), we create a new mesh below named `mesh_land`.
 
@@ -121,7 +110,7 @@ mesh_land$crs <- Can_proj
 mesh_land$n
 ggplot() +
   gg(mesh_land) + 
-  gg.spatiallines_mod(Effort_survey,colour='red')
+  gg(Effort_survey,colour='red')
 ```
 
 One may be tempted to define the mesh within a much larger convex hull around the coastline, but see [Additional tips]{#Ad1} for explanation of why this is an inadequate approach. 
@@ -217,9 +206,9 @@ If the effects of the two parameters on the nature of the random field is still 
 With the understanding of what the SD and range define, we are asked to define the following two probabilistic statements (remember we are working in units of km):
 
 $$P(\rho < \rho_0) = p_{\rho} \\ P(\sigma > \sigma_0) = p_{\sigma}.$$
-The goal is to specify the lower tail quantile $\rho_0$ and probability $p_{\rho}$ for the range parameter and the upper tail quantile $\sigma_0$ and probability $p_{\sigma}$ for the marginal standard deviation. We choose these 4 parameters to help ensure that the field does not become to 'complex'; specifically we want to avoid the field becoming too 'wiggly' or 'large'. The PC prior shrinks the spatial field towards the base model of no spatial variance and variance zero, hence the name 'Penalized Complexity'. Note that as the complexity of the field increases, so does the risk of overfitting our data!
+The goal is to specify the lower tail quantile $\rho_0$ and probability $p_{\rho}$ for the range parameter and the upper tail quantile $\sigma_0$ and probability $p_{\sigma}$ for the marginal standard deviation. We choose these 4 parameters to help ensure that the field does not become to 'complex'; specifically we want to avoid the field becoming too 'wiggly' or 'large'. The PC prior shrinks the spatial field towards the base model of zero 'wigglyness' (i.e. flat) and variance zero, hence the name 'Penalized Complexity'. Note that as the complexity of the field increases, so does the risk of overfitting our data!
 
-We now define our model, with $\rho_0$, $p_{\rho}$, $\sigma_0$, and $p_{\sigma}$ fixed at 35km, 0.01, 2, and 0.01 respectively. Roughly speaking, our priors state that the range is likely larger than 35km and the standard deviation is smaller than 2 whale encounters. **JOE: check this simplified interpretation I have added.**
+We now define our model, with $\rho_0$, $p_{\rho}$, $\sigma_0$, and $p_{\sigma}$ fixed at 35km, 0.01, 2, and 0.01 respectively. Roughly speaking, our priors state that the range is likely larger than 35km and the standard deviation is smaller than 2. Why 2? A mean-zero Gaussian random field with standard deviation 2 can be expected to have approximately 95% of its values between $\pm 4$ (due to the normal distribution's $\pm 2 \sigma$-rule). On the multiplicative (exponential) scale of our model, this allows for a range of whale intensity values of $\textrm{exp}(\pm 4)$. Such a large range of values allows for the existence of regions $A$ and $B$ in $\Omega$ such that the whale intensity in $A$ is around 3000 times greater than the intensity in $B$! We do not believe that relative differences greater than this are probable.
 
 ```{r 'spde', cache=TRUE}
 # First define the SPDE model
@@ -242,7 +231,7 @@ log_hn = function(distance, lsig){
 Note that we define the half-normal function on the log scale. In particular we have defined:
 
 $$\textrm{log}(p(d)) = \frac{-d^2}{2\sigma^2}\\
-\rightarrow (p(d)) = exp\left(\frac{-d^2}{2\sigma^2}\right) $$
+\rightarrow p(d) = exp\left(\frac{-d^2}{2\sigma^2}\right) $$
 
 the parameter `lsig` is equal to $log(\sigma)$. Defining the log of the parameter ensures that our estimates of $\sigma$ are strictly positive.
 
@@ -250,7 +239,7 @@ the parameter `lsig` is equal to $log(\sigma)$. Defining the log of the paramete
 
 Next, we need to describe how inlabru should combine the components of the model: the Gaussian random field (GRF), the detection probability function parameter `lsig`, and the intercept. 
 
-We will give the GRF the name 'mySpatial'. This name is arbitrary and can be changed. To define 'mySpatial' as a GRF, we will point it to the model object we defined earlier (`matern_land`) and we will tell *inlabru* that the `coordinates` of the points are the locations at which we wish to evaluate the field at. `coordinates` is a special variable name reserved for the spatial coordinates of a `SpatialPointsDataFrame` object. The encounters data we will be using are all `SpatialPointsDataFrame` objects. 
+We will give the zero-mean GRF the name 'mySpatial'. This name is arbitrary and can be changed. To define 'mySpatial' as a GRF, we will point it to the model object we defined earlier (`matern_land`) and we will tell *inlabru* that the `coordinates` of the points are the locations at which we wish to evaluate the field at. `coordinates` is a special variable name reserved for the spatial coordinates of a `SpatialPointsDataFrame` object. The encounters data we will be using are all `SpatialPointsDataFrame` objects. 
 
 The scalar terms `Intercept` and the detection function parameter `lsig` are given the special arguments `1`. This tells *inlabru* to create a scalar random variable. These will be available for every data point. 
 
@@ -285,7 +274,7 @@ $$\lambda_{obs}(s) = 2 \lambda_{true}(s) p(d).$$
 
 Note that $Z(s)$ is the value of the GRF `mySpatial` evaluated at position $s$, and $\sigma$ is the exponential of `lsig`. We multiply $\lambda_{true}(s) p(d)$ by 2 since detections can occur either side of the aircraft.
 
-Defining the components and the formula separately in two stages is what gives *inlabru* its generalisibility. Parameters can be included within a model non-linearly, unlike most other R packages! For example, `lsig` was included nonlinearly through our custom function `log_hn`! Behind the scenes, for nonlinear models, *inlabru* linearises the model via a Taylor series expansion.  
+Defining the components and the formula separately in two stages makes *inlabru* really flexible. Parameters can be included within a model non-linearly, unlike most other R packages! For example, `lsig` was included nonlinearly through our custom function `log_hn`! Behind the scenes, for nonlinear models, *inlabru* linearises the model via a Taylor series expansion.  
 
 Furthermore, components and formulae can be stacked together for datasets from differing sources, allowing for integrative joint models to be fit with relative ease! For example, the same components can be shared across different model, but take different forms for each (e.g. Intercept in model 1, Intercept^2 in model 2, etc.,)!
 
@@ -316,11 +305,11 @@ The number of threads (similar to cores) can be chosen. The higher the number, t
 
 We are ready! We fit our first log-Gaussian Cox process model in *inlabru*! 
 
-We will fit the model using the `like` and `bru` approach because it allows to easily combine different data sources or data streams into an integrative joint models.
+We will fit the model using the `like` and `bru` approach because it allows for different data sources or data streams to be easily combined into an integrative joint model.
 
 First, we define our likelihood object using the function `like`. We specify that the SpatialPointsDataFrame `Sightings_survey` is our data. Remember - it is crucial that the data are of type SpatialPointsDataFrame for the special `coordinates` variable to work. Next, we specify the domains for both our response variables `coordinates` and `distance`. We point `coordinates` to the spatial mesh `mesh_land` and point the `distance` variable to a 1D mesh that we define. Remember that we have set the upper limit to the distance equal to 2km.
 
-Next, we point the likelihood to the formula object we created earlier that defines the linear predictor and specify that a Cox process model is being fitted by specifying `family='cp'`. Note that a HUGE library of likelihoods are available. Calling `inla.list.models()` provides a list of every possible model, prior and latent effect available. Finally, we provide a sensible (negative) initial value for `lsig`.
+Next, we point the likelihood to the formula object we created earlier that defines the linear predictor and specify that a Cox process model is being fitted by specifying `family='cp'`. Note that a HUGE library of likelihoods are available. Calling `inla.list.models()` provides a list of every possible model, prior and latent effect available. Finally, we provide a sensible initial value for `lsig`.
 
 ```{r 'like', warning=FALSE, cache=TRUE, message=F}
 fit = like(data = Sightings_survey,
@@ -404,10 +393,10 @@ colsc <- function(...) {
                        limits = range(...))
 }
 # Plot the posterior mean intensity
-ggplot() + gg(pred_int[1]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+ggplot() + gg(pred_int[1]) + gg(Domain) + gg(Effort_survey, colour='red') +
   colsc(pred_int@data$mean)
 # Plot the posterior SD (note the index [2])
-ggplot() + gg(pred_int[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+ggplot() + gg(pred_int[2]) + gg(Domain) + gg(Effort_survey, colour='red') +
   colsc(pred_int@data$sd)
 ```
 
@@ -428,11 +417,12 @@ We can see that the model is estimating a spatial field with a reasonably large 
 
 ### Plotting the estimated detection probability function
 
-We can plot the estimated detection probability function, with uncertainty intervals. For this, we use `predict` once again, with one slight modification. Instead of using `pixels` to define a set of SpatialPixels to plot over, we must manually specify a `data.frame` object with the desired values of `distance` to predict across. Then, we can use the function `plot` as before. Note: I have had some issues with using the `predict` function on non-spatial data.frames. If you get an error message, see [Additional tips](#Ad2).
+We can plot the estimated detection probability function, with uncertainty intervals. For this, we use `predict` once again, with one slight modification. Instead of using `pixels` to define a set of SpatialPixels to plot over, we must manually specify a `data.frame` object with the desired values of `distance` to predict across. Then, we can use the function `plot` as before. The only change is the addition of the argument `include = c("lsig")`. This tells *inlabru* to ignore the lack of `lsig` variable present in the dataframe `distdf`.
+
 
 ```{r 'predictDetection', cache=TRUE}
 distdf <- data.frame(distance = seq(0, 2, length = 100))
-dfun <- predict(fit, distdf, ~ exp(log_hn(distance, lsig)), n.samples = 20, seed=seed)
+dfun <- predict(fit, distdf, ~ exp(log_hn(distance, lsig)), n.samples = 20, seed=seed, include = c("lsig"))
 plot(dfun)
 ```
 
@@ -508,10 +498,10 @@ pred_int_restricted <-
   pred_int[which(apply(gWithinDistance(pred_int_points, Effort_survey,dist = 20,byid = T),2,sum)>0),]
 
 # Plot the posterior mean
-ggplot() + gg(pred_int_restricted[1]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+ggplot() + gg(pred_int_restricted[1]) + gg(Domain) + gg(Effort_survey, colour='red') +
   colsc(pred_int_restricted@data$mean)
 # Plot the standard deviation
-ggplot() + gg(pred_int_restricted[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+ggplot() + gg(pred_int_restricted[2]) + gg(Domain) + gg(Effort_survey, colour='red') +
   colsc(pred_int_restricted@data$sd)
 ```
 </div>
@@ -680,13 +670,13 @@ plot_pixels2 <- pixels(mesh_land, mask = Domain)
 pred_int2 <- predict(fit2, plot_pixels2, 
                      ~ exp(mySpatial + Intercept + log_Slope), n.samples = 20, seed=seed)
 
-multiplot(ggplot() + gg(pred_int2[1]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+multiplot(ggplot() + gg(pred_int2[1]) + gg(Domain) + gg(Effort_survey, colour='red') +
             colsc(c(pred_int2@data$mean,pred_int@data$mean)) + ggtitle('Covariate Model Mean'),
-          ggplot() + gg(pred_int2[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+          ggplot() + gg(pred_int2[2]) + gg(Domain) + gg(Effort_survey, colour='red') +
             colsc(c(pred_int2@data$sd,pred_int@data$sd)) + ggtitle('Covariate Model SD'),
-          ggplot() + gg(pred_int[1]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+          ggplot() + gg(pred_int[1]) + gg(Domain) + gg(Effort_survey, colour='red') +
             colsc(c(pred_int2@data$mean,pred_int@data$mean)) + ggtitle('Covariate-Free Model Mean'),
-          ggplot() + gg(pred_int[2]) + gg(Domain) + gg.spatiallines_mod(Effort_survey, colour='red') +
+          ggplot() + gg(pred_int[2]) + gg(Domain) + gg(Effort_survey, colour='red') +
             colsc(c(pred_int2@data$sd,pred_int@data$sd)) + ggtitle('Covariate-Free Model SD'),
           layout = matrix(c(1:4),nrow=2,ncol=2,byrow = F))
 
@@ -708,40 +698,15 @@ Slopepred <- predict(fit2, Slopedf, ~ exp(log_Slope), n.samples=40, seed=seed)
 plot(Slopepred)
 ```
 
-If the predict function breaks, use the code below:
-<div class="fold s o"> 
-```{r}
-# Manually if the predict function breaks
-#samples <- generate(fit2, n.samples = 20,, seed=seed)
-# depthpred <- sapply(samples,FUN = function(x){return(depthdf$log_Depth*x$log_Depth)})
-# ggplot(data.frame(mean=apply(depthpred,1, mean),
-#                   LCL=apply(depthpred,1, quantile, probs=c(0.025)),
-#                   UCL=apply(depthpred,1, quantile, probs=c(0.975)),
-#                   logdepth=seq(from=min(log_Depth@data$log_Depth),
-#                             to=max(log_Depth@data$log_Depth),
-#                             length.out = 100)),
-#        aes(y=mean,x=logdepth,ymax=UCL,ymin=LCL)) +
-#   geom_line() + geom_ribbon(alpha=0.4)
-```
-</div>
-
 Note that the credible intervals cover a large range of effect sizes! There is a large amount of uncertainty with the effect of log Slope! This is to be expected with a small dataset!
 
-Finally, we plot the estimated number of groups present in the restricted domain (restricted to points lying within 20km of the nearest survey trackline). We then plot the estimated detection function. Notice that the `predict` function fails to work for the variable `distance`! This is a bug in *inlabru* that will hopefully be corrected for soon. In the meantime, we manually extract the results by sampling all the components using the function `generate` and then manually combining them using `sapply`. Note that the variables `LCL` and `UCL` define a symmetric 95% credible interval.
+Finally, we plot the estimated number of groups present in the restricted domain (restricted to points lying within 20km of the nearest survey trackline). We then plot the estimated detection function. 
 
 ```{r 'dectFxExtra', cache=TRUE}
 # Plot detection probability function
 distdf <- data.frame(distance = seq(0, 2, length = 100))
-#dfun2 <- predict(fit2, distdf, ~exp(log_hn(distance,lsig)),n.samples = 20)
-# If this calls an error run below
-samples <- generate(fit2, n.samples = 20, seed=seed)
-dfun2 <- sapply(samples,FUN = function(x){return(exp(log_hn(distdf$distance,x$lsig)))})
-ggplot(data.frame(mean=apply(dfun2,1, mean),
-                  LCL=apply(dfun2,1, quantile, probs=c(0.025)),
-                  UCL=apply(dfun2,1, quantile, probs=c(0.975)),
-                  distance=distdf$distance),
-       aes(y=mean,x=distance,ymax=UCL,ymin=LCL)) +
-  geom_line() + geom_ribbon(alpha=0.4)
+dfun2 <- predict(fit2, distdf, ~exp(log_hn(distance,lsig)),n.samples = 20, include = c("lsig"))
+plot(dfun2)
 
 # We can look at the posterior for expected number of groups of whales:
 
@@ -754,11 +719,12 @@ Lambda2_restricted
 Lambda_restricted
 
 ```
+
 We indeed see very similar estimates for the total number of groups, with overlapping credible intervals. Remember that in a publication we would draw far more than 20 samples! There is some evidence to suggest the uncertainty in the estimates is reduced when we include the log_Slope covariate (we see a smaller standard deviation). 
 
 In this session, we have learned how to fit log-Gaussian Cox process models to survey datasets that followed distance sampling protocols within a Bayesian framework. We have seen how to compare models, how to predict intensity across space, and how to estimate the total number of groups. 
 
-Coming up next, we will see how to incorporate presence-only datasets into our models. Crucially, we will find that by incorporating presence-only datasets into our models, we may be able to uncover previously hidden species-environment relationships, and use these to improve the resolution of our maps of whale intensity!
+Coming up next, we will see how to incorporate presence-only datasets into our models. Crucially, we will find that by incorporating presence-only datasets into our models, we may be able to uncover previously hidden species-environment relationships, and potentially use these to improve the resolution of our maps of whale intensity!
 
 
 ### Links to Every Exercise and Bonus Exercise
@@ -787,22 +753,6 @@ plot(mesh_noland)
 mesh_noland$n
 ```
 We ignore this mesh for the remainder of this session, since it fails to account for land as a barrier.
-
-### Problems with using `predict` on non-spatial data.frames {#Ad2}
-
-
-I have had some issues with using the `predict` function on non-spatial data.frames. If you get an error message, try using the `generate` - `sapply` method shown below.
-
-```{r 'ad3G', cache=TRUE}
-samples <- generate(fit, n.samples = 20, seed=seed)
-distpred <- sapply(samples,FUN = function(x){return(exp(log_hn(distdf$dist,x$lsig)))})
-ggplot(data.frame(probability=apply(distpred,1, mean),
-                   LCL=apply(distpred,1, quantile, probs=c(0.025)),
-                   UCL=apply(distpred,1, quantile, probs=c(0.975)),
-                   distance=distdf$distance),
-        aes(y=probability,x=distance,ymax=UCL,ymin=LCL)) +
-   geom_line() + geom_ribbon(alpha=0.4)
-```
 
 ### Plotting realisations of Gaussian random fields
 
@@ -865,16 +815,5 @@ To simulate a field with the specified SD and range run
 ```{r, eval=F}
 GRF_sim()
 ```
-
-
-<!-- ```{r} -->
-<!-- saveRDS(fit,'./Model_Files/fit.rds') -->
-<!-- saveRDS(fit2,'./Model_Files/fit2.rds') -->
-<!-- rm(fit) -->
-<!-- rm(fit2) -->
-<!-- rm(fit3) -->
-<!-- save.image('./Data/Modelling_Data2_New.RData') -->
-<!-- ``` -->
-
 
 # References
