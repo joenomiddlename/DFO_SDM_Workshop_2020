@@ -208,7 +208,7 @@ With the understanding of what the SD and range define, we are asked to define t
 $$P(\rho < \rho_0) = p_{\rho} \\ P(\sigma > \sigma_0) = p_{\sigma}.$$
 The goal is to specify the lower tail quantile $\rho_0$ and probability $p_{\rho}$ for the range parameter and the upper tail quantile $\sigma_0$ and probability $p_{\sigma}$ for the marginal standard deviation. We choose these 4 parameters to help ensure that the field does not become to 'complex'; specifically we want to avoid the field becoming too 'wiggly' or 'large'. The PC prior shrinks the spatial field towards the base model of zero 'wigglyness' (i.e. flat) and variance zero, hence the name 'Penalized Complexity'. Note that as the complexity of the field increases, so does the risk of overfitting our data!
 
-We now define our model, with $\rho_0$, $p_{\rho}$, $\sigma_0$, and $p_{\sigma}$ fixed at 35km, 0.01, 2, and 0.01 respectively. Roughly speaking, our priors state that the range is likely larger than 35km and the standard deviation is smaller than 2. Why 2? A mean-zero Gaussian random field with standard deviation 2 can be expected to have approximately 95% of its values between $\pm 4$ (due to the normal distribution's $\pm 2 \sigma$-rule). On the multiplicative (exponential) scale of our model, this allows for a range of whale intensity values of $\textrm{exp}(\pm 4)$. Such a large range of values allows for the existence of regions $A$ and $B$ in $\Omega$ such that the whale intensity in $A$ is around 3000 times greater than the intensity in $B$! We do not believe that relative differences greater than this are probable.
+We now define our model, with $\rho_0$, $p_{\rho}$, $\sigma_0$, and $p_{\sigma}$ fixed at 35km, 0.01, 2, and 0.01 respectively. Roughly speaking, our priors state that the range is likely larger than 35km and the standard deviation is smaller than 2. Why 2? A mean-zero Gaussian random field with standard deviation 2 can be expected to have approximately 95% of its values between $\pm 4$ (due to the normal distribution's $\pm 2 \sigma$-rule). On the multiplicative (exponential) scale of our model, we could expect (ignoring any covariates) a range of whale intensity values of $\textrm{exp}(\pm 4)$. Such a large range of values allows for the existence of regions $A$ and $B$ in $\Omega$ such that the whale intensity in $A$ is around 3000 times greater than the intensity in $B$! Our prior says that "we do not believe that relative differences in whale intensity greater than 3000" are probable.
 
 ```{r 'spde', cache=TRUE}
 # First define the SPDE model
@@ -276,7 +276,7 @@ Note that $Z(s)$ is the value of the GRF `mySpatial` evaluated at position $s$, 
 
 Defining the components and the formula separately in two stages makes *inlabru* really flexible. Parameters can be included within a model non-linearly, unlike most other R packages! For example, `lsig` was included nonlinearly through our custom function `log_hn`! Behind the scenes, for nonlinear models, *inlabru* linearises the model via a Taylor series expansion.  
 
-Furthermore, components and formulae can be stacked together for datasets from differing sources, allowing for integrative joint models to be fit with relative ease! For example, the same components can be shared across different model, but take different forms for each (e.g. Intercept in model 1, Intercept^2 in model 2, etc.,)!
+Furthermore, components and formulae can be stacked together for datasets from differing sources, allowing for integrative joint models to be fit with relative ease! For example, the same components can be shared across different models, but take different forms for each (e.g. Intercept in model 1, Intercept^2 in model 2, etc.,)!
 
 For detailed additional information on the types of model components allowed by *inlabru* and the linearisation procedure performed, call `?component` and [here](https://github.com/inlabru-org/inlabru/blob/devel/vignettes/method.Rmd).
 
@@ -523,7 +523,7 @@ Lambda_restricted
 ```
 </div>
 
-You should get a smaller estimate for the total number of groups of approximately `r signif(Lambda_restricted$mean,1)` and a smaller, but still large, standard deviation of approximately `r signif(Lambda_restricted$sd,1)`. Don't worry if your answers are slightly different - we've only used 20 samples! **For the remainder of these workshops, when estimating the number of groups of fin whales, we will use the restricted domain**.
+You should get a smaller estimate for the total number of groups of approximately `r signif(Lambda_restricted$mean,2)` and a smaller, but still large, standard deviation of approximately `r signif(Lambda_restricted$sd,1)`. Don't worry if your answers are slightly different - we've only used 20 samples! **For the remainder of these workshops, when estimating the number of groups of fin whales, we will use the restricted domain**.
 
 ## Adding covariates to an *inlabru* model
 
@@ -596,7 +596,7 @@ So, we find that adding log_Slope to the model leads to a worse model fit, as ju
 
 Thus, given that we detect a difference in DIC of around 2, we conclude that the model without log_Slope is the preferred model, but that the model with log_Slope should also be considered. By 'considered', we mean that predictions and inference should be compared across the models. 
 
-Furthermore, inspecting the output from `summary()`, we see that the 95% credible intervals slightly cover zero. Thus, we detect a marginally 'significant' negative effect of log_Slope. That is, we have some evidence to suggest that the whales prefer shallower waters, after controlling for effort.
+Furthermore, inspecting the output from `summary()`, we see that the 95% credible intervals (see the `q0.025` and `q0.975` columns) slightly cover zero. Thus, we detect a marginally 'significant' negative effect of log_Slope. If you remember, this finding is consistent with the empirical density plot we made in Workshop 1 that was evaluated at the survey tracklines and encounter locations. In summary then, we have found some evidence to suggest that the whales prefer shallower waters, after controlling for effort.
 
 ### Exercise 2 {#Ex2} 
 
@@ -656,7 +656,7 @@ summary(fit3) # 839 - marginally worse again - still worth considering
 
 
 
-The quadratic model fit by *inlabru* appears to be a slightly worse fit compared with the linear fit. The DIC and WAIC values have slightly increased and the quadratic term is not found to be 'significant' with respect to its 95% credible intervals (they cover 0). 
+The quadratic model fit by *inlabru* appears to be a slightly worse fit compared with the linear fit. The DIC and WAIC values have slightly increased and the quadratic term is not found to be 'significant' with respect to its 95% credible intervals (the `q0.025` and `q0.975` values cover 0). 
 
 ## Comparing the output from competing models
 
@@ -698,7 +698,7 @@ Slopepred <- predict(fit2, Slopedf, ~ exp(log_Slope), n.samples=40, seed=seed)
 plot(Slopepred)
 ```
 
-Note that the credible intervals cover a large range of effect sizes! There is a large amount of uncertainty with the effect of log Slope! This is to be expected with a small dataset!
+Note that the credible intervals cover a large range of effect sizes! There is a large amount of uncertainty with the effect of log Slope! This is to be expected with a small dataset (only ~60 sightings)!
 
 Finally, we plot the estimated number of groups present in the restricted domain (restricted to points lying within 20km of the nearest survey trackline). We then plot the estimated detection function. 
 
@@ -720,7 +720,7 @@ Lambda_restricted
 
 ```
 
-We indeed see very similar estimates for the total number of groups, with overlapping credible intervals. Remember that in a publication we would draw far more than 20 samples! There is some evidence to suggest the uncertainty in the estimates is reduced when we include the log_Slope covariate (we see a smaller standard deviation). 
+We indeed see very similar estimates for the total number of groups, with overlapping credible intervals (see the `q0.025` and `q0.975` values). Remember that in a publication we would draw far more than 20 samples! There is some evidence to suggest the uncertainty in the estimates is reduced when we include the log_Slope covariate (we see a smaller standard deviation). 
 
 In this session, we have learned how to fit log-Gaussian Cox process models to survey datasets that followed distance sampling protocols within a Bayesian framework. We have seen how to compare models, how to predict intensity across space, and how to estimate the total number of groups. 
 
