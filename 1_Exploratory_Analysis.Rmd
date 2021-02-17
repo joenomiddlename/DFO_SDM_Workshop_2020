@@ -2,7 +2,7 @@
 title: "Exploratory Analysis & Data Preparation"
 subtitle: "Graphically assessing model assumptions and prepartion of the data for modelling"
 author: "Joe Watson and Marie Auger-Méthé"
-date: "07/01/2021"
+date: "15/02/2021"
 output: 
   html_document:
     css: "CSSdefs.css"
@@ -57,7 +57,7 @@ Throughout this workshop, we use data collected on fin whales in June, July, and
 
 * Encounters from systematic aerial surveys, found in `Sightings_survey`. The encounters information contain counts of fin whales, although for this tutorial we simplify the analysis and only model presence/absence information. These systematic surveys also contain information on the distance of the encounters from the plane. Furthermore, they are accompanied by the aerial tracklines, found in `Effort_survey`. In these data objects, we combined three surveys conducted by both DFO and NOAA: 2007 T-NASS Aerial Survey (Lawson et al. 2009), NOAA NARW Surveys (Cole, NOAA), and NOAA Cetacean Surveys (Cole et al., NOAA). 
 
-* Opportunistic fin whale encounters from two whale-watching operators, found in `Sightings_DRWW_sp`. This dataset is not accompanied by tracklines. Again, these datasets contains whale counts, but for simplicity we will analyze them as presence/absence data in these tutorials. These encounters are maintained in the DFO Maritimes Region Whale Sightings Database (MacDonald et. al. 2017). 
+* Opportunistic fin whale encounters from two whale-watching operators, found in `Sightings_DRWW_sp`. This dataset is not accompanied by tracklines. Again, these datasets contain whale counts, but for simplicity we will analyze them as presence/absence data in these tutorials. These encounters are maintained in the DFO Maritimes Region Whale Sightings Database (MacDonald et. al. 2017). 
 
 * Distance from port for both the Quoddy and Brier whale-watch vessels, found in `Dist_Brier` and `Dist_Quoddy`. These covariates will be used to model effort from the whale-watch vessels. These distances from port objects are accompanied by the locations of the ports, found in `WW_ports`.
 
@@ -94,12 +94,6 @@ options("rgdal_show_exportToProj4_warnings"="none")
 
 Our first goal is generally to plot the data on a map. The `gg()` and `gmap()` functions from the *inlabru* package are extremely useful at plotting spatial data! The class of spatial objects we will use are from the *sp* package. The classes of these objects begin with 'Spatial'. For example **Spatial**PointsDataFrame.
 
-We have written a bespoke function `gg.spatiallines_mod()` to easily add SpatialLinesDataFrame objects to the plots. This function will prove useful for plotting transect lines. We load the bespoke functions to the working environment now.
-
-```{r}
-source('utility_functions.R')
-```
-
 Let's plot our data! 
 
 If the data are in lat/lon format then the `gmap()` function will automatically add a terrain layer to the plots. Let's plot the survey encounters in blue, survey tracklines in black, whale-watch encounters in purple, and whale-watch ports in red.
@@ -107,7 +101,7 @@ If the data are in lat/lon format then the `gmap()` function will automatically 
 ```{r 'map-gmap', message=FALSE, cache=TRUE, warning=F}
 gmap(Sightings_survey) +
   gg(Domain) +
-  gg.spatiallines_mod(Effort_survey) +
+  gg(Effort_survey) +
   gg(Sightings_survey, colour='blue') +
   gg(Sightings_DRWW_sp, colour='purple') +
   gg(WW_ports, colour='red')
@@ -120,7 +114,7 @@ To remove the map layer, simply replace the `gmap(Sightings_survey)` with `ggplo
 ```{r 'map-noMapLayer', message=FALSE, cache=TRUE}
 ggplot() + # Notice the empty ggplot() call
   gg(Domain) +
-  gg.spatiallines_mod(Effort_survey) +
+  gg(Effort_survey) +
   gg(Sightings_survey, colour='blue') +
   gg(Sightings_DRWW_sp, colour='purple') +
   gg(WW_ports, colour='red')
@@ -137,13 +131,13 @@ Let's plot the effort from each survey. The easiest way to do this is to subset 
 ```{r 'map-survey', message=FALSE, cache=TRUE}
 ggplot() +
   gg(Domain) +
-  gg.spatiallines_mod(Effort_survey[Effort_survey$DATASET=='DFO',], colour='purple') +
-  gg.spatiallines_mod(Effort_survey[Effort_survey$DATASET=='NOAA_1',], colour='red') +
-  gg.spatiallines_mod(Effort_survey[Effort_survey$DATASET=='NOAA_2',], colour='yellow')
+  gg(Effort_survey[Effort_survey$DATASET=='DFO',], colour='purple') +
+  gg(Effort_survey[Effort_survey$DATASET=='NOAA_1',], colour='red') +
+  gg(Effort_survey[Effort_survey$DATASET=='NOAA_2',], colour='yellow')
 
 ```
 
-We see that the DFO tracklines (in purple) do not overlap with the two NOAA surveys! Such spatial segregation is problematic and any future model will be unable to identify differences in protocol efficiency without strict assumptions. This is because any model intercepts will be confounded with the latent spatial field. More on this later!
+We see that the DFO tracklines (in purple) do not overlap with the two NOAA surveys! Such spatial segregation is problematic and any future model will be unable to identify differences in protocol efficiency without strict assumptions. Why? Suppose the whale intensity is estimated to be higher in the DFO survey. Here, it would be challenging to determine whether or not the cause was in fact due to a higher whale intensity in the DFO-covered waters, or simply due to differences in survey protocol! More on this later!
 
 ### Exercise 1 {#Ex1}
 In addition, the surveys were conducted across 4 separate years. Try plotting the survey tracklines by year on your own.
@@ -161,16 +155,18 @@ If you get stuck, click 'Show Code'.
 ```{r 'map-years', tidy=FALSE, cache=TRUE}
 ggplot() +
   gg(Domain) +
-  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2007',], colour='purple') +
-  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2008',], colour='red') +
-  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2009',], colour='blue') +
-  gg.spatiallines_mod(Effort_survey[Effort_survey$YEAR=='2011',], colour='yellow')
+  gg(Effort_survey[Effort_survey$YEAR=='2007',], colour='purple') +
+  gg(Effort_survey[Effort_survey$YEAR=='2008',], colour='red') +
+  gg(Effort_survey[Effort_survey$YEAR=='2009',], colour='blue') +
+  gg(Effort_survey[Effort_survey$YEAR=='2011',], colour='yellow')
 ```
 </div>
 
 Do you see any cause for concern?
 
-The surveys from years 2007, 2008 and 2009 covered largely different regions! Again, this is problematic if we want to model any changes in the whale distribution over time! The effect of year will be confounded by the spatial field. That being said, the data from 2011 appear to be a good candidate for model comparison as the spatial range overlaps with the other 3 years' effort. We will holdout this data as our test data and use 2007, 2008, and 2009 as our training data.
+The surveys from years 2007, 2008 and 2009 covered largely different regions! Again, this could be problematic if we wanted to model any changes in the whale distribution over time! As with the previous plot, estimating differences in the whale intensity over the years will be challenging due to the observers visiting different regions each year. For identifying a year effect, it helps to have significant spatial overlap in the efforts across the years. 
+
+That being said, the data from 2011 appear to be a good candidate for model comparison as the spatial range overlaps with the other 3 years' effort. We will holdout this data as our test data and use 2007, 2008, and 2009 as our training data.
 
 ```{r}
 xtabs(~ YEAR + DATASET, data=Effort_survey@data)
@@ -214,7 +210,7 @@ Domain <- spTransform(Domain, Can_proj)
 
 ### Transforming raster-like spatial pixels objects
 
-Transforming the raster-like SpatialPixelsDataFrame objects (`Slope`, `Dist_Brier`, and `Dist_Quoddy`) using `spTransform` would be inappropriate because the projection leads to a curvature of the pixels. A more appropriate approach is to use bilinear interpolation through the `projectRaster()` function from the *raster* package. This requires converting the `SpatialPixelsDataFrame` object into an object of type `raster` using the function `raster()`. Finally, to convert the `raster` object back into a `SpatialPixelsDataFrame`, we can use the `as()` function from the *maptools* package. We use this function substantially throughout the workshop for converting spatial objects between the popular packages (e.g., *sp*, *raster*, *sf*).
+Transforming the raster-like SpatialPixelsDataFrame objects (`Slope`, `Dist_Brier`, and `Dist_Quoddy`) using `spTransform` would be inappropriate because the projection leads to a curvature of the pixels. A more appropriate approach is to use bilinear interpolation through the `projectRaster()` function from the *raster* package. This requires converting the `SpatialPixelsDataFrame` object into an object of type `raster` using the function `raster()`. Finally, to convert the `raster` object back into a `SpatialPixelsDataFrame`, we can use the `as()` function from the *maptools* package. We use the `as()` function substantially throughout the workshop for converting spatial objects between the popular packages (e.g., *sp*, *raster*, *sf*).
 
 ```{r 'pixel_transform', warning=FALSE, cache=TRUE}
 Slope <- as(projectRaster(raster(Slope), crs=Can_proj), 'SpatialPixelsDataFrame')
@@ -254,7 +250,7 @@ Domain_restricted <- gSimplify(gBuffer(Domain,width=15),tol=20)
 ggplot() +
   gg(Domain_restricted) +
   gg(Domain, color='red') +
-  gg.spatiallines_mod(Effort_survey, color='blue')
+  gg(Effort_survey, color='blue')
 # Does the new domain contain all the survey tracklines?
 gContains(Domain_restricted,Effort_survey)
 
@@ -287,14 +283,11 @@ Now we must extend our covariates to take 'sensible' values at all points in `Do
 
 Our covariate `Slope` is well-defined on the original (un-buffered) domain as defined by the SpatialPolygons `Domain`. At values outside this, we choose to 'fill-in' these points with nearest-neighbour imputations. Next, we redefine the covariate as a log Slope variable, which we call `log_Slope`. We take the logarithm to reduce the range of values the covariate can take as these could cause our models to make wild predictions in the future tutorials. We discuss the reasons for taking a log transform in more depth later in this session. 
 
-<!-- **JOE: see my comment below with regards to the bathymetry and removing values that are on land. Changing the values of the bathymetry (as in removing the pixels on land and explaining why log_depth and why log(1-log(depth)) was actually the thing I was suggesting to move here, not the restricting the covariate values to the mesh. I think the stuff associated with the mesh makes more sense in the next tutorial. What I'm envisioning is actually removing the values above 0 in the file that is save in the data file Compiled_Data_new.rds, make them NAs. And keep the explanation of log(1 - depth) here, since I think that's what you use in the Point process model below anyway and you can talk about why the transformation of the variable makes sense for the Point process model and for the other analysis in one go. Keep the crop to mesh size in tutorial 2 after you talk about the mesh. See the two comments below.** -->
 
 ```{r `map-covariatesWithMesh`, cache=TRUE}
 ## define log_slope covariate
 log_Slope <- Slope
-# Define all values on land equal to 0
-#log_Depth$FIWH_MAR_Slope[log_Depth$FIWH_MAR_Slope >= 0] <- 0
-log_Slope$FIWH_MAR_Slope <- log(log_Slope$FIWH_MAR_Slope+1e-2)#log(1-log_Depth$FIWH_MAR_Slope)
+log_Slope$FIWH_MAR_Slope <- log(log_Slope$FIWH_MAR_Slope+1e-2)
 names(log_Slope) <- 'log_Slope' 
 
 # 1) Define a set of pixels across our modified domain
@@ -316,7 +309,7 @@ log_Slope_sq$log_Slope_sq <- log_Slope_sq$log_Slope_sq^2
 ggplot() + gg(log_Slope) + gg(Domain_restricted)
 ```
 
-We also need to buffer and rescale the distance from port covariates `Dist_Brier` and `Dist_Quoddy`.  Unlike with previous covariates, however, we will fix all buffered values on land equal to a large constant. This will help to ensure that negligible effort is recorded from the whale-watch vessels on land through $\lambda_{eff}$.
+We also need to buffer and rescale the distance from port covariates `Dist_Brier` and `Dist_Quoddy`. Unlike with previous covariates, however, we will fix all buffered values on land equal to a large constant. We will see later that the analysis will not be impacted by this choice of constant.
 
 We show how to do it with the distance to Brier.
 
@@ -328,7 +321,6 @@ pixels_Domain <- as(SpatialPoints(makegrid(Domain_restricted2, n=100000),proj4st
 pixels_Domain$Dist_Brier <- over(pixels_Domain,Dist_Brier)$Dist_Brier
 # There are some missing values due to newly created pixels being on land
 # Fill in missing values with a very large value (1000km).
-# This will make the effect of these regions negligible on inference as lambda_eff will be small
 pixels_Domain$Dist_Brier[is.na(pixels_Domain$Dist_Brier)] <- 1e3
 
 Dist_Brier <- pixels_Domain
@@ -367,25 +359,22 @@ ggplot() + gg(Dist_Quoddy) + gg(Domain)
 
 In the first lecture, we defined the species' intensity surface $\lambda_{true}(s)$. We interpret $\lambda_{true}(s)$ as an 'expected encounter rate per unit effort around s'. Consequently, $\lambda_{true}(s)$ is proportional to the true species space use as it is proportional to the species' utilization distribution $\pi(s)$. Loosely speaking, $\lambda_{true}(s)$ helps to answer the question 'where are the species?' and is the target quantity we wish to estimate! 
 
-However, we believe that the effort from our observers is heterogeneous across our domain $\Omega$. This heterogeneous effort makes the estimation of $\lambda_{true}(s)$ a challenge, since both the effort and the true species' space use both drive the observed encounter locations. To control for effort, we attempt to estimate/approximate an effort intensity surface $\lambda_{eff}(s)$. This defines 'the expected amount of observer effort around s'. Loosely speaking, $\lambda_{eff}(s)$ answers the question 'where do the observers look?'. Both of these surfaces will be linked to a set of covariates (and later we'll even include random fields). 
+However, we believe that the effort from our observers is heterogeneous across our domain $\Omega$. This heterogeneous effort makes the estimation of $\lambda_{true}(s)$ a challenge, since both the effort and the true species' space use both drive the observed encounter locations. To control for effort, we attempt to estimate/approximate an effort intensity surface $\lambda_{eff}(s)$. This defines 'the expected amount of observer effort around s'. Loosely speaking, $\lambda_{eff}(s)$ answers the question 'where do the observers look?'. Both of these surfaces will be linked to a set of covariates (and later we'll even allow for random fields and/or random effects to be included). 
 
-For well-designed surveys, e.g. distance-sampling surveys, we have additional data available on the perpendicular distance of the encountered animal to the observer. We can use this to jointly model a detection probability function $p(d)$. $p(d)$ models the 'probability that an individual of the species is detected by an observer, given it is a distance $d$ away'. *inlabru*, the package we will use in the later workshops, handles all of the necessary integrations required to jointly model the encounter locations with the encounter distances. Note that the integrations are performed across each survey trackline segment. 
+For well-designed surveys, e.g. distance-sampling surveys, we have additional data available on the perpendicular distance of the encountered animal to the observer. We can use this to jointly model a detection probability function $p(d)$. $p(d)$ models the 'probability that an individual of the species is detected by an observer, given it is a distance $d$ away'. *inlabru*, the package we will use in the later workshops, handles all of the necessary integrations required to jointly model the encounter locations with the encounter distances.  
 
-Finally, we defined the observed intensity of the encounters $\lambda_{obs}(s)$ as 'the expected density of encounters per unit area around point s'. This quantity is **not** the target of our inference as it is confounded by effort. Loosely speaking, $\lambda_{obs}(s)$ helps to answer the question 'where do we expect encounters between the species and observers to occur?'. If our approximation of the effort ($\lambda_{eff}(s)$), and the fitted detection probability function $p(d)$ is good, then we hope to see: 
+Finally, we defined the observed intensity of the encounters $\lambda_{obs}(s)$ as 'the expected density of encounters per unit area around point s'. This quantity is **not** the target of our inference as it is confounded by effort. Loosely speaking, $\lambda_{obs}(s)$ helps to answer the question 'where do we expect encounters between the species and observers to occur?'. If our approximation of the effort, $\lambda_{eff}(s)$, and the fitted detection probability function $p(d)$ are good, then we hope to see: 
 
-<!-- **JOE: the two definitions are not the most intuitive. Can you dumb them down and emphasize the differences? Something like lambda_obs is how many sightings (or the probability of a sighting?) we expect given the amount of effort in that area? And something like $\lambda_{true}(s)$ is the probability of a sighting at point s if it is searched. I'm sure some of this is not correct, but hopefully you get the idea.** -->
 
 $$\lambda_{obs}(s) \approx \lambda_{true}(s) \lambda_{eff}(s)$$
 
-or, for a **single** survey trackline segment: $$\lambda_{obs}(s) \approx \lambda_{true}(s) \lambda_{eff}(s) p(d(s))$$.
+or, for a **single** survey trackline segment: $$\lambda_{obs}(s) \approx \lambda_{true}(s) \lambda_{eff}(s) p(d(s)).$$
 
-<!-- **JOE: I'm not sure I understand why the p(d(s)) is only for a single trackline. Does it has to do with the single survey trackline? Or are you just introducing that p(d(s)) should be included sometimes? ** -->
-
-The above product decomposition reads loosely as "the expected number encounters around a point s equals the amount of time the observers spent looking around point s multiplied by the expected rate the species visits location s". Note that $d(s)$ above defines the perpendicular distance of the point $s \in \Omega$ from a chosen trackline segment. Values of $d(s)$ will be different for each trackline segment. 
+The above product decomposition reads loosely as "the expected number encounters around a point s equals the amount of time the observers spent looking around point s multiplied by the expected rate the species visits location s". Note that $d(s)$ above defines the perpendicular distance of the point $s \in \Omega$ from a chosen trackline segment. Since $d(s)$ is defined uniquely for each trackline segment, the integration must take place over each trackline segment separately. This is especially important when tracklines overlap! Later in workshops 2 and 3, we will see that *inlabru* will do this for us.
 
 Later, we will be fitting spatial point process models to the encounters. A requirement for using these models is that, conditional on $\lambda_{eff}(s)$, each encounter with the animal is an **independent snapshot** from its true intensity $\lambda_{true}(\textbf{s})$.
 
-Planned surveys can be designed to (approximately) satisfy the independence assumption. The plane speed can be fixed at a high value relative to the individuals' speeds (no double-counting) and a narrow perpendicular field-of-view can be enforced. Then, assuming that the individuals of the target species are in equilibrium with respect to their stationary distribution $\lambda_{true}(\textbf{s})$ (i.e. the species' density) and locally mixing faster than the time between revisits by observers, the independence assumption may reasonably hold.
+Planned surveys can be designed to (approximately) satisfy the independence assumption. The speed of an aircraft or vessel can be fixed at a high value relative to the individuals' speeds (no double-counting) and a narrow perpendicular field-of-view can be enforced. Then, assuming that the individuals of the target species are in equilibrium with respect to their stationary distribution $\lambda_{true}(\textbf{s})$ (i.e. the species' density) and locally mixing faster than the time between revisits by observers, the independence assumption may reasonably hold.
 
 Conversely, no such assumptions can be made regarding the whale-watch encounters. The unknown positions of the whale-watching boats when they are not with whales, the 360 degree fields-of-view on-board, the variable boat speed, and the repeated encounters of the same individuals throughout each day can all invalidate the independence assumption required to fit the desired models.
 
@@ -399,7 +388,7 @@ Let's look at the whale-watching data. Specifically, let's investigate the 2nd, 
 Sightings_DRWW_sp@data[2:4,c('WS_TIME','WS_DATE','PLATFORM')]
 ```
 
-Notice that they were made on the same day and very close together in time. Often, little information is provided on the database management procedures. For example, are these multiple encounters with the same individual? Would the database discard or retain problematic repeated encounters? Without additional information available on the database management protocols, we can investigate whether these encounters could be of the same individual. To investigate this hypothesis, we can compute the distance between the encounters using the `gDistance()` function, the time between the encounters, and the required travel speed of the individual under the assumed hypothesis.
+Notice that they were made on the same day and very close together in time. Often, little information is provided on the database management procedures. For example, are these multiple encounters with the same individual? Would the database discard or retain problematic repeated encounters? Without additional information available on the database management protocols, we can investigate whether these encounters could be of the same individual. To investigate this hypothesis, we can compute the distance between the encounters using the `gDistance()` function, compute the time between the encounters, and then use these values to estimate the required travel speed of the individual.
 
 ```{r}
 # How far away are these encounters in space (in kilometers)?
@@ -411,23 +400,23 @@ gDistance(Sightings_DRWW_sp[2:4,], byid = T)[cbind(c(1,2),c(2:3))] /
   (c(18, 9)/60)
 ```
 
-This hypothesis would imply a traveling speed of between 4km/h and 16km/h. Is this plausible? Since fin whales are known to sustain much higher speeds (> 30km/h), we will discard all repeated encounters each day. We will keep only the first sighting made each day by each company. 
+This hypothesis would imply a travelling speed of between 4km/h and 16km/h. Is this plausible? Since fin whales are known to sustain a much higher speed (> 30km/h), we will discard all repeated encounters each day. We will keep only the first sighting made each day by each company. 
 
-Below, we can see that there is no overlap between the sighting locations from the two whale-watch companies, suggesting that an assumption of independent encounters between the two companies may be reasonable. 
+Below, we see no overlap between the sighting locations from the two whale-watch companies. Could this suggest that an assumption of independent encounters between the two companies may be reasonable? 
 
 ```{r 'map-overlap', message=FALSE, cache=TRUE}
 Sightings_DRWW_sp$PLATFORM <- as.factor(Sightings_DRWW_sp$PLATFORM)
 ggplot() + gg(Domain) + gg(Sightings_DRWW_sp, colour=Sightings_DRWW_sp$PLATFORM_CODE)
 ```
 
-However, the distance between the average locations of the encounters made by the two companies is around 80km:
+Perhaps. Further scrutiny reveals that the distance between the average locations of the encounters made by the two companies is around 80km:
 
 ```{r}
 # What is the average distance between the encounters from the two companies?
 gDistance(gCentroid(Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='BRIER ISLAND WHALEWATCH',]),gCentroid(Sightings_DRWW_sp[Sightings_DRWW_sp$PLATFORM=='QUODDY LINK',]))
 ```
 
-Given the speed at which fin whales travel, we should investigate this further in a real analysis, especially since a violation of this assumption will results in overestimating the densities of whales in the whale-watching areas. 
+Given the speed at which fin whales travel, in a real analysis we should investigate this further; a violation of this assumption could result in overestimating the densities of whales in the whale-watching areas. 
 
 However, for simplicity we will assume that the encounters between the two companies are independent. We subset the data to keep only the initial encounters from each company:
 
@@ -450,19 +439,17 @@ dim(Sightings_Brier_nodup)[1]
 dim(Sightings_Quoddy_nodup)[1]
 ```
 
-Strictly speaking, for the desired point process models to be reasonable, it is required that the initial daily encounter locations from the whale-watch vessels are independent realizations from $\lambda_{true}$, conditioned on $\lambda_{eff}$. We will assume that the typical journeys/routes of the whale-watch vessels remains constant across months and years under study. Thus, we assume that $\lambda_{eff}$ is constant through time. 
+Strictly speaking, for the desired point process models to be reasonable, it is required that the initial daily encounter locations from the whale-watch vessels are independent realizations from $\lambda_{true}$, conditioned on $\lambda_{eff}$. We will assume that the typical journeys/routes of the whale-watch vessels (and hence $\lambda_{eff}$) remains constant across months and years under study. 
 
-### Is summer species density changing through time?
+### Is the summer species density changing through time?
 
 As we discussed earlier, we are unable to model temporal changes in the species density due to the spatially non-overlapping survey efforts across the months and years. Thus any changes in the species intensity from June - August, or across the years 2007-2009 will be missed. Thus, we are forced to assume that the summer species density remains constant between 2007-2009. It is the summer species density that is our target for inference.
 
-<!-- Note that it may be tempting to use the superposition property of point processes to justify the modelling of an 'combined s' -->
+How reasonable is our assumption that the species density remains constant across the years and across the months? Again, we can visually assess the suitability of the assumption with a plot. We use the whale watch data, with its effort assumed constant through time, to investigate if any changes occur in time.
 
-<!-- Superpositions of two **independent** LGCPS $X$ and $Y$ is itself a LGCP $Z$ with intensity $\lambda_Z$ equal to the sum of the intensities ($\lambda_X + \lambda_Y$). -->
+So, we are assuming that the whale watch effort ($\lambda_{eff}(\textbf{s})$) is constant through time. We now want to empirically test our hypothesis that the true whale intensity ($\lambda_{true}(\textbf{s})$) is also constant across time. If our hypothesis is true, then our (initial daily) whale-watch sighting locations **should** appear as approximately independent, with an intensity ($\lambda_{obs}(\textbf{s})$) that is also constant in time. Why? Because $\lambda_{obs}(\textbf{s}) = \lambda_{true}(\textbf{s})\lambda_{eff}(\textbf{s}).$  
 
-How reasonable is our assumption that the species density remains constant across the years and across the months? Again, we can visually assess the suitability of the assumption with a plot.
-
-If each whale-watch sighting is indeed an independent realization from a temporally static point process, then there should be no association between the spatial distances between the whale-watch encounters and how far apart in time they were made. 
+A consequence of our hypothesis is that we should see no association between the spatial distances between the whale-watch encounters and how far apart in time they were made. Thus, we can empirically test for this; evidence of a distance-time trend would not be consistent with our assumption that the fin whales space use does not change across the months or years. Furthermore, evidence of a trend around day 1 could indicate that subsetting the data by 1 day has not removed all the autocorrelation due to animal movement.   
 
 To plot distances against time intervals, we first compute the distances in time and the euclidean distances in space between each sighting. 
 
@@ -500,7 +487,9 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[as.numeric(difftime
 
 ```
 
-These two plots indicate some moderate autocorrelation between the encounters, with encounters made ~1 month apart typically being around 50% further away than those made 24 hours apart. Notice that the trend plateaus after ~14 days. Perhaps this trend is due to the autocorrelation being caused exclusively by persistence in animal movement? Furthermore, the flat-line trend between day ~30 and day ~75 could be evidence in favour of an approximately constant density across the summer months. If the space use did indeed change dramatically across the months (e.g. due to migration), then we may expect to see a monotonically increasing trend over time.
+These two plots indicate some moderate autocorrelation between the encounters, with encounters made ~1 month apart typically being around 50% further away than those made 24 hours apart. Notice that the trend plateaus after ~14 days. Perhaps this trend could be due to autocorrelation remaining in the data due to the persistence in animal movement? This may suggest that the data need to be further subsetted to achieve approximate independence. Looking at the plot, perhaps we should discard all whale watch encounters made fewer than 10-14 days apart. 
+
+Conversely, the flat-line trend between day ~14 and day ~75 could be evidence in favour of an approximately constant fin whale space use across the summer months. If the space use did indeed change dramatically across the months (e.g. due to migration), then we may expect to see a monotonically increasing trend over time.
 
 The third plot investigates the space-time relationship across years.
 
@@ -514,6 +503,8 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Brier)[],
 ```
 
 This third plot shows no evidence that the average spatial separation between whale-watch encounters differs year-to-year. This supports our assumption that the spatial density can be assumed to be constant across the years, albeit within the (very) small spatial region visited by the whale-watch boats departing from Brier Island.
+
+In summary, the plots of the Brier whale watch data have cast doubts upon our assumption that subsetting the encounters to the initial daily encounters is sufficient to establish approximately independent encounters. Conversely, the plots have supported the hypothesis that the whale intensity (within the regions visited by the whale watch vessels) is constant across the months and years. Note that in a real analysis, we would also want to verify these assumptions throughout our study region $\Omega$ using the other opportunistic data sources (e.g. commercial vessels). 
 
 We now repeat the plots, but for the whalewatch boats that depart from Quoddy, starting with the loess smoother curve on the first 84 days. 
 
@@ -546,9 +537,9 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Quoddy)[as.numeric(difftim
   geom_point() + geom_smooth(method='loess')
 ```
 
-These two plots also show evidence of potential autocorrelation existing up to ~14 days. This could be due to persistence of animal movement, for example, due to a few whales remaining in the same area for a few days. 
+These two plots also show evidence of potential autocorrelation existing up to ~14 days. Again, this could be due to persistence of animal movement, for example, due to a few whales remaining in the same area for a few days. 
 
-As we see below, there is no evidence for across year differences.
+As we see below, there is no evidence for substantial differences in the whale intensity across the years.
 
 ```{r 'fig-differenceYears-quoddy', message=FALSE, cache=TRUE}
 ggplot(data=data.frame(difftime = as.numeric(difftime_Quoddy)[as.numeric(diffspace_Quoddy)<50],
@@ -559,13 +550,13 @@ ggplot(data=data.frame(difftime = as.numeric(difftime_Quoddy)[as.numeric(diffspa
   ylab('difference in space (km)')
 ```
 
-We have seen some evidence that residual autocorrelations remain in the encounters data. This is despite subsetting the data to the initial daily encounters. The result of this may be overdispersion. We may be able to partially correct for this by using of a log-Gaussian Cox process (introduced in lecture 2). By including latent effects (e.g. spatial fields) in the model, we can hopefully capture some of this additional clustering. In fact, log-Gaussian Cox processes are always overdispersed relative to Poisson processes.
+In summary, the Quoddy plots show large agreement with the Brier plots. We see some evidence that residual autocorrelations remain in the encounters data. This is despite subsetting the data to the initial daily encounters. The result of this may be overdispersion or the presence of additional clustering that cannot be described by $\lambda_{true}(\textbf{s})$ alone. This could bias our future inference and predictions of $\lambda_{true}(\textbf{s})$. 
 
-However, trying to determine which latent effects are really describing $\lambda_{true}$ and which are simply capturing the movement persistence is problematic. For example, if we falsely attribute too much variability and clustering to movement persistence, then we risk underestimating the uncertainty with our estimates of $\lambda_{true}$! This could lead to over-confident inference.
+Despite this, we push forward and continue to use our initial daily encounters for these workshops. In a real data analysis, additional information on the individual ID's could be used (perhaps to estimate a unique group-level UD) or the data could be further subsetted. In the latter case, a sensitivity analysis could be performed with the statistical models re-fit and compared using subsets of the data following increasingly-strict subsetting procedures.
 
 ### Creating training and testing datasets
 
-It is common for multiple competing models to be fit. Deciphering which model fits the data 'best' using information criterion alone (AIC, DIC, etc.,) can be problematic. Performing model comparisons using the same dataset as were used to fit the models and perform exploratory analysis can be problematic (overfitting can occur). An alternative approach is to test both the predictive accuracy and the estimated uncertainty on an unseen dataset.
+It is common for multiple competing models to be fit. Deciphering which model fits the data 'best' using information criterion alone (AIC, DIC, etc.,) can be problematic. Performing model comparisons using the same dataset/s that were used to fit the models and perform exploratory analysis can be problematic (overfitting can occur). An alternative approach is to test both the predictive accuracy and the estimated uncertainty on an unseen dataset.
 
 We now subset the data into a training and test set. We choose the training set to contain all the encounters from 2007-2009. For the test data, we choose **all** the encounters from 2011. See [Additional tips](#Ad4) for an explanation of why the potential repeated sighting in 2011 between survey and whale-watch data means that the whale-watching data cannot be added to the training dataset. Note that we perform all remaining exploratory analysis on the training data.
 
@@ -612,11 +603,9 @@ table(Sightings_Brier_nodup$YEAR)
 
 Alternatively, the differences in CPUE could be due to differences in survey protocols that took place each year. Or, the differences could actually reflect real differences in whale density across the three distinct regions visited each year! Without taking a model-based approach and controlling for differences in spatial effort, it is unclear how to combine the encounters from these three surveys.
 
-As we will see in the next tutorial, by taking a model-based approach to inference, we will be able to combine the data from all three surveys to estimate the whale density across space. Unfortunately, due to the lack of spatial overlap between the surveys' efforts (tracklines), we are unable to account for any differences between the survey protocols within a model without strong prior information available. For example, an intercept added to the model for each survey would be confounded by the spatial field. From now on, we assume that each survey is equivalent.
+As we will see in the next tutorial, by taking a model-based approach to inference, we will be able to combine the data from all three surveys to estimate the whale density across space. Unfortunately, due to the lack of spatial overlap between the surveys' efforts (tracklines), we are unable to account for any differences between the survey protocols within a model without strong prior information available. For example, an intercept added to the model for each survey would be confounded by the spatial field. From now on, we assume that an hour of effort from each survey can be considered equivalent.
 
-## Exploring detection function and effort layers of survey data
-
-<!-- **JOE: this was below in the ppm stuff and it was a bit confusing when lumped with the survey distance trackline, at first sight it felt like the histogram was for the nearest distance you calculated with the trackline. Since in lecture 1 you talk about detection function in general, it makes sense to look at it in a seperate section.** -->
+## Exploring detection functions for the survey data
 
 To explore which detection functions ($p(d)$) could be used with the survey data, we will first plot the histogram of measured distances from the plane (i.e. the observed distances of encounters from the trackline).
 
@@ -632,9 +621,6 @@ Given the limited size of the survey data and the scope of this workshop, we cho
 In addition, it is often advised in distance sampling applications to threshold our upper detection distances at a 'sensible' value. For the histogram above, it looks like 2km could be a reasonable threshold value to choose. Let's set all values above 2km equal to 2km and scale the distances onto the km units scale. *This rescaling to units of km is crucial for numerical stability.* We define a variable 'distance' that contains the rescaled distances. Note that a few distances are missing. We impute these with the mean distance.
 
 ```{r 'distance-modified', cache=TRUE}
-# Setting the distances <250 to 250
-# Sightings_survey@data$DISTANCE <- ifelse(Sightings_survey@data$DISTANCE>250,Sightings_survey@data$DISTANCE,250)
-
 # Setting the distances >2000 to 2000
 Sightings_survey@data$DISTANCE <- 
   ifelse(Sightings_survey$DISTANCE>2000 & !is.na(Sightings_survey$DISTANCE),
@@ -653,16 +639,12 @@ Sightings_survey$distance <- Sightings_survey$distance / 1000
 ggplot(Sightings_survey@data, aes(x=distance)) + geom_histogram()
 ```
 
-<!-- **JOE: you need to explain this, I don't understand why it's not something close to $p(d)$ and don't fully understand how it links to the half-norm below. Is it because the p(d) is on the effort? I made some changes below assuming that this was the reason. I'm not sure when you mentioned this (the 'again' above implies that we have talked about this before)? In the lecture? **  -->
-
 The single-parameter detection probability function we will use is the half-normal detection function: 
 
 $$p(d) = exp\left(\frac{-d^2}{2\sigma^2}\right)$$ 
 
 
 ## Exploring covariates for effort in whale-watch data {#SectionEffort}
-
-<!-- **JOE: again this was the ppm section, but this is general info that is useful for your own models so we want to divorce it from the ppm stuff and put it here own its on. I think you also talk about it in lecture one, so it fits here very well.** -->
 
 In lecture 1 we showed how we could attempt to model effort with a set of informative covariates. This approach is most useful for opportunistic datasets which lack quality information on the observers' locations. Throughout our tutorials, we will use distance from port as a covariate of effort for the the whale-watch data. 
 
@@ -677,7 +659,7 @@ hist(over(Sightings_Quoddy_nodup,Dist_Quoddy)$Dist_Quoddy,breaks=20, main='Histo
 
 For both ports, we detect a decreasing frequency of encounters made as the distance from port increases. Based on the histograms, we choose to model the functional form as a half-normal function. More complicated functional forms (e.g. weibull or hazard functions) could also be used.
 
-More specifically, let the whale-watch effort intensity from the $i^{th}$ port be denoted $\lambda_{eff, i}$ and let the location of the $i^{th}$ port be denoted $s_i^*$. Finally, let the scalar parameter $\lambda_i$ be unique for each port. Then we assume the following functional form for the whale-watch effort intensity from the $i^{th}$ port: $$\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right)$$.
+More specifically, let the whale-watch effort intensity from the $i^{th}$ port be denoted $\lambda_{eff, i}$ and let the location of the $i^{th}$ port be denoted $s_i^*$. Finally, let the scalar parameter $\lambda_i$ be unique for each port. Then we assume the following functional form for the whale-watch effort intensity from the $i^{th}$ port: $$\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right).$$
 
 On the log scale, this covariate can be estimated as a linear effect on the squared distance from port. Thus, we create SpatialPixelsDataFrame objects which store the squared distances from port.
 
@@ -692,7 +674,7 @@ Dist_Quoddy_sq$Dist_Quoddy_sq <- Dist_Quoddy$Dist_Quoddy^2
 
 In this section, we will investigate trends between the observed intensity and the covariate slope using only the training data. We will also see why taking a log transform of `Slope` was a sensible thing to do.
 
-A quick first step is to evaluate whether the empirical densities of a covariate at the encounter locations (representing habitat used by the whales) differs from the empirical density across the domain (representing available habitat values). Such difference may indicate that the whales are associated with a subset of the available habitat. Of course, any differences may simply reflect differences in the types of habitat visited by observers!  
+A quick first step is to evaluate whether the empirical density of a covariate at the encounter locations (representing habitat used by the whales) differs from the empirical density across the domain (representing available habitat values). Such a difference may indicate that the whales are associated with a subset of the available habitat. Of course, any differences may simply reflect differences in the types of habitat visited by observers!  
 
 To extract the covariate values at each location, we will use the function `over()` from the *sp* package. 
 
@@ -705,8 +687,6 @@ All_obs <- rbind(Sightings_Brier_nodup[,'YEAR'],
 Slope_obs <- over(All_obs, Slope)
 ```
 
-<!-- **JOE: I wrote this comment first, but see the above comment on bathymetry. Here is another example were I would just change the data loaded. Make a new bathy object that has values greater to 0 as NA (or something like that). Save that object in Compiled_Data_new.rds. Doing these kinds of things as much as possible will just simplify the code (and text). Keep in mind that not everyone find it as easy as you to read code. You are a super duper expert, most of us are just dummies. See comment below.** -->
-
 First, we plot the empirical densities of Slope at the encounters locations and throughout the domain (study area).
 
 ```{r 'map-bathy', message=FALSE, warning=FALSE, cache=TRUE}
@@ -717,8 +697,6 @@ ggplot(data=data.frame(Slope_obs = Slope_obs$FIWH_MAR_Slope),
                aes(x=Slope_dom, colour='Domain')) + xlab('Slope') +
   scale_color_manual(name = "Density", values = c('Sightings' = 'black', 'Domain' = 'red'))
 ```
-
-<!-- **JOE: this presentation of log(1-bathy) here is great and specify that this is done here for the Poisson point process, but also for all of the models explored afterward. Then save the log_bathym objects in Modelling_Data.rds (and maybe Modelling_Data2_New .rds?) so that they can be loaded in the next tutorials without going through these steps. I'm not sure whether you need to do the transformation for the obs also, here it's just the domain.** -->
 
 We see a very skewed distribution of Slope with a huge range of values. Leaving the covariate in this form risks wild predictions of intensity being made! A log transform may reduce the skew of the distribution and help to stabilise predictions. Let's see this: 
 
@@ -737,201 +715,29 @@ ggplot(data=data.frame(Slope_obs = log_Slope_obs$log_Slope),
 
 These plots suggest that encounter locations are associated with regions with higher slope compared with what is available in the study area. However, these results are only investigating the associations between $\lambda_{obs}$ and the covariates and **not** the desired associations between $\lambda_{true}$ and the covariates. The associations may simply reflect the types of regions preferentially visited by observers! Note that the last plot shows a lack of overlap in the highest log_Slope values (around 2). Consequently, detected associations between log_Slope and animal density may become extrapolated beyond the range of observed values! We will address this in the later sessions. 
 
-## Investigating trends between the environmental covariates and the true whale intensity using `inlabru`
+In summary, from this exploratory analysis, we have found evidence that the log slope is positively associated with the observed intensity. However, we currently do not know if this a true species-environmental relationship, or if the association is instead caused by observers spending more time in regions with higher slope. In the next two workshops, we will develop a model-based approach using the *inlabru* package that can control for the effects to better investigate species-environmental trends. Finally, Exercise 3 below offers an alternative approach for graphically assessing species-environment trends that may better control for effort.
 
-**JOE: this section needs work. I know you now changed to inlabru and that's great, but I had more or less removed lost of details from this section before so they would addressed above to  help discuss things in small manageable packages (you can still see this from my old comment above), but you have re-put a lot of the details back. I must be honest this is a bit discouraging. Your work is great and the inlabru change here is also a great improvement on using ppm, and I know you worked days and days on this. But I spend hours (evening hours) doing these changes to help make the material more understandable for ecologists, and I feel some comments were more less ignored and reverted back (or not merged?). It's been a bit of a pattern lately, so it's harder for me to take it. Having lots of details is particularly weird now, because you don't go into the details of inlabru and preface many things with "we are going to talk about this again or later". I think you missed opportunity to present some of the ideas of inlabru syntax and I'm not sure I understand what's the main message here. What do you want them to get out of this? Please read this critically, and think about whether you have said this before, whether it's needed now, whether it can be skipped. **
+### Exercise 3 {#Ex3}
+An improved approach for graphically assessing possible univariate species-environment trends is possible. Repeat the above empirical density plots, but evaluate the empirical densities of log slope at the survey encounter locations and the survey effort tracklines (instead of the domain). What do you notice? Is this trend consistent with the previous empirical density plot? Which one do you trust more? Do you have any concerns with this approach?
 
-In lecture 1, we introduced the simplest distributional assumption on the number of encounters in a region. We assumed that the distribution of the number of encounters within any region $A$ was Poisson distributed, with mean equal to the integrated intensity surface: 
+Hint: remember to use the `over()` function to extract the values of log slope at a Spatial object (including spatiallines).
 
-$$N(Y \cap A) \backsim Poisson(\int \lambda_{obs}(s) ds)$$.
+<div class="fold s o"> 
+```{r}
+# Extract the value of slope at the survey encounter locations
+log_Slope_enc <- over(Sightings_survey, log_Slope)
+# Extract the value of slope at the survey trackline locations
+log_Slope_effort <- over(Effort_survey, log_Slope)
 
-Remember that $N(Y \cap A)$ represents the number of encounters in $A$. We will see in lecture 2 that this equation defines an inhomogeneous Poisson process, where we assume that the rate of encounters with whales changes through space according (only) to a set of measured covariates (i.e., the rate is spatially-inhomogeneous). The above distribution for $N(Y \cap A)$ will hold for any number of non-overlapping regions $A_i \subset \Omega$. If we define a grid of non-overlapping cells $A_i$ that cover the domain $\Omega$, then as the number of cells of the grid increases, the (Poisson) likelihood of the counts (falling within each $A_i$) will converge to the likelihood of the inhomogeneous Poisson process that preserves the exact locations of the encounters! Do not panic if this point is unclear - we will cover it in depth in lecture 2.
-
-The `inlabru` package can fit inhomogeneous Poisson processes to the data using a similar approximation technique to the one defined above! Thus, we can use `inlabru`to investigate trends between the observed intensity and the log slope covariate using the encounter data. 
-
-In the next 2 tutorials, we will explore `inlabru`'s ability to fit both inhomogeneous Poisson processes and log-Gaussian Cox processes and we will learn the syntax in depth. For now, we will look at the output from `inlabru` models for the purposes of exploratory analyses.
-
-Ignoring effort for the time being, we will use `inlabru` to fit an inhomogeneous Poisson point process to investigate the relationship between $\lambda_{obs}(s)$ and log Slope. To do this, we simply ignore effort completely and fit the observed encounter locations to a set of covariates of interest. We do this below (in the hidden code), with log_Slope as our covariate of interest. The output from the model is shown below:
-
-<div class="fold s"> 
-```{r 'ppm', message=FALSE, cache=TRUE}
-# These inlabru options will be explained in depth later 
-bru_options_set(
-  bru_verbose = FALSE,
-  verbose = FALSE,
-  control.inla=list(int.strategy='eb'),
-  num.threads=2
-)
-
-# Define components (explained later)
-cmp_IPP1 <- ~ 
-  log_Slope(main = log_Slope, model='linear') + 
-  Intercept(1)
-
-# Define formulae for 3 data sources (explained later)
-formula_IPP1_survey <- coordinates ~ Intercept + log_Slope
-formula_IPP1_Quoddy <- coordinates ~ Intercept + log_Slope
-formula_IPP1_Brier <- coordinates ~ Intercept + log_Slope
-
-# Load in a pre-compiled mesh (explained later)
-mesh_land <- readRDS('./Data/mesh_land_exp.rds')
-
-# Define likelihoods for 3 data sources (explained later)
-like_IPP1_survey <- like(data=Sightings_survey,
-                  samplers=Domain,
-                  domain = list(
-                    coordinates = mesh_land
-                  ),
-                  formula = formula_IPP1_survey,
-                  family = 'cp')
-like_IPP1_Quoddy <- like(data=Sightings_Quoddy_nodup,
-                  samplers=Domain,
-                  domain = list(
-                    coordinates = mesh_land
-                  ),
-                  formula = formula_IPP1_Quoddy,
-                  family = 'cp')
-like_IPP1_Brier <- like(data=Sightings_Brier_nodup,
-                  samplers=Domain,
-                  domain = list(
-                    coordinates = mesh_land
-                  ),
-                  formula = formula_IPP1_Brier,
-                  family = 'cp')
-
-# fit the model (explained later)
-mod_IPP1 <- bru(like_IPP1_survey,
-                like_IPP1_Quoddy,
-                like_IPP1_Brier,
-                components=cmp_IPP1)
-
-# We will focus on the output for now!
-summary(mod_IPP1)
-
+ggplot(data=data.frame(Slope_obs = log_Slope_enc$log_Slope),
+       aes(x=Slope_obs, colour="Sightings")) +
+  geom_density() +
+  geom_density(data=data.frame(Slope_eff = as.numeric(log_Slope_effort$log_Slope)),
+               aes(x=Slope_eff, colour="Tracklines")) +
+  xlab('log Slope') +
+  scale_color_manual(name = "Density", values = c('Sightings' = 'black', 'Tracklines' = 'red'))
 ```
 </div>
-
-We ignore all the details regarding the code for now and look at the table of fixed effects. We find a 'significant' positive association between $\lambda_{obs}$ and log slope and thus some evidence that the whales may be found more often in regions with higher slope. The 'significance' comes from the fact that the 95% posterior credible intervals do not cover 0 and the credible intervals are valid when the assumed Poisson distribution on the counts is true. However, the **cause** of this 'significant' association may be due to either the observers or the whales spending more time in regions of high slope!
-
-To investigate whether this association with log Depth is in fact with the true whale intensity $\lambda_{true}$, we can attempt to adjust for effort and see if these estimates change. We once again fit an inhomogeneous Poisson point process model, but this time we include the survey line transects (`Effort_survey`) and the two squared distance from port covariates (`Dist_Brier_sq`,`Dist_Quoddy_sq`).
-
-**JOE: this is a repeat, I'm pretty sure I had moved most of that up before.**
-
-More specifically, we are specifying a model for both the log effort intensity and the log whale intensity. For the log effort intensity we are estimating a unique intercept parameter for the two whale-watch observers and we are assuming that all encounters with whales at a distance of 0 metres from the survey aircraft are detected. We are assuming that the effort from the two whale-watch companies is explained by a half-normal function of distance that we estimate. Similarly, we assume that the probability of detecting a whale decreases as a half-normal function of distance from the trackline ($p(d)$) for the observers onboard the aircrafts. Thus, our model is:
-
-$$\lambda_{obs}(s) =  \lambda_{eff}(s) \lambda_{true}(s)\\
-\lambda_{eff,i}(s) = \lambda_i exp\left(\frac{-||s-s_i^*||^2}{2\sigma_i^2} \right) \textrm{ for shale-watch data} \\  
-\lambda_{eff,surv,j}(s) = p(d_j(s)) \textrm{   for survey data}\\
-\lambda_{true}(s) = \beta_0 + \beta_1 X(s).$$
-
-For the two whale-watch companies, $\lambda_{eff,i}(s)$, $s_i^*$ denotes the location of the whale watch port, $\lambda_i$ denotes the intercept for the whale watch company, and $\sigma_i$ determines how far from port the whale watch vessels travel. For the survey data, we compute the effort uniquely for each survey trackline (indexed by $j$) with $p(d_j(s))$ denoting the perpendicular distance from the $j^{th}$ trackline segment (if it exists). We will explain this in more depth in the upcoming lectures. Finally, we assume the true species intensity is driven exclusively by log depth ($X(s)$).  
-
-**JOE: Stating again that things will be talked about later is not particularly useful and a bit of a wasted opportunity to explain things. **
-
-Again, the details of the code are not important to understand right now. We will cover the `inlabru` syntax in depth in the following tutorials and lectures. What we will focus on is whether or not we detect an association between log slope after making this adjustment for effort.
-
-<div class="fold s"> 
-```{r, cache=TRUE}
-# Define the half-normal detection probability function
-log_hn = function(distance, lsig){ 
-  -0.5*(distance/exp(lsig))^2
-}
-
-# Define the components (ignore for now)
-cmp_IPP2 <- ~ 
-  log_Slope(main = log_Slope, model='linear') + 
-  Intercept(1) +
-  Intercept_Quoddy(1) +
-  Intercept_Brier(1) +
-  Dist_Brier_sq(main = Dist_Brier_sq, model='linear')  +
-  Dist_Quoddy_sq(main = Dist_Quoddy_sq, model='linear') +
-  lsig(1)
-
-# Define the formulae (ignore for now)
-formula_IPP2_survey <- coordinates + distance ~ Intercept + log_Slope + log_hn(distance, lsig)
-formula_IPP2_Quoddy <- coordinates ~ Intercept + Intercept_Quoddy + log_Slope + Dist_Quoddy_sq
-formula_IPP2_Brier <- coordinates ~ Intercept + Intercept_Brier + log_Slope + Dist_Brier_sq
-
-# Define the likelihood objects (ignore for now)
-like_IPP2_survey <- like(data=Sightings_survey,
-                  samplers=Domain,
-                  domain = list(
-                    coordinates = mesh_land,
-                    distance = INLA::inla.mesh.1d(seq(0, 2, length.out = 30))
-                  ),
-                  formula = formula_IPP2_survey,
-                  family = 'cp')
-like_IPP2_Quoddy <- like(data=Sightings_Quoddy_nodup,
-                  samplers=Domain,
-                  domain = list(
-                    coordinates = mesh_land
-                  ),
-                  formula = formula_IPP2_Quoddy,
-                  family = 'cp')
-like_IPP2_Brier <- like(data=Sightings_Brier_nodup,
-                  samplers=Domain,
-                  domain = list(
-                    coordinates = mesh_land
-                  ),
-                  formula = formula_IPP2_Brier,
-                  family = 'cp')
-
-# Fit the model
-mod_IPP2 <- bru(like_IPP2_survey,
-                like_IPP2_Quoddy,
-                like_IPP2_Brier,
-                components=cmp_IPP2)
-
-# We will focus on the output!
-summary(mod_IPP2)
-```
-</div>
-
-After making this adjustment for heterogeneous effort, we see that log slope is still found to be significantly associated with the whale density, with a positive coefficient. The negative values of the two `Dist_X_sq` effects implies that the estimated amount of whale watch effort decreases quickly as the 'distance' from port increases. The `lsig` parameter determines how quickly the distance sampling detection probability decays to 0 as the distance from the survey trackline increases. 
-
-We plot the effort intensity surfaces now. Again, the details of the code can be ignored for now - we will explain these in depth in the future sessions and lectures! First we plot the fitted effort intensity surface $\lambda_{effort}$ from the two whale watch ports:
-
-<div class="fold s"> 
-```{r 'fig-maxentFitted-Quoddy', cache=TRUE}
-pixels_plot <- pixels(mesh_land, mask=Domain)
-
-pred_Brier <- predict(mod_IPP2, pixels_plot, ~exp(Intercept_Brier + Dist_Brier_sq), n.samples=20)
-
-pred_Quoddy <- predict(mod_IPP2, pixels_plot, ~exp(Intercept_Quoddy + Dist_Quoddy_sq), n.samples=20)
-
-multiplot(
-ggplot() + gg(pred_Brier) + ggtitle('Brier Effort'),
-ggplot() + gg(pred_Quoddy) + ggtitle('Quoddy Effort'),
-layout = matrix(c(1,2),nrow=1,ncol=2))
-```
-</div>
-
-We see that the model predicts the vessels from Brier to 'spread out' more than those from Quoddy. Lastly, we plot the estimated detection probability function for the survey data against distance with 95% posterior credible intervals:
-
-<div class="fold s"> 
-```{r, cache=TRUE}
-dist_df <- data.frame(distance=seq(from=0,to=2,length.out = 30))
-samp_IPP2 <- generate(mod_IPP2,n.samples=20)
-pred_dist <- sapply(samp_IPP2,FUN = function(x){exp(log_hn(dist_df$distance,x$lsig))})
-dist_df$mean <- apply(pred_dist, 1, mean)
-dist_df$UCL <- apply(pred_dist, 1, quantile, probs=c(0.975))
-dist_df$LCL <- apply(pred_dist, 1, quantile, probs=c(0.025))
-
-ggplot(dist_df, aes(x=distance,y=mean,ymax=UCL,ymin=LCL)) + 
-  geom_line() + geom_ribbon(alpha=0.4) + ylab('Probability of detection') +
-  xlab('Distance from trackline (km)')
-```
-</div>
-
-In summary, from this exploratory analysis, we have found evidence that the log slope is associated with the true whale intensity. This association remains, even after attempting to control for effort. Thus, log slope should be considered as a covariate in our future models. 
-
-Note that in practice it can be a good idea to play around with different covariates and functional forms (e.g. quadratic effects) at this stage. These inhomogeneous Poisson process models are much quicker to fit than the log-Gaussian Cox process models we will be fitting in the future sessions. Furthermore, these inhomogeneous Poisson process models will give us a good understanding of which covariates should be considered.
-
-### Assessing the suitability of an inhomogeneous Poisson process
-
-Unfortunately, by being in the inhomogeneous Poisson process class of point processes, the above models lack one crucial feature. They are unable to account for any additional spatial correlations/clustering that are frequently caused by unmeasured environmental covariates and biological processes acting behind the scenes. These additional spatial clusterings (correlations) are likely to be present in our example: do we really expect log depth to fully explain the whales' presence?... Failing to account for these additional spatial correlations may lead to the reported measures of uncertainty in both predictions and in inference to be inaccurate.
-
-This is why we turn to log-Gaussian Cox processes in the next tutorial. By assuming the intensity surface to be a realisation from a spatially-smooth (log-Gaussian) random field, we will be able to adjust our inference to take into account any additional spatial correlations and/or unmeasured covariates! By doing this, both parameter estimates and measures of uncertainty should be better adjusted to account for these autocorrelations. We will describe log-Gaussian Cox processes in depth in the next lecture.
 
 
 ## Exercises
@@ -941,6 +747,9 @@ If you got stuck on any of the exercises, then please feel free to try them agai
 1. [Plotting data by year](#Ex1)
 
 2. [Transforming spatial points and lines](#Ex2)
+
+2. [Plotting empirical densities of log slope](#Ex3)
+
 
 ### Bonus Exercises
 
@@ -956,7 +765,7 @@ For publication, there can be issues regarding copyright of Google Maps. Using O
 ```{r 'map-openStreet', message=FALSE, warning=FALSE, tidy=FALSE, cache=TRUE, eval=FALSE}
 gmap(Sightings_survey, source='osm', force=TRUE) +
   gg(Domain) +
-  gg.spatiallines_mod(Effort_survey) +
+  gg(Effort_survey) +
   gg(Sightings_survey, colour='blue') +
   gg(Sightings_DRWW_sp, colour='purple') +
   gg(WW_ports, colour='red')
@@ -1092,7 +901,7 @@ sum(grepl(Sightings_survey_test$DATE_LO[Sightings_survey_test$YEAR==2011][3],
 # Could they be of the same animal? 
 ggplot() + gg(Domain) + 
   gg(Sightings_survey_test[Sightings_survey_test$YEAR==2011,],colour='green') +
-  gg.spatiallines_mod(Effort_survey_test[Effort_survey_test$YEAR==2011,],colour='yellow')
+  gg(Effort_survey_test[Effort_survey_test$YEAR==2011,],colour='yellow')
 
 ```
 </div>
