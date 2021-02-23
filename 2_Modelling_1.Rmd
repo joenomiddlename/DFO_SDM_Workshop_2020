@@ -506,7 +506,7 @@ ggplot() + gg(pred_int_restricted[2]) + gg(Domain) + gg(Effort_survey, colour='r
 ```
 </div>
 
-**Part B.** Estimate the total number of whales in the region lying within 20km of the nearest trackline.
+**Part B.** Estimate the total number of groups in the region lying within 20km of the nearest trackline.
 
 If you get really stuck, feel free to show the answer code!
 
