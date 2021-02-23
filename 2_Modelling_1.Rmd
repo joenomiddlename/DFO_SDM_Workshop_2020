@@ -70,7 +70,7 @@ The log-Gaussian Cox process (LGCP) models we are interested in require the spec
 
 The first step to using this approach is creating the mesh. Good rules of thumb are as follows:
 
-* Define maximum triangle lengths no shorter than half of the expected spatial range of your problem. Spatial range here is loosely defined as the 'distance required between two locations for the whale intensity at these two locations to be approximately independent of each other'. Note that it is impossible to detect clusters or hotspots with sizes smaller than the maximum length of triangles used.
+* Define maximum triangle lengths no shorter than half of the expected spatial range of your problem. Spatial range here is loosely defined as the 'distance required between two locations for the whale intensity at these two locations to be approximately independent of each other'. Note that it is impossible to detect clusters or hotspots with sizes smaller than the lengths of the triangles used.
 
 * Do not define the minimum triangle lengths too small. This could lead to very large meshes! This is specified with the argument `cutoff`.
 
@@ -86,7 +86,7 @@ mesh_land <- inla.mesh.2d(boundary = Domain,
 ggplot() + gg(mesh_land) + gg(Effort_survey,colour='red')
 ```
 
-Note that spatial correlations < 18km will not be detectable! We can print the number of mesh vertices (directly related to the length of time required later to fit the model).
+Note that spatial correlations < 45km will definitely not be detectable! We can print the number of mesh vertices (directly related to the length of time required later to fit the model).
 
 ```{r}
 mesh_land$n # lots of triangle vertices can lead to slow computation time. 453 good
